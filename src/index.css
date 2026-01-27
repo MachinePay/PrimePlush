@@ -1,0 +1,187 @@
+@import url("https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&display=swap");
+
+body {
+  margin: 0;
+  font-family: "Baloo 2", Arial, sans-serif;
+  background: #f6f8fc;
+  color: #2d3557;
+}
+
+.catalog-root {
+  display: flex;
+  min-height: 100vh;
+}
+
+.menu {
+  background: linear-gradient(180deg, #ffb300 0%, #ff9800 100%);
+  color: #fff;
+  width: 220px;
+  padding: 32px 0 0 0;
+  box-shadow: 2px 0 12px #0001;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.menu h2 {
+  font-size: 2rem;
+  margin-bottom: 24px;
+  letter-spacing: 2px;
+  font-family: "Baloo 2", Arial, sans-serif;
+}
+.menu ul {
+  list-style: none;
+  padding: 0;
+  width: 100%;
+}
+.menu li {
+  padding: 14px 0 14px 32px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  border-left: 6px solid transparent;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+  font-weight: 700;
+  color: #fff;
+  opacity: 0.85;
+}
+.menu li.active,
+.menu li:hover {
+  background: #fff3e0;
+  color: #ff9800;
+  border-left: 6px solid #ffd600;
+  opacity: 1;
+}
+
+.catalog-main {
+  flex: 1;
+  padding: 40px 32px 40px 32px;
+  background: #f6f8fc;
+  min-width: 0;
+}
+
+.plush-grid h2 {
+  font-size: 2rem;
+  margin-bottom: 24px;
+  color: #ff9800;
+  font-family: "Baloo 2", Arial, sans-serif;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 32px;
+}
+.plush-card {
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 4px 16px #0001;
+  padding: 24px 16px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+  border: 2px solid #ffe082;
+}
+.plush-card:hover {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 0 8px 24px #ffb30033;
+  border-color: #ffd600;
+}
+.plush-card img {
+  width: 110px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-bottom: 16px;
+  border: 3px solid #ffb300;
+  background: #fffde7;
+}
+.plush-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.2rem;
+  color: #2d3557;
+}
+.plush-card .price {
+  color: #ff9800;
+  font-weight: bold;
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+}
+.plush-card button {
+  background: linear-gradient(90deg, #ffd600 0%, #ff9800 100%);
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  padding: 8px 24px;
+  font-size: 1rem;
+  font-family: "Baloo 2", Arial, sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #ffb30022;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+.plush-card button:hover {
+  background: #ffb300;
+  color: #fffde7;
+}
+
+.cart {
+  width: 320px;
+  background: #fff;
+  box-shadow: -2px 0 12px #0001;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border-top-right-radius: 32px;
+  border-bottom-right-radius: 32px;
+}
+.cart h2 {
+  font-size: 1.5rem;
+  color: #2d3557;
+  margin-bottom: 24px;
+  font-family: "Baloo 2", Arial, sans-serif;
+}
+.cart-count {
+  color: #ff9800;
+  font-size: 1.1rem;
+}
+.cart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #b0b0b0;
+  margin-top: 32px;
+  font-size: 1.1rem;
+}
+.cart-empty span {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 900px) {
+  .catalog-root {
+    flex-direction: column;
+  }
+  .menu {
+    flex-direction: row;
+    width: 100%;
+    padding: 0;
+    box-shadow: 0 2px 12px #0001;
+    border-radius: 0 0 24px 24px;
+  }
+  .catalog-main {
+    padding: 24px 8px;
+  }
+  .cart {
+    width: 100%;
+    border-radius: 0;
+    box-shadow: 0 -2px 12px #0001;
+    padding: 24px 8px;
+    align-items: center;
+  }
+}
