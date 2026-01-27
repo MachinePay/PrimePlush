@@ -1,16 +1,29 @@
-import PlushMenu from "./PlushMenu";
-import PlushGrid from "./PlushGrid";
-import PlushCart from "./PlushCart";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import MainLayout from "./layout/MainLayout";
+import PlushGrid from "./components/PlushGrid";
+import ComingSoon from "./pages/ComingSoon";
 
 function App() {
   return (
-    <div className="catalog-root">
-      <PlushMenu />
-      <main className="catalog-main">
-        <PlushGrid />
-      </main>
-      <PlushCart />
-    </div>
+    <Router>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <ComingSoon />
+          }
+        />
+        <Route
+          path="/teste"
+          element={
+            <MainLayout>
+              <PlushGrid />
+            </MainLayout>
+          }
+        />
+      </Routes>
+    </Router>
   );
 }
 
