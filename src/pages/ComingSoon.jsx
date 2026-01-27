@@ -1,5 +1,5 @@
 import React from "react";
-import logo from "../assets/primeplush-logo.jpg";
+import logo from "../assets/LogoPrimePlush.jpeg";
 
 export default function ComingSoon() {
   return (
