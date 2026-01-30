@@ -2,7 +2,8 @@ import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useStore } from "../contexts/StoreContext"; // 🏪 MULTI-TENANT
-import Chatbot from "./Chatbot"; // Importação adicionada
+import Chatbot from "./Chatbot";
+import logo from "../assets/primeplush-logo.png";
 
 const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -29,7 +30,7 @@ const Header: React.FC = () => {
             className="flex items-center gap-2 group"
           >
             <img
-              src={require("../assets/primeplush-logo.png")}
+              src={logo}
               alt="PrimePlush logo"
               className="w-12 h-12 rounded-lg group-hover:scale-105 transition-transform object-cover"
               style={{ background: "#fff" }}

@@ -44,17 +44,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
         </div>
       )}
 
-      {/* Mídia (Vídeo/Imagem) */}
+      {/* Mídia (Imagem ou Vídeo) */}
       <div className="relative h-40 md:h-52 bg-gray-100">
-        <video
-          className="w-full h-full object-cover"
-          autoPlay
-          muted
-          loop
-          playsInline
-        >
-          <source src={product.videoUrl} type="video/mp4" />
-        </video>
+        {product.imageUrl ? (
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : null}
       </div>
 
       {/* Conteúdo */}
@@ -146,7 +145,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
       (p) =>
         cartSuggestion.toLowerCase().includes(p.name.toLowerCase()) ||
         (p.name.toLowerCase().includes("coca") &&
-          cartSuggestion.toLowerCase().includes("coca"))
+          cartSuggestion.toLowerCase().includes("coca")),
     );
 
     if (found) {
@@ -163,7 +162,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
   }, [cartSuggestion, menu]);
 
   const handleObservationChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLTextAreaElement>,
   ) => {
     setObservation(e.target.value);
     setShowObservationSaved(true);
@@ -232,11 +231,14 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                   {suggestedProduct && (
                     <div className="mt-2 ml-2 flex items-center gap-4 bg-white/60 p-3 rounded-xl border border-amber-200/50 shadow-sm">
                       <div className="hidden xs:block w-16 h-16 bg-gray-200 rounded-lg overflow-hidden shrink-0">
-                        <video
-                          src={suggestedProduct.videoUrl}
-                          className="w-full h-full object-cover"
-                          muted
-                        />
+                        {suggestedProduct.imageUrl ? (
+                          <img
+                            src={suggestedProduct.imageUrl}
+                            alt={suggestedProduct.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : null}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-base font-bold text-gray-900 truncate">
@@ -500,13 +502,13 @@ const MenuPage: React.FC = () => {
               name: p.name,
               storeId: p.storeId || "no-store",
             })),
-          }
+          },
         );
         setMenu(data);
       } else {
         console.error(
           "❌ Backend retornou dados inválidos (não é array):",
-          data
+          data,
         );
         setMenu([]);
       }
@@ -527,7 +529,7 @@ const MenuPage: React.FC = () => {
       if (data.length > 0) {
         setDynamicCategories(data);
         console.log(
-          `✅ ${data.length} categorias carregadas e setadas no estado`
+          `✅ ${data.length} categorias carregadas e setadas no estado`,
         );
       } else {
         console.warn("⚠️ Nenhuma categoria encontrada no backend");
@@ -550,7 +552,7 @@ const MenuPage: React.FC = () => {
           currentUser.historico,
           cartItems,
           menu,
-          currentUser.name
+          currentUser.name,
         );
         setSuggestion(newSuggestion);
         setIsSuggestionLoading(false);
@@ -567,7 +569,7 @@ const MenuPage: React.FC = () => {
         const msg = await getChefMessage(
           currentUser ? currentUser.historico : [],
           currentUser?.name,
-          menu
+          menu,
         );
         setChefMessage(msg);
       } catch (err) {
@@ -585,7 +587,7 @@ const MenuPage: React.FC = () => {
         const dynamicSuggestion = await getDynamicCartSuggestion(
           cartItems,
           menu,
-          currentUser?.name
+          currentUser?.name,
         );
         setCartSuggestion(dynamicSuggestion);
       } else {
@@ -606,12 +608,15 @@ const MenuPage: React.FC = () => {
       return {} as Record<string, Product[]>;
     }
 
-    return menu.reduce((acc, product) => {
-      const categoryKey = product.category as Product["category"];
-      if (!acc[categoryKey]) acc[categoryKey] = [];
-      acc[categoryKey].push(product);
-      return acc;
-    }, {} as Record<string, Product[]>);
+    return menu.reduce(
+      (acc, product) => {
+        const categoryKey = product.category as Product["category"];
+        if (!acc[categoryKey]) acc[categoryKey] = [];
+        acc[categoryKey].push(product);
+        return acc;
+      },
+      {} as Record<string, Product[]>,
+    );
   }, [menu]);
 
   // 🆕 Usa categorias dinâmicas do backend (com ordem), ou fallback para categorias com produtos

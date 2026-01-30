@@ -26,13 +26,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
   // Estado local do formulário. Usamos Omit para não incluir 'id' e 'imageUrl'
   // no tipo inicial, mas permitimos opcionalmente 'id' enquanto editamos.
   const [formData, setFormData] = useState<
-    Omit<Product, "id" | "imageUrl"> & { id?: string }
+    Omit<Product, "id"> & { id?: string }
   >({
     name: "",
     price: 0,
     priceRaw: 0,
     category: "Pelúcia",
-    videoUrl: "",
+    imageUrl: "",
     stock: 0,
     minStock: 0,
   });
@@ -92,7 +92,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
         price: 0,
         priceRaw: 0,
         category: categories.length > 0 ? categories[0].name : "Pelúcia",
-        videoUrl: "",
+        imageUrl: "",
         stock: 0,
         minStock: 0,
       });
@@ -123,15 +123,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
     e.preventDefault();
     const finalProduct: Product = {
       ...formData,
-      // Se já houver id (edição) usa-o, senão o backend gerará um novo
       id: formData.id || "",
-      // Placeholder para imagem (backend pode adicionar lógica de upload futuramente)
-      imageUrl: formData.id
-        ? product?.imageUrl || "https://picsum.photos/400/300"
-        : "https://picsum.photos/400/300",
-      // videoUrl padrão se não fornecido
-      videoUrl:
-        formData.videoUrl || "https://www.w3schools.com/html/mov_bbb.mp4",
+      imageUrl: formData.imageUrl || "https://picsum.photos/400/300",
     };
     onSave(finalProduct); // informa o componente pai sobre o produto salvo
   };
@@ -256,22 +249,22 @@ const ProductForm: React.FC<ProductFormProps> = ({
           </div>
           <div>
             <label
-              htmlFor="videoUrl"
+              htmlFor="imageUrl"
               className="block text-sm font-medium text-stone-700"
             >
-              URL do Vídeo
+              URL da Imagem
             </label>
             <input
               type="url"
-              name="videoUrl"
-              id="videoUrl"
-              value={formData.videoUrl || ""}
+              name="imageUrl"
+              id="imageUrl"
+              value={formData.imageUrl || ""}
               onChange={handleChange}
-              placeholder="https://exemplo.com/video.mp4"
+              placeholder="https://exemplo.com/imagem.jpg"
               className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
             />
             <p className="mt-1 text-xs text-stone-500">
-              URL do vídeo do produto (opcional)
+              URL da imagem do produto (obrigatório)
             </p>
           </div>
           <div>
