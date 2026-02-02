@@ -8,7 +8,6 @@ import { useNavigate } from "react-router-dom";
 import type { Product } from "../types";
 import { authenticatedFetch } from "../services/apiService";
 import { useAuth } from "../contexts/AuthContext";
-import { getCurrentStoreId } from "../utils/tenantResolver";
 
 // --- Componente de formulário de produto (Modal) ---
 // Props esperadas pelo formulário:
@@ -342,12 +341,9 @@ const AdminPage: React.FC = () => {
   const loadProducts = async () => {
     try {
       const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-      const storeId = getCurrentStoreId();
-
       const res = await fetch(`${API_URL}/api/menu`, {
         headers: {
           "Content-Type": "application/json",
-          "x-store-id": storeId, // 🏪 MULTI-TENANT
         },
       });
 
@@ -379,10 +375,7 @@ const AdminPage: React.FC = () => {
     const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
     try {
-      const storeId = getCurrentStoreId();
-      const response = await fetch(`${API_URL}/api/ai/inventory-analysis`, {
-        headers: { "x-store-id": storeId }, // 🏪 MULTI-TENANT
-      });
+      const response = await fetch(`${API_URL}/api/ai/inventory-analysis`);
       const data = await response.json();
 
       if (data.success) {

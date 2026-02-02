@@ -1,5 +1,4 @@
 import type { Order, CartItem, Product } from "../types";
-import { getCurrentStoreId } from "../utils/tenantResolver"; // 🏪 MULTI-TENANT
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -10,7 +9,7 @@ export const getMenuSuggestion = async (
   userHistory: Order[],
   cartItems: CartItem[],
   menu: Product[],
-  userName?: string
+  userName?: string,
 ): Promise<string> => {
   const clientName = userName || "amigo(a)";
 
@@ -59,13 +58,10 @@ Exemplo: "${clientName}, que tal uma Coca-Cola geladinha? Vai combinar perfeitam
   `;
 
   try {
-    const storeId = getCurrentStoreId(); // 🏪 Obtém storeId
-
     const response = await fetch(`${API_URL}/api/ai/suggestion`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-store-id": storeId, // 🏪 Envia storeId
       },
       body: JSON.stringify({ prompt }),
     });
@@ -92,7 +88,7 @@ Exemplo: "${clientName}, que tal uma Coca-Cola geladinha? Vai combinar perfeitam
 export const getDynamicCartSuggestion = async (
   cartItems: CartItem[],
   menu: Product[],
-  userName?: string
+  userName?: string,
 ): Promise<string> => {
   if (cartItems.length === 0) return "";
 
@@ -136,13 +132,10 @@ Exemplo: "${clientName}, que tal adicionar uma Coca geladinha? Vai combinar perf
   `;
 
   try {
-    const storeId = getCurrentStoreId(); // 🏪 Obtém storeId
-
     const response = await fetch(`${API_URL}/api/ai/suggestion`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-store-id": storeId, // 🏪 Envia storeId
       },
       body: JSON.stringify({ prompt }),
     });
@@ -160,7 +153,7 @@ Exemplo: "${clientName}, que tal adicionar uma Coca geladinha? Vai combinar perf
 export const getChefMessage = async (
   userHistory: Order[],
   userName?: string,
-  menu?: Product[]
+  menu?: Product[],
 ): Promise<string> => {
   const clientName = userName || "amigo(a)";
   const isNewCustomer = !userHistory || userHistory.length === 0;
@@ -187,13 +180,10 @@ Exemplo recorrente: "${clientName}, que alegria ter você aqui de novo! Preparei
   `;
 
   try {
-    const storeId = getCurrentStoreId(); // 🏪 Obtém storeId
-
     const response = await fetch(`${API_URL}/api/ai/suggestion`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-store-id": storeId, // 🏪 Envia storeId
       },
       body: JSON.stringify({ prompt }),
     });
@@ -219,16 +209,13 @@ export const startChat = () => {
  * Envia mensagem do usuário para o Chatbot e retorna a resposta.
  */
 export const sendMessageToChatbot = async (
-  message: string
+  message: string,
 ): Promise<string> => {
   try {
-    const storeId = getCurrentStoreId(); // 🏪 Obtém storeId
-
     const response = await fetch(`${API_URL}/api/ai/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-store-id": storeId, // 🏪 Envia storeId
       },
       body: JSON.stringify({ message }),
     });

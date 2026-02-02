@@ -1,3 +1,4 @@
+import RegisterPage from "./pages/RegisterPage";
 import React, { useEffect } from "react";
 import {
   HashRouter,
@@ -16,15 +17,10 @@ import MenuPage from "./pages/MenuPage";
 import PaymentPage from "./pages/PaymentPage";
 import OrderHistoryPage from "./pages/OrderHistoryPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
-{
-  /* Rota para Super Admin */
-}
-<Route path="/superadmin" element={<SuperAdminPage />} />;
 import AdminPage from "./pages/AdminPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminReportsPage from "./pages/AdminReportsPage";
 import AdminCategoriesPage from "./pages/AdminCategoriesPage"; // 🆕
-import ScreensaverPage from "./pages/ScreensaverPage";
 import Header from "./components/Header";
 import Chatbot from "./components/Chatbot";
 import InactivityGuard from "./components/InactivityGuard";
@@ -127,7 +123,6 @@ const App: React.FC = () => {
 
 const RouterBody: React.FC = () => {
   const location = useLocation();
-  const isScreensaver = location.pathname === "/";
   const { store, loading, error } = useStore(); // 🏪 MULTI-TENANT
 
   // Loading state enquanto carrega a loja
@@ -150,11 +145,13 @@ const RouterBody: React.FC = () => {
   return (
     <div className="min-h-screen bg-stone-100 text-stone-800">
       <InactivityGuard />
-      {!isScreensaver && <Header />}
-      <main className={isScreensaver ? "" : "p-4 md:p-8"}>
+      <Header />
+      <main className="p-4 md:p-8">
         <Routes>
-          <Route path="/" element={<ScreensaverPage />} />
+          <Route path="/superadmin" element={<SuperAdminPage />} />
+          <Route path="/" element={<LoginPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
           {/* Rota protegida para clientes */}
           <Route

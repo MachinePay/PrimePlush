@@ -4,6 +4,7 @@ import {
   getSuperAdminStats,
   markSuperAdminReceived,
 } from "../services/superAdminService";
+import logo from "../assets/primeplush-logo.png";
 
 export default function SuperAdminPage() {
   const [password, setPassword] = useState("");
@@ -17,13 +18,14 @@ export default function SuperAdminPage() {
     if (loggedIn) {
       fetchStats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn]);
 
   async function fetchStats() {
     setLoading(true);
     setError("");
     try {
-      const { stats, history } = await getSuperAdminStats();
+      const { stats, history } = await getSuperAdminStats(password);
       setStats(stats);
       setHistory(history);
     } catch (e: any) {
@@ -46,7 +48,7 @@ export default function SuperAdminPage() {
     setLoading(true);
     setError("");
     try {
-      await markSuperAdminReceived();
+      await markSuperAdminReceived(password);
       await fetchStats();
     } catch (e: any) {
       setError(e.message || "Erro ao registrar recebimento");
@@ -55,6 +57,9 @@ export default function SuperAdminPage() {
   }
 
   if (!loggedIn) {
+    // Import da logo para uso no src
+    // @ts-ignore
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--color-primary-light)]">
         <form
@@ -62,11 +67,7 @@ export default function SuperAdminPage() {
           className="bg-white shadow-lg rounded-xl p-8 w-full max-w-sm flex flex-col gap-6 border border-[var(--color-primary)]"
         >
           <div className="flex flex-col items-center gap-2">
-            <img
-              src={require("../assets/primeplush-logo.png")}
-              alt="PrimePlush Logo"
-              className="w-20 h-20 mb-2"
-            />
+            <img src={logo} alt="PrimePlush Logo" className="w-20 h-20 mb-2" />
             <h2 className="text-2xl font-bold text-[var(--color-primary)]">
               Área Super Admin
             </h2>
@@ -98,33 +99,59 @@ export default function SuperAdminPage() {
     );
   }
 
+  function handleLogout() {
+    logout();
+    setLoggedIn(false);
+    setPassword("");
+    setStats(null);
+    setHistory([]);
+    setError("");
+  }
+
   return (
-    <div className="superadmin-page">
-      <h2>Dashboard Super Admin</h2>
-      <button onClick={logout}>Sair</button>
-      {loading && <div>Carregando...</div>}
-      {error && <div className="error">{error}</div>}
-      {stats && (
-        <div className="stats">
-          <h3>Total a Receber</h3>
-          <p>R$ {stats.totalToReceive.toFixed(2)}</p>
-          <button
-            onClick={handleMarkReceived}
-            disabled={loading || stats.totalToReceive === 0}
-          >
-            Marcar como Recebido
-          </button>
+    <div className="superadmin-page min-h-screen flex flex-col items-center justify-center bg-[var(--color-primary-light)]">
+      <div className="bg-white shadow-lg rounded-xl p-8 w-full max-w-md flex flex-col gap-6 border border-[var(--color-primary)]">
+        <div className="flex flex-col items-center gap-2">
+          <img src={logo} alt="PrimePlush Logo" className="w-20 h-20 mb-2" />
+          <h2 className="text-2xl font-bold text-[var(--color-primary)]">
+            Dashboard Super Admin
+          </h2>
         </div>
-      )}
-      <h3>Histórico de Recebimentos</h3>
-      <ul>
-        {history.map((h, i) => (
-          <li key={i}>
-            Recebido R$ {h.amount.toFixed(2)} em{" "}
-            {new Date(h.date).toLocaleString()}
-          </li>
-        ))}
-      </ul>
+        <button
+          onClick={handleLogout}
+          className="self-end bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded transition-colors mb-2"
+        >
+          Sair
+        </button>
+        {loading && <div>Carregando...</div>}
+        {error && (
+          <div className="error text-red-600 text-sm text-center">{error}</div>
+        )}
+        {stats && (
+          <div className="stats">
+            <h3 className="font-semibold mb-2">Total a Receber</h3>
+            <p className="text-2xl font-bold mb-4">
+              R$ {stats.totalToReceive.toFixed(2)}
+            </p>
+            <button
+              onClick={handleMarkReceived}
+              disabled={loading || stats.totalToReceive === 0}
+              className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold py-2 px-4 rounded transition-colors disabled:opacity-60"
+            >
+              Marcar como Recebido
+            </button>
+          </div>
+        )}
+        <h3 className="font-semibold mt-6">Histórico de Recebimentos</h3>
+        <ul className="list-disc pl-5">
+          {(history || []).map((h, i) => (
+            <li key={i}>
+              Recebido R$ {h.amount.toFixed(2)} em{" "}
+              {new Date(h.date).toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

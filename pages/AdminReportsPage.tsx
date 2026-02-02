@@ -16,7 +16,6 @@ import {
 } from "recharts";
 import type { Order } from "../types";
 import { authenticatedFetch } from "../services/apiService";
-import { getCurrentStoreId } from "../utils/tenantResolver"; // 🏪 MULTI-TENANT
 
 interface AIRecommendation {
   topProducts: { name: string; quantity: number; revenue: number }[];
@@ -39,7 +38,7 @@ const COLORS = [
 const AdminReportsPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [recommendation, setRecommendation] = useState<AIRecommendation | null>(
-    null
+    null,
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -51,18 +50,8 @@ const AdminReportsPage: React.FC = () => {
 
   const fetchOrders = async () => {
     try {
-      const storeId = getCurrentStoreId();
-      console.log(`📊 [AdminReportsPage] Buscando pedidos da loja: ${storeId}`);
-
       const res = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || "http://localhost:3001"
-        }/api/user-orders`,
-        {
-          headers: {
-            "x-store-id": storeId, // 🏪 MULTI-TENANT
-          },
-        }
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/user-orders`,
       );
       if (!res.ok) throw new Error("Erro ao buscar pedidos");
       const data = await res.json();
@@ -92,7 +81,7 @@ const AdminReportsPage: React.FC = () => {
 ${analysis.topProducts
   .map(
     (p, i) =>
-      `${i + 1}. ${p.name}: ${p.quantity} unidades (R$ ${p.revenue.toFixed(2)})`
+      `${i + 1}. ${p.name}: ${p.quantity} unidades (R$ ${p.revenue.toFixed(2)})`,
   )
   .join("\n")}
 
@@ -121,7 +110,7 @@ Seja direto e focado em ações práticas. Use emojis para deixar mais visual.`;
         {
           method: "POST",
           body: JSON.stringify({ prompt }),
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Erro na API de IA");
@@ -142,7 +131,7 @@ Seja direto e focado em ações práticas. Use emojis para deixar mais visual.`;
 
   // Análise de dados dos pedidos
   const analyzeOrders = (
-    orders: Order[]
+    orders: Order[],
   ): Omit<AIRecommendation, "insights"> => {
     // Filtrar pedidos do mês atual
     const now = new Date();
@@ -160,7 +149,7 @@ Seja direto e focado em ações práticas. Use emojis para deixar mais visual.`;
     // Calcular faturamento mensal
     const monthlyRevenue = monthOrders.reduce(
       (sum, order) => sum + order.total,
-      0
+      0,
     );
 
     // Produtos mais vendidos
@@ -253,7 +242,7 @@ Seja direto e focado em ações práticas. Use emojis para deixar mais visual.`;
         const category = item.category || "Outros";
         categoryMap.set(
           category,
-          (categoryMap.get(category) || 0) + item.quantity
+          (categoryMap.get(category) || 0) + item.quantity,
         );
       });
     });
@@ -306,7 +295,7 @@ Seja direto e focado em ações práticas. Use emojis para deixar mais visual.`;
               <p className="text-sm text-green-700 mt-2">
                 Média: R${" "}
                 {(recommendation.monthlyRevenue / orders.length || 0).toFixed(
-                  2
+                  2,
                 )}{" "}
                 por pedido
               </p>

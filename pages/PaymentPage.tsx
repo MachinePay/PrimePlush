@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query"; // Importação Nova
 import { useCart } from "../contexts/CartContext";
 import { useAuth } from "../contexts/AuthContext";
 import { clearPaymentQueue } from "../services/pointService";
-import { getCurrentStoreId } from "../utils/tenantResolver"; // 🏪 MULTI-TENANT
 import {
   createPixPayment,
   createCardPayment,
@@ -16,13 +15,11 @@ import type { Order, CartItem } from "../types";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-// 🏪 Helper para adicionar x-store-id em todas as requisições
-const fetchWithStoreId = async (url: string, options: RequestInit = {}) => {
-  const storeId = getCurrentStoreId();
+// Helper para requisições padrão (single-tenant)
+const fetchStandard = async (url: string, options: RequestInit = {}) => {
   const headers = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
-    "x-store-id": storeId,
   };
   return fetch(url, { ...options, headers });
 };
@@ -129,7 +126,7 @@ const PaymentPage: React.FC = () => {
           `🧹 Cleanup: Cancelando pagamento ${paymentIdRef.current} no backend...`,
         );
         // Usa fetch com keepalive para garantir que o cancelamento vá mesmo fechando a aba
-        fetchWithStoreId(
+        fetchStandard(
           `${BACKEND_URL}/api/payment/cancel/${paymentIdRef.current}`,
           {
             method: "DELETE",
@@ -176,7 +173,7 @@ const PaymentPage: React.FC = () => {
   ) => {
     try {
       // 1. Atualiza pedido no banco
-      await fetchWithStoreId(`${BACKEND_URL}/api/orders/${orderId}`, {
+      await fetchStandard(`${BACKEND_URL}/api/orders/${orderId}`, {
         method: "PUT",
         body: JSON.stringify({ paymentId, paymentStatus: "paid" }),
       });
@@ -228,7 +225,7 @@ const PaymentPage: React.FC = () => {
   // --- Helpers de Criação ---
 
   const createOrder = async () => {
-    const orderResp = await fetchWithStoreId(`${BACKEND_URL}/api/orders`, {
+    const orderResp = await fetchStandard(`${BACKEND_URL}/api/orders`, {
       method: "POST",
       body: JSON.stringify({
         userId: currentUser!.id,

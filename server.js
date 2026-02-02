@@ -44,101 +44,94 @@ const dbConfig = process.env.DATABASE_URL
 
 const db = knex(dbConfig);
 
-const parseJSON = (data) => {
-  if (typeof data === "string") {
-    try {
-      return JSON.parse(data);
-    } catch (e) {
-      return [];
-    }
-  }
-  return data || [];
-};
+app.post("/api/orders", async (req, res) => {
+  const { userId, userName, items, total, paymentId, observation } = req.body;
 
-const dbType = process.env.DATABASE_URL
-  ? "PostgreSQL (Render)"
-  : "SQLite (Local)";
-console.log(`🗄️ Usando banco: ${dbType}`);
+  const newOrder = {
+    id: `order_${Date.now()}`,
+    userId,
+    observation: observation || null, // Salva a observação ou null se não houver
+    userName: userName || "Cliente",
+    items: JSON.stringify(items || []),
+    total: total || 0,
+    timestamp: new Date().toISOString(),
+    // 🔒 IMPORTANTE: Pedido só vai para cozinha (active) após pagamento confirmado
+    status: paymentId ? "active" : "pending_payment",
+    paymentStatus: paymentId ? "paid" : "pending",
+    paymentId: paymentId || null,
+  };
 
-// --- Configuração Redis para Cache ---
-let redisClient = null;
-let useRedis = false;
+  try {
+    console.log(`📦 Criando pedido ${newOrder.id}...`);
 
-// Cache de pagamentos confirmados - Fallback Map para quando Redis não disponível
-const confirmedPayments = new Map();
-
-// Função para inicializar Redis (chamada junto com initDatabase)
-async function initRedis() {
-  if (REDIS_URL) {
-    try {
-      console.log("⏳ Conectando ao Redis...");
-      redisClient = createClient({ url: REDIS_URL });
-
-      redisClient.on("error", (err) => {
-        console.error("❌ Erro Redis:", err.message);
-        useRedis = false;
-        console.log("⚠️ Usando Map em memória como fallback");
+    // Garante que o usuário existe (para convidados)
+    const userExists = await db("users").where({ id: userId }).first();
+    if (!userExists) {
+      await db("users").insert({
+        id: userId,
+        name: userName || "Convidado",
+        email: null,
+        cpf: null,
+        historico: "[]",
+        pontos: 0,
       });
-
-      redisClient.on("connect", () => {
-        console.log("✅ Redis conectado com sucesso!");
-        useRedis = true;
-      });
-
-      // Conecta ao Redis
-      await redisClient.connect();
-    } catch (error) {
-      console.error("❌ Falha ao conectar Redis:", error.message);
-      console.log("⚠️ Usando Map em memória como fallback");
-      redisClient = null;
-      useRedis = false;
     }
-  } else {
-    console.log("ℹ️ REDIS_URL não configurado - usando Map em memória");
-  }
-}
 
-// Funções auxiliares para cache unificado (Redis ou Map)
-const cachePayment = async (key, value) => {
-  if (useRedis && redisClient) {
-    try {
-      await redisClient.setEx(key, 3600, JSON.stringify(value)); // Expira em 1 hora
-      return true;
-    } catch (error) {
-      console.error("❌ Erro ao salvar no Redis, usando Map:", error.message);
-      confirmedPayments.set(key, value);
-      return true;
-    }
-  } else {
-    confirmedPayments.set(key, value);
-    return true;
-  }
-};
+    // ✅ RESERVA ESTOQUE AQUI (ANTES de inserir o pedido)
+    console.log(`🔒 Reservando estoque de ${items.length} produto(s)...`);
 
-const getCachedPayment = async (key) => {
-  if (useRedis && redisClient) {
-    try {
-      const data = await redisClient.get(key);
-      return data ? JSON.parse(data) : null;
-    } catch (error) {
-      console.error("❌ Erro ao ler do Redis, usando Map:", error.message);
-      return confirmedPayments.get(key) || null;
-    }
-  } else {
-    return confirmedPayments.get(key) || null;
-  }
-};
+    for (const item of items) {
+      // Busca produto pelo id (single-tenant)
+      const product = await db("products").where({ id: item.id }).first();
 
-const deleteCachedPayment = async (key) => {
-  if (useRedis && redisClient) {
-    try {
-      await redisClient.del(key);
-    } catch (error) {
-      console.error("❌ Erro ao deletar do Redis:", error.message);
+      if (!product) {
+        console.warn(`⚠️ Produto ${item.id} não encontrado no estoque.`);
+        continue;
+      }
+
+      // Se stock é null = ilimitado, não precisa reservar
+      if (product.stock === null) {
+        console.log(`  ℹ️ ${item.name}: estoque ilimitado`);
+        continue;
+      }
+
+      // Calcula estoque disponível (total - reservado)
+      const stockAvailable = product.stock - (product.stock_reserved || 0);
+
+      // Verifica se tem estoque disponível suficiente
+      if (stockAvailable < item.quantity) {
+        throw new Error(
+          `Estoque insuficiente para ${item.name}. Disponível: ${stockAvailable}, Solicitado: ${item.quantity}`,
+        );
+      }
+
+      // Aumenta a RESERVA (não deduz ainda)
+      const newReserved = (product.stock_reserved || 0) + item.quantity;
+
+      await db("products")
+        .where({ id: item.id })
+        .update({ stock_reserved: newReserved });
+
+      console.log(
+        `  🔒 ${item.name}: reserva ${
+          product.stock_reserved || 0
+        } → ${newReserved} (+${item.quantity})`,
+      );
     }
+
+    console.log(`✅ Estoque reservado com sucesso!`);
+
+    // Salva o pedido
+    await db("orders").insert(newOrder);
+
+    console.log(`✅ Pedido ${newOrder.id} criado com sucesso!`);
+
+    res.status(201).json({ ...newOrder, items: items || [] });
+  } catch (e) {
+    console.error("❌ Erro ao salvar pedido:", e);
+    res.status(500).json({ error: e.message || "Erro ao salvar ordem" });
   }
-  confirmedPayments.delete(key);
-};
+});
 
 // ⚠️ CRON JOBS MOVIDOS PARA WORKER SEPARADO
 // Ver: workers/cronJobs.js (node-cron) ou workers/bullQueue.js (Bull + Redis)
@@ -187,7 +180,7 @@ async function initDatabase() {
     // Adiciona colunas que faltam se não existirem
     const hasReservedColumn = await db.schema.hasColumn(
       "products",
-      "stock_reserved"
+      "stock_reserved",
     );
     if (!hasReservedColumn) {
       await db.schema.table("products", (table) => {
@@ -241,7 +234,7 @@ async function initDatabase() {
   // Adiciona a coluna 'observation' se ela não existir
   const hasObservationColumn = await db.schema.hasColumn(
     "orders",
-    "observation"
+    "observation",
   );
   if (!hasObservationColumn) {
     await db.schema.table("orders", (table) => {
@@ -304,25 +297,25 @@ async function initDatabase() {
   // ========== MULTI-TENANCY: Adiciona store_id nas tabelas ==========
 
   console.log(
-    "🔍 [MULTI-TENANCY] Forçando criação de colunas com SQL bruto..."
+    "🔍 [MULTI-TENANCY] Forçando criação de colunas com SQL bruto...",
   );
 
   // FORÇAR com SQL bruto (ignora cache do Knex)
   try {
     await db.raw(
-      "ALTER TABLE products ADD COLUMN IF NOT EXISTS store_id VARCHAR(255)"
+      "ALTER TABLE products ADD COLUMN IF NOT EXISTS store_id VARCHAR(255)",
     );
     console.log("✅ [MULTI-TENANCY] Coluna store_id em products (SQL bruto)");
   } catch (err) {
     console.log(
       "ℹ️ [MULTI-TENANCY] Coluna store_id já existe em products:",
-      err.message
+      err.message,
     );
   }
 
   try {
     await db.raw(
-      "CREATE INDEX IF NOT EXISTS products_store_id_index ON products(store_id)"
+      "CREATE INDEX IF NOT EXISTS products_store_id_index ON products(store_id)",
     );
     console.log("✅ [MULTI-TENANCY] Índice criado em products.store_id");
   } catch (err) {
@@ -331,19 +324,19 @@ async function initDatabase() {
 
   try {
     await db.raw(
-      "ALTER TABLE orders ADD COLUMN IF NOT EXISTS store_id VARCHAR(255)"
+      "ALTER TABLE orders ADD COLUMN IF NOT EXISTS store_id VARCHAR(255)",
     );
     console.log("✅ [MULTI-TENANCY] Coluna store_id em orders (SQL bruto)");
   } catch (err) {
     console.log(
       "ℹ️ [MULTI-TENANCY] Coluna store_id já existe em orders:",
-      err.message
+      err.message,
     );
   }
 
   try {
     await db.raw(
-      "CREATE INDEX IF NOT EXISTS orders_store_id_index ON orders(store_id)"
+      "CREATE INDEX IF NOT EXISTS orders_store_id_index ON orders(store_id)",
     );
     console.log("✅ [MULTI-TENANCY] Índice criado em orders.store_id");
   } catch (err) {
@@ -358,11 +351,11 @@ async function initDatabase() {
 
   if (Number(productsWithoutStore.count) > 0) {
     console.log(
-      `🔄 [MIGRAÇÃO] Encontrados ${productsWithoutStore.count} produtos sem store_id`
+      `🔄 [MIGRAÇÃO] Encontrados ${productsWithoutStore.count} produtos sem store_id`,
     );
     await db("products").whereNull("store_id").update({ store_id: "pastel1" }); // Loja padrão
     console.log(
-      `✅ [MIGRAÇÃO] ${productsWithoutStore.count} produtos atribuídos à loja 'pastel1'`
+      `✅ [MIGRAÇÃO] ${productsWithoutStore.count} produtos atribuídos à loja 'pastel1'`,
     );
   }
 
@@ -373,11 +366,11 @@ async function initDatabase() {
 
   if (Number(ordersWithoutStore.count) > 0) {
     console.log(
-      `🔄 [MIGRAÇÃO] Encontrados ${ordersWithoutStore.count} pedidos sem store_id`
+      `🔄 [MIGRAÇÃO] Encontrados ${ordersWithoutStore.count} pedidos sem store_id`,
     );
     await db("orders").whereNull("store_id").update({ store_id: "pastel1" }); // Loja padrão
     console.log(
-      `✅ [MIGRAÇÃO] ${ordersWithoutStore.count} pedidos atribuídos à loja 'pastel1'`
+      `✅ [MIGRAÇÃO] ${ordersWithoutStore.count} pedidos atribuídos à loja 'pastel1'`,
     );
   }
 
@@ -422,7 +415,7 @@ app.use(
     },
     methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
     credentials: true,
-  })
+  }),
 );
 app.use(express.json());
 
@@ -442,28 +435,10 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", (req, res) =>
-  res.status(200).json({ status: "ok", db: dbType })
+  res.status(200).json({ status: "ok", db: dbType }),
 );
 
 // Endpoint de debug para verificar store_id
-app.get("/api/debug/store", (req, res) => {
-  const storeId = req.headers["x-store-id"] || req.query.storeId;
-  const host = req.headers.host;
-  const origin = req.headers.origin;
-
-  res.json({
-    storeId: storeId || "❌ NÃO ENVIADO",
-    host: host,
-    origin: origin,
-    headers: {
-      "x-store-id": req.headers["x-store-id"] || "❌ NÃO ENVIADO",
-      "user-agent": req.headers["user-agent"],
-    },
-    message: storeId
-      ? `✅ Store ID recebido: ${storeId}`
-      : "❌ Header x-store-id não foi enviado pelo frontend",
-  });
-});
 
 // Rota de teste do webhook (para verificar se está acessível)
 app.get("/api/webhooks/mercadopago", (req, res) => {
@@ -496,7 +471,7 @@ app.post("/api/auth/login", (req, res) => {
 
   if (!correctPassword) {
     console.error(
-      `⚠️ A senha para a role '${role}' não está configurada nas variáveis de ambiente.`
+      `⚠️ A senha para a role '${role}' não está configurada nas variáveis de ambiente.`,
     );
     return res
       .status(500)
@@ -506,7 +481,7 @@ app.post("/api/auth/login", (req, res) => {
   if (password === correctPassword) {
     if (!JWT_SECRET) {
       console.error(
-        "🚨 JWT_SECRET não está configurado! Não é possível gerar token."
+        "🚨 JWT_SECRET não está configurado! Não é possível gerar token.",
       );
       return res
         .status(500)
@@ -522,89 +497,11 @@ app.post("/api/auth/login", (req, res) => {
   }
 });
 
-// ========== MIDDLEWARE MULTI-TENANCY ==========
-// Extrai e valida o storeId de cada requisição
-const extractStoreId = (req, res, next) => {
-  console.log(`🔍 [MIDDLEWARE] Rota: ${req.method} ${req.path}`);
-  console.log(`🔍 [MIDDLEWARE] Headers:`, JSON.stringify(req.headers, null, 2));
-
-  // Verifica se é uma rota que não precisa de storeId (rotas globais/públicas)
-  const publicRoutes = [
-    "/",
-    "/health",
-    "/favicon.ico", // Favicon do navegador
-    "/api/auth/login",
-    "/api/webhooks/mercadopago",
-    "/api/notifications/mercadopago",
-    "/api/super-admin/dashboard", // Super Admin tem acesso global
-    "/api/point/configure",
-    "/api/point/status",
-    "/api/ai/suggestion", // IA: Sugestões de produtos
-    "/api/ai/chat", // IA: Chat geral
-    "/api/ai/kitchen-priority", // IA: Priorização de pedidos
-    "/api/users/check-cpf", // Usuários: Verificar CPF
-    "/api/users/register", // Usuários: Cadastro
-    "/api/payment/create-pix", // Pagamentos: Criar PIX
-    "/api/payment/create", // Pagamentos: Criar pagamento
-    "/api/payment/clear-queue", // Pagamentos: Limpar fila
-  ];
-
-  // Se for rota pública, pula validação (match EXATO apenas)
-  if (publicRoutes.includes(req.path)) {
-    console.log(`✅ [MIDDLEWARE] Rota pública, pulando validação`);
-    return next();
-  }
-
-  // Verifica rotas dinâmicas (com parâmetros)
-  const publicRoutesPatterns = [
-    /^\/api\/payment\/status\/.+$/, // /api/payment/status/:paymentId
-    /^\/api\/payment\/status-pix\/.+$/, // /api/payment/status-pix/:orderId
-    /^\/api\/payment\/cancel\/.+$/, // /api/payment/cancel/:paymentId
-    /^\/api\/users\/cpf\/.+$/, // /api/users/cpf/:cpf
-  ];
-
-  if (publicRoutesPatterns.some((pattern) => pattern.test(req.path))) {
-    console.log(`✅ [MIDDLEWARE] Rota dinâmica pública, pulando validação`);
-    return next();
-  }
-
-  // Extrai storeId do header ou query param
-  const storeId = req.headers["x-store-id"] || req.query.storeId;
-  console.log(`🔍 [MIDDLEWARE] storeId extraído: ${storeId}`);
-
-  if (!storeId) {
-    console.log(`❌ [MIDDLEWARE] storeId ausente!`);
-    return res.status(400).json({
-      error:
-        "storeId é obrigatório. Envie via header 'x-store-id' ou query param 'storeId'",
-    });
-  }
-
-  // Anexa storeId ao request para uso nos endpoints
-  req.storeId = storeId;
-  console.log(`✅ [MIDDLEWARE] storeId anexado ao request: ${req.storeId}`);
-  next();
-};
-
-// ========== APLICA MIDDLEWARE MULTI-TENANCY ==========
-// IMPORTANTE: Deve vir ANTES de todas as rotas da API
-app.use(extractStoreId);
-
 // --- Rotas da API (Menu, Usuários, Pedidos) ---
 
 app.get("/api/menu", async (req, res) => {
   try {
-    console.log(`📋 [GET /api/menu] Store ID recebido: ${req.storeId}`);
-
-    // MULTI-TENANCY: Filtra produtos por store_id
-    const products = await db("products")
-      .where({ store_id: req.storeId })
-      .select("*")
-      .orderBy("id");
-
-    console.log(
-      `✅ [GET /api/menu] Retornando ${products.length} produtos da loja ${req.storeId}`
-    );
+    const products = await db("products").select("*").orderBy("id");
 
     res.json(
       products.map((p) => {
@@ -621,16 +518,14 @@ app.get("/api/menu", async (req, res) => {
           stock_available: stockAvailable,
           isAvailable: stockAvailable === null || stockAvailable > 0,
         };
-      })
+      }),
     );
   } catch (e) {
     console.error(`❌ [GET /api/menu] ERRO ao buscar menu:`, e.message);
     console.error(`❌ [GET /api/menu] Stack:`, e.stack);
-    console.error(`❌ [GET /api/menu] Store ID: ${req.storeId}`);
     res.status(500).json({
       error: "Erro ao buscar menu",
       details: e.message,
-      storeId: req.storeId,
     });
   }
 });
@@ -701,7 +596,6 @@ app.post(
         videoUrl: videoUrl || "",
         popular: popular || false,
         stock: stock !== undefined ? parseInt(stock) : null, // null = ilimitado
-        store_id: req.storeId, // MULTI-TENANCY: Associa produto à loja
       };
 
       await db("products").insert(newProduct);
@@ -713,7 +607,7 @@ app.post(
       console.error("Erro ao criar produto:", e);
       res.status(500).json({ error: "Erro ao criar produto" });
     }
-  }
+  },
 );
 
 app.put(
@@ -726,14 +620,10 @@ app.put(
       req.body;
 
     try {
-      // MULTI-TENANCY: Busca produto apenas da loja específica
-      const exists = await db("products")
-        .where({ id, store_id: req.storeId })
-        .first();
+      // Busca produto pelo id (single-tenant)
+      const exists = await db("products").where({ id }).first();
       if (!exists) {
-        return res
-          .status(404)
-          .json({ error: "Produto não encontrado nesta loja" });
+        return res.status(404).json({ error: "Produto não encontrado" });
       }
 
       const updates = {};
@@ -746,12 +636,9 @@ app.put(
       if (stock !== undefined)
         updates.stock = stock === null ? null : parseInt(stock);
 
-      // MULTI-TENANCY: Atualiza apenas se pertencer à loja
-      await db("products").where({ id, store_id: req.storeId }).update(updates);
+      await db("products").where({ id }).update(updates);
 
-      const updated = await db("products")
-        .where({ id, store_id: req.storeId })
-        .first();
+      const updated = await db("products").where({ id }).first();
       res.json({
         ...updated,
         price: parseFloat(updated.price),
@@ -761,9 +648,8 @@ app.put(
       console.error("Erro ao atualizar produto:", e);
       res.status(500).json({ error: "Erro ao atualizar produto" });
     }
-  }
+  },
 );
-
 app.delete(
   "/api/products/:id",
   authenticateToken,
@@ -772,45 +658,28 @@ app.delete(
     const { id } = req.params;
 
     try {
-      // MULTI-TENANCY: Busca produto apenas da loja específica
-      const exists = await db("products")
-        .where({ id, store_id: req.storeId })
-        .first();
+      // Busca produto pelo id (single-tenant)
+      const exists = await db("products").where({ id }).first();
       if (!exists) {
-        return res
-          .status(404)
-          .json({ error: "Produto não encontrado nesta loja" });
+        return res.status(404).json({ error: "Produto não encontrado" });
       }
 
-      // MULTI-TENANCY: Deleta apenas se pertencer à loja
-      await db("products").where({ id, store_id: req.storeId }).del();
+      await db("products").where({ id }).del();
       res.json({ success: true, message: "Produto deletado com sucesso" });
     } catch (e) {
       console.error("Erro ao deletar produto:", e);
       res.status(500).json({ error: "Erro ao deletar produto" });
     }
-  }
+  },
 );
-
-// ========== CRUD DE CATEGORIAS (Multi-tenancy) ==========
 
 // Listar categorias da loja
 app.get("/api/categories", async (req, res) => {
   try {
-    const storeId = req.storeId;
-
-    if (!storeId) {
-      return res.status(400).json({ error: "Store ID obrigatório" });
-    }
-
     const categories = await db("categories")
-      .where({ store_id: storeId })
+      .select("id", "name", "icon", "order", "created_at")
       .orderBy("order", "asc")
       .orderBy("name", "asc");
-
-    console.log(
-      `📂 [GET /api/categories] ${categories.length} categorias da loja ${storeId}`
-    );
 
     res.json(categories);
   } catch (e) {
@@ -832,20 +701,14 @@ app.post(
     }
 
     try {
-      const storeId = req.storeId;
-
-      if (!storeId) {
-        return res.status(400).json({ error: "Store ID obrigatório" });
-      }
-
-      // Verifica se categoria já existe na loja
+      // Verifica se categoria já existe globalmente
       const exists = await db("categories")
-        .where({ name, store_id: storeId })
+        .where({ name: name.trim() })
         .first();
 
       if (exists) {
         return res.status(409).json({
-          error: "Categoria já existe nesta loja",
+          error: "Categoria já existe",
           category: exists,
         });
       }
@@ -855,21 +718,16 @@ app.post(
         name: name.trim(),
         icon: icon || "📦",
         order: order || 0,
-        store_id: storeId,
       };
 
       await db("categories").insert(newCategory);
-
-      console.log(
-        `✅ [POST /api/categories] Categoria criada: ${name} (${storeId})`
-      );
 
       res.status(201).json(newCategory);
     } catch (e) {
       console.error("❌ Erro ao criar categoria:", e);
       res.status(500).json({ error: "Erro ao criar categoria" });
     }
-  }
+  },
 );
 
 // Atualizar categoria
@@ -882,21 +740,11 @@ app.put(
     const { name, icon, order } = req.body;
 
     try {
-      const storeId = req.storeId;
-
-      if (!storeId) {
-        return res.status(400).json({ error: "Store ID obrigatório" });
-      }
-
-      // Verifica se categoria existe na loja
-      const exists = await db("categories")
-        .where({ id, store_id: storeId })
-        .first();
+      // Verifica se categoria existe globalmente
+      const exists = await db("categories").where({ id }).first();
 
       if (!exists) {
-        return res
-          .status(404)
-          .json({ error: "Categoria não encontrada nesta loja" });
+        return res.status(404).json({ error: "Categoria não encontrada" });
       }
 
       const updates = {};
@@ -908,73 +756,40 @@ app.put(
         return res.status(400).json({ error: "Nenhum campo para atualizar" });
       }
 
-      await db("categories").where({ id, store_id: storeId }).update(updates);
+      await db("categories").where({ id }).update(updates);
 
       const updated = await db("categories").where({ id }).first();
-
-      console.log(
-        `✅ [PUT /api/categories/${id}] Categoria atualizada (${storeId})`
-      );
 
       res.json(updated);
     } catch (e) {
       console.error("❌ Erro ao atualizar categoria:", e);
       res.status(500).json({ error: "Erro ao atualizar categoria" });
     }
-  }
+  },
 );
 
 // Deletar categoria
 app.delete(
-  "/api/categories/:id",
+  "/api/products/:id",
   authenticateToken,
   authorizeAdmin,
   async (req, res) => {
     const { id } = req.params;
 
     try {
-      const storeId = req.storeId;
-
-      if (!storeId) {
-        return res.status(400).json({ error: "Store ID obrigatório" });
-      }
-
-      // Verifica se categoria existe na loja
-      const exists = await db("categories")
-        .where({ id, store_id: storeId })
-        .first();
-
+      // Busca produto pelo id (single-tenant)
+      const exists = await db("products").where({ id }).first();
       if (!exists) {
-        return res
-          .status(404)
-          .json({ error: "Categoria não encontrada nesta loja" });
+        return res.status(404).json({ error: "Produto não encontrado" });
       }
 
-      // Verifica se há produtos usando essa categoria
-      const productsCount = await db("products")
-        .where({ category: exists.name, store_id: storeId })
-        .count("id as count")
-        .first();
-
-      if (Number(productsCount.count) > 0) {
-        return res.status(409).json({
-          error: `Não é possível deletar. Existem ${productsCount.count} produtos usando esta categoria.`,
-          productsCount: Number(productsCount.count),
-        });
-      }
-
-      await db("categories").where({ id, store_id: storeId }).del();
-
-      console.log(
-        `✅ [DELETE /api/categories/${id}] Categoria deletada (${storeId})`
-      );
-
-      res.json({ success: true, message: "Categoria deletada com sucesso" });
+      await db("products").where({ id }).del();
+      res.json({ success: true, message: "Produto deletado com sucesso" });
     } catch (e) {
-      console.error("❌ Erro ao deletar categoria:", e);
-      res.status(500).json({ error: "Erro ao deletar categoria" });
+      console.error("Erro ao deletar produto:", e);
+      res.status(500).json({ error: "Erro ao deletar produto" });
     }
-  }
+  },
 );
 
 // Buscar usuário por CPF
@@ -1121,7 +936,7 @@ app.post("/api/users", async (req, res) => {
 
     if (exists) {
       console.log(
-        `ℹ️ CPF ${cpfClean} já cadastrado - retornando usuário existente`
+        `ℹ️ CPF ${cpfClean} já cadastrado - retornando usuário existente`,
       );
       return res.json({
         ...exists,
@@ -1159,183 +974,91 @@ app.get(
         .orderBy("timestamp", "asc");
 
       console.log(`🍳 Cozinha: ${orders.length} pedido(s) PAGOS na fila`);
+      app.get(
+        "/api/orders",
+        authenticateToken,
+        authorizeKitchen,
+        async (req, res) => {
+          try {
+            // 🔒 IMPORTANTE: Só retorna pedidos com status "active" E pagamento confirmado
+            const orders = await db("orders")
+              .where({ status: "active" })
+              .whereIn("paymentStatus", ["paid", "authorized"])
+              .orderBy("timestamp", "asc");
 
-      res.json(
-        orders.map((o) => ({
-          ...o,
-          items: parseJSON(o.items),
-          total: parseFloat(o.total),
-        }))
+            console.log(`🍳 Cozinha: ${orders.length} pedido(s) PAGOS na fila`);
+
+            res.json(
+              orders.map((o) => ({
+                ...o,
+                items: parseJSON(o.items),
+                total: parseFloat(o.total),
+              })),
+            );
+          } catch (e) {
+            console.error("❌ Erro ao buscar pedidos:", e);
+            res.status(500).json({ error: "Erro ao buscar pedidos" });
+          }
+        },
       );
-    } catch (e) {
-      res.status(500).json({ error: "Erro ao buscar pedidos" });
-    }
-  }
-);
 
-app.post("/api/orders", async (req, res) => {
-  const { userId, userName, items, total, paymentId, observation } = req.body;
+      const updates = {};
+      if (paymentId) updates.paymentId = paymentId;
+      if (paymentStatus) updates.paymentStatus = paymentStatus;
 
-  const newOrder = {
-    id: `order_${Date.now()}`,
-    userId,
-    observation: observation || null, // Salva a observação ou null se não houver
-    userName: userName || "Cliente",
-    items: JSON.stringify(items || []),
-    total: total || 0,
-    timestamp: new Date().toISOString(),
-    // 🔒 IMPORTANTE: Pedido só vai para cozinha (active) após pagamento confirmado
-    status: paymentId ? "active" : "pending_payment",
-    paymentStatus: paymentId ? "paid" : "pending",
-    paymentId: paymentId || null,
-    store_id: req.storeId, // MULTI-TENANCY: Associa pedido à loja
-  };
-
-  try {
-    console.log(`📦 Criando pedido ${newOrder.id}...`);
-
-    // Garante que o usuário existe (para convidados)
-    const userExists = await db("users").where({ id: userId }).first();
-    if (!userExists) {
-      await db("users").insert({
-        id: userId,
-        name: userName || "Convidado",
-        email: null,
-        cpf: null,
-        historico: "[]",
-        pontos: 0,
-      });
-    }
-
-    // ✅ RESERVA ESTOQUE AQUI (ANTES de inserir o pedido)
-    console.log(`🔒 Reservando estoque de ${items.length} produto(s)...`);
-
-    for (const item of items) {
-      // MULTI-TENANCY: Busca produto apenas da loja específica
-      const product = await db("products")
-        .where({ id: item.id, store_id: req.storeId })
-        .first();
-
-      if (!product) {
-        console.warn(
-          `⚠️ Produto ${item.id} não encontrado no estoque da loja ${req.storeId}`
-        );
-        continue;
+      // 🎯 Se pagamento aprovado, libera pedido para cozinha
+      if (paymentStatus === "paid" && order.status === "pending_payment") {
+        updates.status = "active";
+        console.log(`🍳 Pedido ${id} liberado para COZINHA!`);
       }
 
-      // Se stock é null = ilimitado, não precisa reservar
-      if (product.stock === null) {
-        console.log(`  ℹ️ ${item.name}: estoque ilimitado`);
-        continue;
-      }
+      // Se pagamento foi aprovado, CONFIRMA a dedução do estoque
+      if (paymentStatus === "paid" && order.paymentStatus === "pending") {
+        console.log(`✅ Pagamento aprovado! Confirmando dedução do estoque...`);
 
-      // Calcula estoque disponível (total - reservado)
-      const stockAvailable = product.stock - (product.stock_reserved || 0);
+        const items = parseJSON(order.items);
 
-      // Verifica se tem estoque disponível suficiente
-      if (stockAvailable < item.quantity) {
-        throw new Error(
-          `Estoque insuficiente para ${item.name}. Disponível: ${stockAvailable}, Solicitado: ${item.quantity}`
-        );
-      }
+        for (const item of items) {
+          const product = await db("products").where({ id: item.id }).first();
 
-      // Aumenta a RESERVA (não deduz ainda)
-      const newReserved = (product.stock_reserved || 0) + item.quantity;
+          if (product && product.stock !== null) {
+            // Deduz do estoque real e libera da reserva
+            const newStock = Math.max(0, product.stock - item.quantity);
+            const newReserved = Math.max(
+              0,
+              (product.stock_reserved || 0) - item.quantity,
+            );
 
-      await db("products")
-        .where({ id: item.id })
-        .update({ stock_reserved: newReserved });
+            await db("products").where({ id: item.id }).update({
+              stock: newStock,
+              stock_reserved: newReserved,
+            });
 
-      console.log(
-        `  🔒 ${item.name}: reserva ${
-          product.stock_reserved || 0
-        } → ${newReserved} (+${item.quantity})`
-      );
-    }
-
-    console.log(`✅ Estoque reservado com sucesso!`);
-
-    // Salva o pedido
-    await db("orders").insert(newOrder);
-
-    console.log(`✅ Pedido ${newOrder.id} criado com sucesso!`);
-
-    res.status(201).json({ ...newOrder, items: items || [] });
-  } catch (e) {
-    console.error("❌ Erro ao salvar pedido:", e);
-    res.status(500).json({ error: e.message || "Erro ao salvar ordem" });
-  }
-});
-
-// Atualizar pedido (adicionar paymentId após pagamento aprovado)
-app.put("/api/orders/:id", async (req, res) => {
-  const { id } = req.params;
-  const { paymentId, paymentStatus } = req.body;
-
-  try {
-    console.log(`📝 Atualizando pedido ${id} com payment ${paymentId}...`);
-
-    const order = await db("orders").where({ id }).first();
-    if (!order) {
-      return res.status(404).json({ error: "Pedido não encontrado" });
-    }
-
-    const updates = {};
-    if (paymentId) updates.paymentId = paymentId;
-    if (paymentStatus) updates.paymentStatus = paymentStatus;
-
-    // 🎯 Se pagamento aprovado, libera pedido para cozinha
-    if (paymentStatus === "paid" && order.status === "pending_payment") {
-      updates.status = "active";
-      console.log(`🍳 Pedido ${id} liberado para COZINHA!`);
-    }
-
-    // Se pagamento foi aprovado, CONFIRMA a dedução do estoque
-    if (paymentStatus === "paid" && order.paymentStatus === "pending") {
-      console.log(`✅ Pagamento aprovado! Confirmando dedução do estoque...`);
-
-      const items = parseJSON(order.items);
-
-      for (const item of items) {
-        const product = await db("products").where({ id: item.id }).first();
-
-        if (product && product.stock !== null) {
-          // Deduz do estoque real e libera da reserva
-          const newStock = Math.max(0, product.stock - item.quantity);
-          const newReserved = Math.max(
-            0,
-            (product.stock_reserved || 0) - item.quantity
-          );
-
-          await db("products").where({ id: item.id }).update({
-            stock: newStock,
-            stock_reserved: newReserved,
-          });
-
-          console.log(
-            `  ✅ ${item.name}: ${product.stock} → ${newStock} (-${item.quantity}), reserva: ${product.stock_reserved} → ${newReserved}`
-          );
+            console.log(
+              `  ✅ ${item.name}: ${product.stock} → ${newStock} (-${item.quantity}), reserva: ${product.stock_reserved} → ${newReserved}`,
+            );
+          }
         }
+
+        console.log(`🎉 Estoque confirmado e deduzido!`);
       }
 
-      console.log(`🎉 Estoque confirmado e deduzido!`);
+      await db("orders").where({ id }).update(updates);
+
+      const updated = await db("orders").where({ id }).first();
+      console.log(`✅ Pedido ${id} atualizado!`);
+
+      res.json({
+        ...updated,
+        items: parseJSON(updated.items),
+        total: parseFloat(updated.total),
+      });
+    } catch (e) {
+      console.error("❌ Erro ao atualizar pedido:", e);
+      res.status(500).json({ error: "Erro ao atualizar pedido" });
     }
-
-    await db("orders").where({ id }).update(updates);
-
-    const updated = await db("orders").where({ id }).first();
-    console.log(`✅ Pedido ${id} atualizado!`);
-
-    res.json({
-      ...updated,
-      items: parseJSON(updated.items),
-      total: parseFloat(updated.total),
-    });
-  } catch (e) {
-    console.error("❌ Erro ao atualizar pedido:", e);
-    res.status(500).json({ error: "Erro ao atualizar pedido" });
-  }
-});
+  },
+);
 
 app.delete(
   "/api/orders/:id",
@@ -1352,7 +1075,7 @@ app.delete(
       // Se estava pendente, libera a reserva de estoque
       if (order.paymentStatus === "pending") {
         console.log(
-          `🔓 Liberando reserva de estoque do pedido ${req.params.id}...`
+          `🔓 Liberando reserva de estoque do pedido ${req.params.id}...`,
         );
 
         const items = parseJSON(order.items);
@@ -1363,7 +1086,7 @@ app.delete(
           if (product && product.stock !== null && product.stock_reserved > 0) {
             const newReserved = Math.max(
               0,
-              product.stock_reserved - item.quantity
+              product.stock_reserved - item.quantity,
             );
 
             await db("products")
@@ -1371,7 +1094,7 @@ app.delete(
               .update({ stock_reserved: newReserved });
 
             console.log(
-              `  ↩️ ${item.name}: reserva ${product.stock_reserved} → ${newReserved}`
+              `  ↩️ ${item.name}: reserva ${product.stock_reserved} → ${newReserved}`,
             );
           }
         }
@@ -1388,7 +1111,7 @@ app.delete(
       console.error("❌ Erro ao finalizar pedido:", e);
       res.status(500).json({ error: "Erro ao finalizar" });
     }
-  }
+  },
 );
 
 app.get("/api/user-orders", async (req, res) => {
@@ -1402,7 +1125,7 @@ app.get("/api/user-orders", async (req, res) => {
         ...o,
         items: parseJSON(o.items),
         total: parseFloat(o.total),
-      }))
+      })),
     );
   } catch (err) {
     res.status(500).json({ error: "Erro histórico" });
@@ -1474,7 +1197,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
               mp_device_id: store.mp_device_id,
             };
             console.log(
-              `✅ Payment Intent encontrado na loja: ${store.name} (${store.id})`
+              `✅ Payment Intent encontrado na loja: ${store.name} (${store.id})`,
             );
             break;
           }
@@ -1521,13 +1244,13 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
                 ) {
                   const newReserved = Math.max(
                     0,
-                    product.stock_reserved - item.quantity
+                    product.stock_reserved - item.quantity,
                   );
                   await db("products")
                     .where({ id: item.id })
                     .update({ stock_reserved: newReserved });
                   console.log(
-                    `↩️ Estoque liberado: ${item.name} (${product.stock_reserved} -> ${newReserved})`
+                    `↩️ Estoque liberado: ${item.name} (${product.stock_reserved} -> ${newReserved})`,
                   );
                 }
               }
@@ -1542,7 +1265,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
           } catch (dbError) {
             console.error(
               `❌ Erro ao cancelar pedido ${orderId}:`,
-              dbError.message
+              dbError.message,
             );
           }
         }
@@ -1586,12 +1309,12 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
             });
 
             console.log(
-              `✅ Pagamento ${paymentId} confirmado via IPN! Valor: R$ ${payment.transaction_amount}`
+              `✅ Pagamento ${paymentId} confirmado via IPN! Valor: R$ ${payment.transaction_amount}`,
             );
             console.log(
               `ℹ️ External reference: ${
                 payment.external_reference || "não informado"
-              }`
+              }`,
             );
           } else if (
             payment.status === "rejected" ||
@@ -1607,12 +1330,12 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
             }
 
             console.log(
-              `❌ Pagamento ${paymentId} REJEITADO via IPN! Status: ${payment.status}`
+              `❌ Pagamento ${paymentId} REJEITADO via IPN! Status: ${payment.status}`,
             );
             console.log(
               `ℹ️ External reference: ${
                 payment.external_reference || "não informado"
-              }`
+              }`,
             );
 
             // Remove do cache se existir
@@ -1622,7 +1345,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
             console.log(`🧹 Cache limpo para ${cacheKey}`);
           } else {
             console.log(
-              `⏳ Pagamento ${paymentId} com status: ${payment.status} - aguardando`
+              `⏳ Pagamento ${paymentId} com status: ${payment.status} - aguardando`,
             );
           }
         }
@@ -1650,7 +1373,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
             payment = await respPayment.json();
             storeUsed = store;
             console.log(
-              `✅ Pagamento PIX encontrado na loja: ${store.name} (${store.id})`
+              `✅ Pagamento PIX encontrado na loja: ${store.name} (${store.id})`,
             );
             break;
           }
@@ -1684,7 +1407,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
           } catch (dbError) {
             console.error(
               `❌ Erro ao atualizar pedido ${orderId}:`,
-              dbError.message
+              dbError.message,
             );
           }
         }
@@ -1693,7 +1416,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
         payment.status === "rejected"
       ) {
         console.log(
-          `❌ Pagamento PIX ${id} ${payment.status.toUpperCase()} via IPN`
+          `❌ Pagamento PIX ${id} ${payment.status.toUpperCase()} via IPN`,
         );
 
         // Cancela pedido e libera estoque
@@ -1715,7 +1438,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
                 ) {
                   const newReserved = Math.max(
                     0,
-                    product.stock_reserved - item.quantity
+                    product.stock_reserved - item.quantity,
                   );
                   await db("products")
                     .where({ id: item.id })
@@ -1733,7 +1456,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
           } catch (dbError) {
             console.error(
               `❌ Erro ao cancelar pedido ${orderId}:`,
-              dbError.message
+              dbError.message,
             );
           }
         }
@@ -1791,7 +1514,7 @@ app.post("/api/webhooks/mercadopago", async (req, res) => {
       const payment = await respPayment.json();
 
       console.log(
-        `💳 Pagamento ${paymentId} | Status: ${payment.status} | Valor: R$ ${payment.transaction_amount}`
+        `💳 Pagamento ${paymentId} | Status: ${payment.status} | Valor: R$ ${payment.transaction_amount}`,
       );
 
       // Processa status do pagamento
@@ -1807,14 +1530,14 @@ app.post("/api/webhooks/mercadopago", async (req, res) => {
         });
 
         console.log(
-          `✅ Pagamento ${paymentId} confirmado via Webhook! Valor: R$ ${payment.transaction_amount}`
+          `✅ Pagamento ${paymentId} confirmado via Webhook! Valor: R$ ${payment.transaction_amount}`,
         );
 
         // DESCONTA DO ESTOQUE usando external_reference (ID do pedido)
         const externalRef = payment.external_reference;
         if (externalRef) {
           console.log(
-            `📦 Processando desconto de estoque para pedido: ${externalRef}`
+            `📦 Processando desconto de estoque para pedido: ${externalRef}`,
           );
 
           try {
@@ -1841,8 +1564,8 @@ app.post("/api/webhooks/mercadopago", async (req, res) => {
                   console.log(
                     `  ✅ ${item.name}: ${product.stock} → ${Math.max(
                       0,
-                      newStock
-                    )} (${item.quantity} vendido)`
+                      newStock,
+                    )} (${item.quantity} vendido)`,
                   );
                 } else if (product) {
                   console.log(`  ℹ️ ${item.name}: estoque ilimitado`);
@@ -1863,12 +1586,12 @@ app.post("/api/webhooks/mercadopago", async (req, res) => {
         payment.status === "refunded"
       ) {
         console.log(
-          `❌ Pagamento ${paymentId} REJEITADO/CANCELADO via Webhook! Status: ${payment.status}`
+          `❌ Pagamento ${paymentId} REJEITADO/CANCELADO via Webhook! Status: ${payment.status}`,
         );
         console.log(
           `ℹ️ External reference: ${
             payment.external_reference || "não informado"
-          }`
+          }`,
         );
 
         // Remove do cache se existir
@@ -1878,7 +1601,7 @@ app.post("/api/webhooks/mercadopago", async (req, res) => {
         console.log(`🧹 Cache limpo para ${cacheKey}`);
       } else {
         console.log(
-          `⏳ Pagamento ${paymentId} com status: ${payment.status} - aguardando confirmação`
+          `⏳ Pagamento ${paymentId} com status: ${payment.status} - aguardando confirmação`,
         );
       }
     }
@@ -1906,26 +1629,9 @@ app.post("/api/webhooks/mercadopago", async (req, res) => {
 // CRIAR PAGAMENTO PIX (QR Code na tela)
 app.post("/api/payment/create-pix", async (req, res) => {
   const { amount, description, orderId } = req.body;
-  const storeId = req.storeId; // Do middleware
-
-  // Busca credenciais da loja
-  let MP_ACCESS_TOKEN, MP_DEVICE_ID;
-  if (storeId) {
-    const store = await db("stores").where({ id: storeId }).first();
-    if (store) {
-      MP_ACCESS_TOKEN = store.mp_access_token;
-      MP_DEVICE_ID = store.mp_device_id;
-      console.log(`✅ Usando credenciais da loja ${storeId}`);
-    }
-  }
-
-  // Fallback para credenciais globais
-  if (!MP_ACCESS_TOKEN) {
-    MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
-    MP_DEVICE_ID = process.env.MP_DEVICE_ID;
-    console.warn("⚠️ Usando credenciais globais");
-  }
-
+  // Single-tenant: use only global credentials
+  const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
+  const MP_DEVICE_ID = process.env.MP_DEVICE_ID;
   if (!MP_ACCESS_TOKEN) {
     console.error("Faltam credenciais do Mercado Pago");
     return res.json({ id: `mock_pix_${Date.now()}`, status: "pending" });
@@ -1933,9 +1639,7 @@ app.post("/api/payment/create-pix", async (req, res) => {
 
   try {
     console.log(`💚 Criando pagamento PIX (QR Code) de R$ ${amount}...`);
-    console.log(
-      `📦 Payload: amount=${amount}, orderId=${orderId}, storeId=${storeId}`
-    );
+    console.log(`📦 Payload: amount=${amount}, orderId=${orderId}`);
 
     const paymentPayload = {
       transaction_amount: parseFloat(amount),
@@ -1951,7 +1655,7 @@ app.post("/api/payment/create-pix", async (req, res) => {
 
     console.log(
       `📤 Enviando para MP:`,
-      JSON.stringify(paymentPayload, null, 2)
+      JSON.stringify(paymentPayload, null, 2),
     );
 
     // Gera chave idempotente única para esta transação PIX
@@ -1971,7 +1675,7 @@ app.post("/api/payment/create-pix", async (req, res) => {
 
     console.log(
       `📥 Resposta MP (status ${response.status}):`,
-      JSON.stringify(data, null, 2)
+      JSON.stringify(data, null, 2),
     );
 
     if (!response.ok) {
@@ -1984,7 +1688,7 @@ app.post("/api/payment/create-pix", async (req, res) => {
 
     console.log(`✅ PIX criado! Payment ID: ${data.id}`);
     console.log(
-      `📱 QR Code: ${data.point_of_interaction?.transaction_data?.qr_code}`
+      `📱 QR Code: ${data.point_of_interaction?.transaction_data?.qr_code}`,
     );
 
     const pixResponse = {
@@ -1999,7 +1703,7 @@ app.post("/api/payment/create-pix", async (req, res) => {
 
     console.log(
       `📤 Enviando resposta ao frontend:`,
-      JSON.stringify(pixResponse, null, 2)
+      JSON.stringify(pixResponse, null, 2),
     );
     res.json(pixResponse);
   } catch (error) {
@@ -2011,7 +1715,7 @@ app.post("/api/payment/create-pix", async (req, res) => {
 // Endpoint legado para compatibilidade - redireciona para create-card
 app.post("/api/payment/create", async (req, res) => {
   console.log(
-    "⚠️ Endpoint legado /api/payment/create chamado - redirecionando para /create-card"
+    "⚠️ Endpoint legado /api/payment/create chamado - redirecionando para /create-card",
   );
   // Encaminha a requisição para o handler correto
   req.url = "/api/payment/create-card";
@@ -2093,7 +1797,7 @@ app.get("/api/pix/status/:id", async (req, res) => {
       `https://api.mercadopago.com/v1/payments/${id}`,
       {
         headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
-      }
+      },
     );
 
     const data = await response.json();
@@ -2116,24 +1820,12 @@ app.get("/api/pix/status/:id", async (req, res) => {
 // CRIAR PAGAMENTO NA MAQUININHA (Point Integration API - volta ao original)
 app.post("/api/payment/create-card", async (req, res) => {
   const { amount, description, orderId, paymentMethod } = req.body;
-  const storeId = req.storeId; // Do middleware
-
-  // Busca credenciais da loja
-  let MP_ACCESS_TOKEN, MP_DEVICE_ID;
-  if (storeId) {
-    const store = await db("stores").where({ id: storeId }).first();
-    if (store) {
-      MP_ACCESS_TOKEN = store.mp_access_token;
-      MP_DEVICE_ID = store.mp_device_id;
-      console.log(`✅ Usando credenciais da loja ${storeId}`);
-    }
-  }
-
-  // Fallback para credenciais globais
+  // Single-tenant: use only global credentials
+  const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
+  const MP_DEVICE_ID = process.env.MP_DEVICE_ID;
   if (!MP_ACCESS_TOKEN) {
-    MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
-    MP_DEVICE_ID = process.env.MP_DEVICE_ID;
-    console.warn("⚠️ Usando credenciais globais");
+    console.error("Faltam credenciais do Mercado Pago");
+    return res.status(500).json({ error: "Sem token do Mercado Pago" });
   }
 
   // ✅ DETECÇÃO AUTOMÁTICA: Se for PIX, gera QR Code (Payments API) - NÃO DEVERIA CHEGAR AQUI
@@ -2180,7 +1872,7 @@ app.post("/api/payment/create-card", async (req, res) => {
       console.log(`✅ PIX QR Code criado! Payment ID: ${data.id}`);
       console.log(
         `📱 QR Code:`,
-        data.point_of_interaction?.transaction_data?.qr_code?.substring(0, 50)
+        data.point_of_interaction?.transaction_data?.qr_code?.substring(0, 50),
       );
 
       return res.json({
@@ -2239,7 +1931,7 @@ app.post("/api/payment/create-card", async (req, res) => {
 
     console.log(
       `📤 Payload Point Integration:`,
-      JSON.stringify(payload, null, 2)
+      JSON.stringify(payload, null, 2),
     );
 
     const url = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID}/payment-intents`;
@@ -2257,7 +1949,7 @@ app.post("/api/payment/create-card", async (req, res) => {
     if (!response.ok) {
       console.error(
         "❌ Erro ao criar payment intent:",
-        JSON.stringify(data, null, 2)
+        JSON.stringify(data, null, 2),
       );
       console.error(`📡 Status HTTP: ${response.status}`);
       throw new Error(data.message || JSON.stringify(data.errors || data));
@@ -2283,47 +1975,21 @@ app.post("/api/payment/create-card", async (req, res) => {
 // Verificar status PAGAMENTO (híbrido: Order PIX ou Payment Intent Point)
 app.get("/api/payment/status/:paymentId", async (req, res) => {
   const { paymentId } = req.params;
-  const storeId = req.storeId; // Do middleware
 
   if (paymentId.startsWith("mock_")) return res.json({ status: "approved" });
 
   try {
-    console.log(
-      `🔍 [STATUS] Verificando pagamento: ${paymentId} (loja: ${storeId})`
-    );
+    console.log(`🔍 [STATUS] Verificando pagamento: ${paymentId}`);
 
-    // Busca credenciais da loja
-    let storeConfig;
-    if (storeId) {
-      const store = await db("stores").where({ id: storeId }).first();
-      if (store) {
-        storeConfig = {
-          mp_access_token: store.mp_access_token,
-          mp_device_id: store.mp_device_id,
-        };
-        console.log(`✅ [STATUS] Usando credenciais da loja ${storeId}`);
-      }
-    }
-
-    // Fallback para credenciais globais (backwards compatibility)
-    if (!storeConfig) {
-      console.warn(
-        `⚠️ [STATUS] Loja não encontrada, usando credenciais globais`
-      );
-      storeConfig = {
-        mp_access_token: MP_ACCESS_TOKEN,
-        mp_device_id: MP_DEVICE_ID,
-      };
-    }
-
-    if (!storeConfig.mp_access_token) {
+    // Usa apenas credenciais globais (single-tenant)
+    if (!MP_ACCESS_TOKEN) {
       return res.status(500).json({ error: "Credenciais MP não configuradas" });
     }
 
     // 1. Tenta buscar como Payment Intent (Point Integration API)
     const intentUrl = `https://api.mercadopago.com/point/integration-api/payment-intents/${paymentId}`;
     const intentResponse = await fetch(intentUrl, {
-      headers: { Authorization: `Bearer ${storeConfig.mp_access_token}` },
+      headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
     });
 
     if (intentResponse.ok) {
@@ -2340,7 +2006,7 @@ app.get("/api/payment/status/:paymentId", async (req, res) => {
         try {
           const paymentDetailsUrl = `https://api.mercadopago.com/v1/payments/${realPaymentId}`;
           const paymentDetailsResp = await fetch(paymentDetailsUrl, {
-            headers: { Authorization: `Bearer ${storeConfig.mp_access_token}` },
+            headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
           });
 
           if (paymentDetailsResp.ok) {
@@ -2352,15 +2018,6 @@ app.get("/api/payment/status/:paymentId", async (req, res) => {
               paymentDetails.status === "authorized"
             ) {
               console.log(`✅ PAGAMENTO CONFIRMADO COMO APROVADO!`);
-
-              // 🧹 Limpa a fila após aprovação
-              try {
-                console.log(`🧹 Limpando fila após aprovação...`);
-                await paymentService.clearPaymentQueue(storeConfig);
-              } catch (queueError) {
-                console.warn(`⚠️ Erro ao limpar fila: ${queueError.message}`);
-              }
-
               return res.json({
                 status: "approved",
                 paymentId: realPaymentId,
@@ -2375,20 +2032,9 @@ app.get("/api/payment/status/:paymentId", async (req, res) => {
               paymentDetails.status === "refunded"
             ) {
               console.log(
-                `❌ PAGAMENTO REJEITADO/CANCELADO: ${paymentDetails.status}`
+                `❌ PAGAMENTO REJEITADO/CANCELADO: ${paymentDetails.status}`,
               );
-
-              // 🧹 Limpa a fila após rejeição
-              try {
-                console.log(`🧹 Limpando fila após rejeição...`);
-                await paymentService.clearPaymentQueue(storeConfig);
-              } catch (queueError) {
-                console.warn(`⚠️ Erro ao limpar fila: ${queueError.message}`);
-              }
-
-              // Busca external_reference para liberar pedido
               const orderId = intent.additional_info?.external_reference;
-
               return res.json({
                 status: "rejected",
                 paymentId: realPaymentId,
@@ -2412,7 +2058,7 @@ app.get("/api/payment/status/:paymentId", async (req, res) => {
 
         // Fallback: se não conseguiu buscar detalhes, retorna pending (não approved!)
         console.log(
-          `⚠️ Fallback: não foi possível confirmar status do pagamento ${realPaymentId}`
+          `⚠️ Fallback: não foi possível confirmar status do pagamento ${realPaymentId}`,
         );
         return res.json({ status: "pending", paymentId: realPaymentId });
       }
@@ -2421,21 +2067,21 @@ app.get("/api/payment/status/:paymentId", async (req, res) => {
       // FINISHED pode ser rejected, cancelled, refunded, etc
       if (intent.state === "FINISHED") {
         console.log(
-          `⚠️ Intent FINISHED mas sem payment.id - precisa verificar manualmente`
+          `⚠️ Intent FINISHED mas sem payment.id - precisa verificar manualmente`,
         );
 
         // Tenta buscar pelo external_reference se houver
         if (intent.additional_info?.external_reference) {
           const orderId = intent.additional_info.external_reference;
           console.log(
-            `🔍 Tentando buscar pagamento por external_reference: ${orderId}`
+            `🔍 Tentando buscar pagamento por external_reference: ${orderId}`,
           );
 
           try {
             const searchUrl = `https://api.mercadopago.com/v1/payments/search?external_reference=${orderId}`;
             const searchResp = await fetch(searchUrl, {
               headers: {
-                Authorization: `Bearer ${storeConfig.mp_access_token}`,
+                Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
               },
             });
 
@@ -2444,7 +2090,7 @@ app.get("/api/payment/status/:paymentId", async (req, res) => {
               if (searchData.results && searchData.results.length > 0) {
                 const payment = searchData.results[0];
                 console.log(
-                  `💳 Pagamento encontrado via search: ${payment.id} | Status: ${payment.status}`
+                  `💳 Pagamento encontrado via search: ${payment.id} | Status: ${payment.status}`,
                 );
 
                 if (
@@ -2471,14 +2117,14 @@ app.get("/api/payment/status/:paymentId", async (req, res) => {
             }
           } catch (searchError) {
             console.log(
-              `⚠️ Erro ao buscar por external_reference: ${searchError.message}`
+              `⚠️ Erro ao buscar por external_reference: ${searchError.message}`,
             );
           }
         }
 
         // Se não encontrou nada, retorna pending (não approved!)
         console.log(
-          `⚠️ Intent FINISHED mas status do pagamento desconhecido - retornando pending`
+          `⚠️ Intent FINISHED mas status do pagamento desconhecido - retornando pending`,
         );
         return res.json({ status: "pending", paymentId: paymentId });
       }
@@ -2492,16 +2138,8 @@ app.get("/api/payment/status/:paymentId", async (req, res) => {
             isCanceled
               ? " (cancelado pelo usuário na maquininha)"
               : " (erro no processamento)"
-          }`
+          }`,
         );
-
-        // 🧹 Limpa a fila após cancelamento/erro
-        try {
-          console.log(`🧹 Limpando fila após ${intent.state}...`);
-          await paymentService.clearPaymentQueue(storeConfig);
-        } catch (queueError) {
-          console.warn(`⚠️ Erro ao limpar fila: ${queueError.message}`);
-        }
 
         // --- LÓGICA DE CANCELAMENTO DO PEDIDO NO BANCO ---
         const orderId = intent.additional_info?.external_reference;
@@ -2525,13 +2163,13 @@ app.get("/api/payment/status/:paymentId", async (req, res) => {
                 ) {
                   const newReserved = Math.max(
                     0,
-                    product.stock_reserved - item.quantity
+                    product.stock_reserved - item.quantity,
                   );
                   await db("products")
                     .where({ id: item.id })
                     .update({ stock_reserved: newReserved });
                   console.log(
-                    `    ↩️ Estoque liberado para ${item.name}: ${product.stock_reserved} -> ${newReserved}`
+                    `    ↩️ Estoque liberado para ${item.name}: ${product.stock_reserved} -> ${newReserved}`,
                   );
                 }
               }
@@ -2542,17 +2180,17 @@ app.get("/api/payment/status/:paymentId", async (req, res) => {
                 .update({ paymentStatus: "canceled", status: "canceled" });
 
               console.log(
-                `  ✅ Pedido ${orderId} e estoque atualizados com sucesso!`
+                `  ✅ Pedido ${orderId} e estoque atualizados com sucesso!`,
               );
             } else {
               console.log(
-                `  ⚠️ Pedido ${orderId} não está mais pendente ou não foi encontrado. Nenhuma ação necessária.`
+                `  ⚠️ Pedido ${orderId} não está mais pendente ou não foi encontrado. Nenhuma ação necessária.`,
               );
             }
           } catch (dbError) {
             console.error(
               `  ❌ Erro ao cancelar o pedido ${orderId} no banco:`,
-              dbError.message
+              dbError.message,
             );
           }
         }
@@ -2577,7 +2215,7 @@ app.get("/api/payment/status/:paymentId", async (req, res) => {
     console.log(`🔄 Não é Payment Intent, tentando como Payment PIX...`);
     const paymentUrl = `https://api.mercadopago.com/v1/payments/${paymentId}`;
     const paymentResponse = await fetch(paymentUrl, {
-      headers: { Authorization: `Bearer ${storeConfig.mp_access_token}` },
+      headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
     });
 
     if (paymentResponse.ok) {
@@ -2619,7 +2257,7 @@ app.get("/api/payment/status/:paymentId", async (req, res) => {
 // ENDPOINT LEGADO (para compatibilidade temporária com antigo sistema)
 app.get("/api/payment/status-pix/:orderId", async (req, res) => {
   console.log(
-    `⚠️ Endpoint legado /status-pix chamado - redirecionando para /status`
+    `⚠️ Endpoint legado /status-pix chamado - redirecionando para /status`,
   );
   return res.redirect(307, `/api/payment/status/${req.params.orderId}`);
 });
@@ -2631,26 +2269,9 @@ app.get("/api/payment/status-pix/:orderId", async (req, res) => {
 // Cancelar pagamento específico (Point Intent ou PIX Payment)
 app.delete("/api/payment/cancel/:paymentId", async (req, res) => {
   const { paymentId } = req.params;
-  const storeId = req.storeId;
 
-  // Busca credenciais da loja
-  let MP_ACCESS_TOKEN_LOCAL, MP_DEVICE_ID_LOCAL;
-  if (storeId) {
-    const store = await db("stores").where({ id: storeId }).first();
-    if (store) {
-      MP_ACCESS_TOKEN_LOCAL = store.mp_access_token;
-      MP_DEVICE_ID_LOCAL = store.mp_device_id;
-      console.log(`✅ [CANCEL] Usando credenciais da loja ${storeId}`);
-    }
-  }
-
-  // Fallback para credenciais globais
-  if (!MP_ACCESS_TOKEN_LOCAL) {
-    MP_ACCESS_TOKEN_LOCAL = MP_ACCESS_TOKEN;
-    MP_DEVICE_ID_LOCAL = MP_DEVICE_ID;
-  }
-
-  if (!MP_ACCESS_TOKEN_LOCAL) {
+  // Usa apenas credenciais globais (single-tenant)
+  if (!MP_ACCESS_TOKEN) {
     return res.json({ success: true, message: "Mock cancelado" });
   }
 
@@ -2658,19 +2279,19 @@ app.delete("/api/payment/cancel/:paymentId", async (req, res) => {
     console.log(`🛑 Tentando cancelar pagamento: ${paymentId}`);
 
     // 1. Tenta cancelar como um Payment Intent da maquininha (Point)
-    if (MP_DEVICE_ID_LOCAL) {
-      const urlIntent = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID_LOCAL}/payment-intents/${paymentId}`;
+    if (MP_DEVICE_ID) {
+      const urlIntent = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID}/payment-intents/${paymentId}`;
 
       console.log(`  -> Enviando DELETE para a maquininha: ${urlIntent}`);
       const intentResponse = await fetch(urlIntent, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}` },
+        headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
       });
 
       // Se a requisição foi bem-sucedida (200, 204) ou se o recurso não foi encontrado (404, já foi cancelado), consideramos sucesso.
       if (intentResponse.ok || intentResponse.status === 404) {
         console.log(
-          `✅ Comando de cancelamento para a maquininha enviado com sucesso para ${paymentId}.`
+          `✅ Comando de cancelamento para a maquininha enviado com sucesso para ${paymentId}.`,
         );
         return res.json({
           success: true,
@@ -2680,7 +2301,7 @@ app.delete("/api/payment/cancel/:paymentId", async (req, res) => {
       // Se a API retornar 409, significa que o pagamento está sendo processado e não pode ser cancelado.
       if (intentResponse.status === 409) {
         console.log(
-          `⚠️ Não foi possível cancelar ${paymentId} na maquininha: já está sendo processado.`
+          `⚠️ Não foi possível cancelar ${paymentId} na maquininha: já está sendo processado.`,
         );
         return res.status(409).json({
           success: false,
@@ -2695,7 +2316,7 @@ app.delete("/api/payment/cancel/:paymentId", async (req, res) => {
     const response = await fetch(urlPayment, {
       method: "PUT",
       headers: {
-        Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}`,
+        Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ status: "cancelled" }),
@@ -2720,35 +2341,17 @@ app.delete("/api/payment/cancel/:paymentId", async (req, res) => {
 
 // Limpar TODA a fila da maquininha (útil para logout/sair)
 app.post("/api/payment/clear-all", async (req, res) => {
-  const storeId = req.storeId;
-
-  // Busca credenciais da loja
-  let MP_ACCESS_TOKEN_LOCAL, MP_DEVICE_ID_LOCAL;
-  if (storeId) {
-    const store = await db("stores").where({ id: storeId }).first();
-    if (store) {
-      MP_ACCESS_TOKEN_LOCAL = store.mp_access_token;
-      MP_DEVICE_ID_LOCAL = store.mp_device_id;
-      console.log(`✅ [CLEAR-ALL] Usando credenciais da loja ${storeId}`);
-    }
-  }
-
-  // Fallback para credenciais globais
-  if (!MP_ACCESS_TOKEN_LOCAL) {
-    MP_ACCESS_TOKEN_LOCAL = MP_ACCESS_TOKEN;
-    MP_DEVICE_ID_LOCAL = MP_DEVICE_ID;
-  }
-
-  if (!MP_ACCESS_TOKEN_LOCAL || !MP_DEVICE_ID_LOCAL) {
+  // Usa apenas credenciais globais (single-tenant)
+  if (!MP_ACCESS_TOKEN || !MP_DEVICE_ID) {
     return res.json({ success: true, cleared: 0 });
   }
 
   try {
     console.log(`🧹 [CLEAR ALL] Limpando TODA a fila da maquininha...`);
 
-    const listUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID_LOCAL}/payment-intents`;
+    const listUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID}/payment-intents`;
     const listResp = await fetch(listUrl, {
-      headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}` },
+      headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
     });
 
     if (!listResp.ok) {
@@ -2768,7 +2371,7 @@ app.post("/api/payment/clear-all", async (req, res) => {
       try {
         const delResp = await fetch(`${listUrl}/${iId}`, {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}` },
+          headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
         });
 
         if (delResp.ok || delResp.status === 404) {
@@ -2784,7 +2387,7 @@ app.post("/api/payment/clear-all", async (req, res) => {
     }
 
     console.log(
-      `✅ [CLEAR ALL] ${cleared} intent(s) removida(s) - Maquininha limpa!`
+      `✅ [CLEAR ALL] ${cleared} intent(s) removida(s) - Maquininha limpa!`,
     );
 
     res.json({
@@ -2800,34 +2403,16 @@ app.post("/api/payment/clear-all", async (req, res) => {
 
 // Configurar Point Smart 2 (modo operacional e vinculação)
 app.post("/api/point/configure", async (req, res) => {
-  const storeId = req.storeId;
-
-  // Busca credenciais da loja
-  let MP_ACCESS_TOKEN_LOCAL, MP_DEVICE_ID_LOCAL;
-  if (storeId) {
-    const store = await db("stores").where({ id: storeId }).first();
-    if (store) {
-      MP_ACCESS_TOKEN_LOCAL = store.mp_access_token;
-      MP_DEVICE_ID_LOCAL = store.mp_device_id;
-      console.log(`✅ [CONFIGURE] Usando credenciais da loja ${storeId}`);
-    }
-  }
-
-  // Fallback para credenciais globais
-  if (!MP_ACCESS_TOKEN_LOCAL) {
-    MP_ACCESS_TOKEN_LOCAL = MP_ACCESS_TOKEN;
-    MP_DEVICE_ID_LOCAL = MP_DEVICE_ID;
-  }
-
-  if (!MP_ACCESS_TOKEN_LOCAL || !MP_DEVICE_ID_LOCAL) {
+  // Usa apenas credenciais globais (single-tenant)
+  if (!MP_ACCESS_TOKEN || !MP_DEVICE_ID) {
     return res.json({ success: false, error: "Credenciais não configuradas" });
   }
 
   try {
-    console.log(`⚙️ Configurando Point Smart 2: ${MP_DEVICE_ID_LOCAL}`);
+    console.log(`⚙️ Configurando Point Smart 2: ${MP_DEVICE_ID}`);
 
     // Configuração do dispositivo Point Smart
-    const configUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID_LOCAL}`;
+    const configUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID}`;
 
     const configPayload = {
       operating_mode: "PDV", // Modo PDV - integração com frente de caixa
@@ -2837,7 +2422,7 @@ app.post("/api/point/configure", async (req, res) => {
     const response = await fetch(configUrl, {
       method: "PATCH",
       headers: {
-        Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}`,
+        Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(configPayload),
@@ -2867,31 +2452,11 @@ app.post("/api/point/configure", async (req, res) => {
 
 // Verificar status da Point Smart 2
 app.get("/api/point/status", async (req, res) => {
-  const storeId = req.storeId;
-
-  // Busca credenciais da loja
-  let MP_ACCESS_TOKEN_LOCAL, MP_DEVICE_ID_LOCAL;
-  if (storeId) {
-    const store = await db("stores").where({ id: storeId }).first();
-    if (store) {
-      MP_ACCESS_TOKEN_LOCAL = store.mp_access_token;
-      MP_DEVICE_ID_LOCAL = store.mp_device_id;
-      console.log(`✅ [POINT-STATUS] Usando credenciais da loja ${storeId}`);
-    }
-  }
-
-  // Fallback para credenciais globais
-  if (!MP_ACCESS_TOKEN_LOCAL) {
-    MP_ACCESS_TOKEN_LOCAL = MP_ACCESS_TOKEN;
-    MP_DEVICE_ID_LOCAL = MP_DEVICE_ID;
-  }
-
-  if (!MP_ACCESS_TOKEN_LOCAL || !MP_DEVICE_ID_LOCAL) {
+  // Usa apenas credenciais globais (single-tenant)
+  if (!MP_ACCESS_TOKEN || !MP_DEVICE_ID) {
     console.error("⚠️ Status Point: Credenciais não configuradas");
-    console.error(
-      `MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN_LOCAL ? "OK" : "AUSENTE"}`
-    );
-    console.error(`MP_DEVICE_ID: ${MP_DEVICE_ID_LOCAL || "AUSENTE"}`);
+    console.error(`MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN ? "OK" : "AUSENTE"}`);
+    console.error(`MP_DEVICE_ID: ${MP_DEVICE_ID || "AUSENTE"}`);
     return res.json({
       connected: false,
       error: "Credenciais não configuradas",
@@ -2899,11 +2464,11 @@ app.get("/api/point/status", async (req, res) => {
   }
 
   try {
-    console.log(`🔍 Verificando status da Point: ${MP_DEVICE_ID_LOCAL}`);
+    console.log(`🔍 Verificando status da Point: ${MP_DEVICE_ID}`);
 
-    const deviceUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID_LOCAL}`;
+    const deviceUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID}`;
     const response = await fetch(deviceUrl, {
-      headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}` },
+      headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
     });
 
     console.log(`📡 Resposta API Point: Status ${response.status}`);
@@ -2936,35 +2501,17 @@ app.get("/api/point/status", async (req, res) => {
 
 // Limpar TODA a fila de pagamentos da maquininha (chamar após pagamento aprovado)
 app.post("/api/payment/clear-queue", async (req, res) => {
-  const storeId = req.storeId;
-
-  // Busca credenciais da loja
-  let MP_ACCESS_TOKEN_LOCAL, MP_DEVICE_ID_LOCAL;
-  if (storeId) {
-    const store = await db("stores").where({ id: storeId }).first();
-    if (store) {
-      MP_ACCESS_TOKEN_LOCAL = store.mp_access_token;
-      MP_DEVICE_ID_LOCAL = store.mp_device_id;
-      console.log(`✅ [CLEAR-QUEUE] Usando credenciais da loja ${storeId}`);
-    }
-  }
-
-  // Fallback para credenciais globais
-  if (!MP_ACCESS_TOKEN_LOCAL) {
-    MP_ACCESS_TOKEN_LOCAL = MP_ACCESS_TOKEN;
-    MP_DEVICE_ID_LOCAL = MP_DEVICE_ID;
-  }
-
-  if (!MP_ACCESS_TOKEN_LOCAL || !MP_DEVICE_ID_LOCAL) {
+  // Usa apenas credenciais globais (single-tenant)
+  if (!MP_ACCESS_TOKEN || !MP_DEVICE_ID) {
     return res.json({ success: true, cleared: 0 });
   }
 
   try {
     console.log(`🧹 [CLEAR QUEUE] Limpando TODA a fila da Point Pro 2...`);
 
-    const listUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID_LOCAL}/payment-intents`;
+    const listUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID}/payment-intents`;
     const listResp = await fetch(listUrl, {
-      headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}` },
+      headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
     });
 
     if (!listResp.ok) {
@@ -2985,7 +2532,7 @@ app.post("/api/payment/clear-queue", async (req, res) => {
       try {
         const delResp = await fetch(`${listUrl}/${iId}`, {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}` },
+          headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
         });
 
         if (delResp.ok || delResp.status === 404) {
@@ -3001,7 +2548,7 @@ app.post("/api/payment/clear-queue", async (req, res) => {
     }
 
     console.log(
-      `✅ [CLEAR QUEUE] ${cleared} intent(s) removida(s) - Point Pro 2 completamente limpa!`
+      `✅ [CLEAR QUEUE] ${cleared} intent(s) removida(s) - Point Pro 2 completamente limpa!`,
     );
 
     res.json({
@@ -3024,7 +2571,7 @@ app.post("/api/payment/clear-queue", async (req, res) => {
 app.post("/api/ai/suggestion", async (req, res) => {
   if (!openai) {
     console.log(
-      "❌ OpenAI não inicializada - OPENAI_API_KEY está configurada?"
+      "❌ OpenAI não inicializada - OPENAI_API_KEY está configurada?",
     );
     return res.json({ text: "IA indisponível" });
   }
@@ -3038,10 +2585,10 @@ app.post("/api/ai/suggestion", async (req, res) => {
       "description",
       "price",
       "category",
-      "stock"
+      "stock",
     );
     const availableProducts = products.filter(
-      (p) => p.stock === null || p.stock > 0
+      (p) => p.stock === null || p.stock > 0,
     );
 
     // Monta lista formatada dos produtos
@@ -3050,12 +2597,12 @@ app.post("/api/ai/suggestion", async (req, res) => {
         (p) =>
           `- ${p.name} (${p.category}) - R$ ${p.price} ${
             p.description ? "- " + p.description : ""
-          }`
+          }`,
       )
       .join("\n");
 
     console.log(
-      `📋 ${availableProducts.length} produtos disponíveis no catálogo`
+      `📋 ${availableProducts.length} produtos disponíveis no catálogo`,
     );
 
     const completion = await openai.chat.completions.create({
@@ -3090,7 +2637,7 @@ REGRAS:
 app.post("/api/ai/chat", async (req, res) => {
   if (!openai) {
     console.log(
-      "❌ OpenAI não inicializada - OPENAI_API_KEY está configurada?"
+      "❌ OpenAI não inicializada - OPENAI_API_KEY está configurada?",
     );
     return res.status(503).json({ error: "IA indisponível" });
   }
@@ -3175,7 +2722,7 @@ app.get("/api/ai/kitchen-priority", async (req, res) => {
 
     if (kitchenCache.lastOrderIds === currentOrderIds) {
       console.log(
-        "♻️ Cache válido - retornando otimização anterior (sem chamar IA)"
+        "♻️ Cache válido - retornando otimização anterior (sem chamar IA)",
       );
       return res.json({
         orders: kitchenCache.orders,
@@ -3204,13 +2751,13 @@ app.get("/api/ai/kitchen-priority", async (req, res) => {
 
       // Calcula "peso" do pedido (quantidade x complexidade estimada)
       const categories = items.map(
-        (item) => productMap[item.id]?.category || "outro"
+        (item) => productMap[item.id]?.category || "outro",
       );
       const hasHotFood = categories.some((c) =>
-        ["Pastel", "Hambúrguer", "Pizza"].includes(c)
+        ["Pastel", "Hambúrguer", "Pizza"].includes(c),
       );
       const hasColdFood = categories.some((c) =>
-        ["Bebida", "Suco", "Sobremesa"].includes(c)
+        ["Bebida", "Suco", "Sobremesa"].includes(c),
       );
 
       return {
@@ -3223,7 +2770,7 @@ app.get("/api/ai/kitchen-priority", async (req, res) => {
         hasColdFood: hasColdFood,
         observation: order.observation, // Adiciona a observação aqui
         minutesWaiting: Math.round(
-          (Date.now() - new Date(order.timestamp).getTime()) / 60000
+          (Date.now() - new Date(order.timestamp).getTime()) / 60000,
         ),
       };
     });
@@ -3236,7 +2783,7 @@ app.get("/api/ai/kitchen-priority", async (req, res) => {
    - Aguardando: ${o.minutesWaiting} min
    - Itens: ${o.itemCount} (${o.items})
    - Tipo: ${o.hasHotFood ? "🔥 Quente" : ""} ${o.hasColdFood ? "❄️ Frio" : ""}
-   ${o.observation ? `- OBS: ${o.observation}` : ""}`
+   ${o.observation ? `- OBS: ${o.observation}` : ""}`,
       )
       .join("\n\n");
 
@@ -3325,7 +2872,7 @@ Retorne APENAS o JSON, sem texto adicional.`,
     // 7. VALIDAÇÃO: Garante que pedidos antigos não foram muito atrasados pela IA
     const originalOldest = orders[0]; // Pedido mais antigo (deveria ser o primeiro)
     const optimizedOldestIndex = optimizedOrders.findIndex(
-      (o) => o.id === originalOldest?.id
+      (o) => o.id === originalOldest?.id,
     );
 
     // Se o pedido mais antigo foi movido para posição >2, REVERTE para ordem cronológica
@@ -3333,7 +2880,7 @@ Retorne APENAS o JSON, sem texto adicional.`,
       console.log(
         `⚠️ IA moveu pedido mais antigo (${originalOldest.id}) para posição ${
           optimizedOldestIndex + 1
-        } - REVERTENDO para ordem cronológica`
+        } - REVERTENDO para ordem cronológica`,
       );
       return res.json({
         orders: orders.map((o) => ({ ...o, items: parseJSON(o.items) })),
@@ -3346,12 +2893,12 @@ Retorne APENAS o JSON, sem texto adicional.`,
     console.log(
       `✅ Ordem otimizada pela IA: ${optimizedOrders
         .map((o) => o.id)
-        .join(", ")}`
+        .join(", ")}`,
     );
     console.log(
       `✅ Validação: Pedido mais antigo (${
         originalOldest?.id
-      }) está na posição ${optimizedOldestIndex + 1}`
+      }) está na posição ${optimizedOldestIndex + 1}`,
     );
 
     // Salva no cache
@@ -3477,7 +3024,7 @@ ${analysisData.products
     - Estoque atual: ${p.stock}
     - Vendas: ${p.totalSold} unidades
     - Receita: R$ ${p.revenue}
-    - Média por pedido: ${p.averagePerOrder}`
+    - Média por pedido: ${p.averagePerOrder}`,
   )
   .join("\n")}
 
@@ -3538,7 +3085,7 @@ Seja direto, prático e use emojis. Priorize ações que o administrador pode to
         message: error.message,
       });
     }
-  }
+  },
 );
 
 // ========== SUPER ADMIN DASHBOARD (MULTI-TENANCY) ==========
@@ -3563,80 +3110,29 @@ app.get("/api/super-admin/dashboard", async (req, res) => {
 
     console.log("🔐 Super Admin acessando dashboard global...");
 
-    // 1. Lista todas as store_id ativas (com pedidos ou produtos)
-    const storesFromOrders = await db("orders")
-      .distinct("store_id")
-      .whereNotNull("store_id");
+    // Estatísticas globais (single-tenant)
+    const totalOrders = await db("orders").count("id as count").first();
+    const totalRevenue = await db("orders")
+      .whereIn("paymentStatus", ["paid", "authorized"])
+      .sum("total as total")
+      .first();
+    const totalProducts = await db("products").count("id as count").first();
+    const activeOrders = await db("orders")
+      .where({ status: "active" })
+      .count("id as count")
+      .first();
 
-    const storesFromProducts = await db("products")
-      .distinct("store_id")
-      .whereNotNull("store_id");
-
-    // Combina e remove duplicatas
-    const allStoreIds = [
-      ...new Set([
-        ...storesFromOrders.map((s) => s.store_id),
-        ...storesFromProducts.map((s) => s.store_id),
-      ]),
-    ];
-
-    // 2. Calcula estatísticas por loja
-    const storeStats = await Promise.all(
-      allStoreIds.map(async (storeId) => {
-        // Total de pedidos
-        const orderCount = await db("orders")
-          .where({ store_id: storeId })
-          .count("id as count")
-          .first();
-
-        // Faturamento total (apenas pedidos pagos)
-        const revenue = await db("orders")
-          .where({ store_id: storeId })
-          .whereIn("paymentStatus", ["paid", "authorized"])
-          .sum("total as total")
-          .first();
-
-        // Total de produtos
-        const productCount = await db("products")
-          .where({ store_id: storeId })
-          .count("id as count")
-          .first();
-
-        // Pedidos ativos (na cozinha)
-        const activeOrders = await db("orders")
-          .where({ store_id: storeId, status: "active" })
-          .count("id as count")
-          .first();
-
-        return {
-          store_id: storeId,
-          total_orders: Number(orderCount.count) || 0,
-          total_revenue: parseFloat(revenue.total) || 0,
-          total_products: Number(productCount.count) || 0,
-          active_orders: Number(activeOrders.count) || 0,
-        };
-      })
-    );
-
-    // 3. Estatísticas globais
     const globalStats = {
-      total_stores: allStoreIds.length,
-      total_orders: storeStats.reduce((sum, s) => sum + s.total_orders, 0),
-      total_revenue: storeStats.reduce((sum, s) => sum + s.total_revenue, 0),
-      total_products: storeStats.reduce((sum, s) => sum + s.total_products, 0),
-      total_active_orders: storeStats.reduce(
-        (sum, s) => sum + s.active_orders,
-        0
-      ),
+      total_orders: Number(totalOrders.count) || 0,
+      total_revenue: parseFloat(totalRevenue.total) || 0,
+      total_products: Number(totalProducts.count) || 0,
+      total_active_orders: Number(activeOrders.count) || 0,
     };
-
-    console.log(`✅ Dashboard gerado: ${allStoreIds.length} loja(s) ativa(s)`);
 
     res.json({
       success: true,
       timestamp: new Date().toISOString(),
       global_stats: globalStats,
-      stores: storeStats.sort((a, b) => b.total_revenue - a.total_revenue), // Ordena por faturamento
     });
   } catch (error) {
     console.error("❌ Erro no Super Admin Dashboard:", error);
@@ -3654,7 +3150,7 @@ Promise.all([initDatabase(), initRedis()])
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`✅ Servidor rodando na porta ${PORT}`);
       console.log(
-        `🔐 JWT: ${JWT_SECRET ? "Configurado" : "⚠️ NÃO CONFIGURADO"}`
+        `🔐 JWT: ${JWT_SECRET ? "Configurado" : "⚠️ NÃO CONFIGURADO"}`,
       );
       console.log(`💾 Cache: ${useRedis ? "Redis" : "Map em memória"}`);
     });

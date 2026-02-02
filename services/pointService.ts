@@ -1,5 +1,4 @@
 // Serviço para interação com a Point Smart 2 do Mercado Pago
-import { getCurrentStoreId } from "../utils/tenantResolver"; // 🏪 MULTI-TENANT
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -12,12 +11,10 @@ export const configurePoint = async (): Promise<{
   error?: string;
 }> => {
   try {
-    const storeId = getCurrentStoreId();
     const response = await fetch(`${API_URL}/api/point/configure`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-store-id": storeId, // 🏪 MULTI-TENANT
       },
     });
 
@@ -36,7 +33,7 @@ export const configurePoint = async (): Promise<{
       error instanceof Error ? error.message : "Erro desconhecido";
     console.warn(
       "⚠️ Erro ao configurar Point (pode não estar conectada):",
-      errorMessage
+      errorMessage,
     );
     return { success: false, error: errorMessage };
   }
@@ -55,10 +52,7 @@ export const checkPointStatus = async (): Promise<{
   error?: string;
 }> => {
   try {
-    const storeId = getCurrentStoreId();
-    const response = await fetch(`${API_URL}/api/point/status`, {
-      headers: { "x-store-id": storeId }, // 🏪 MULTI-TENANT
-    });
+    const response = await fetch(`${API_URL}/api/point/status`);
     const data = await response.json();
 
     if (data.connected) {
@@ -88,12 +82,10 @@ export const clearPaymentQueue = async (): Promise<{
   error?: string;
 }> => {
   try {
-    const storeId = getCurrentStoreId();
     const response = await fetch(`${API_URL}/api/payment/clear-queue`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-store-id": storeId, // 🏪 MULTI-TENANT
       },
     });
 

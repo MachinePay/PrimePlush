@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import type { Order } from "../types";
 import { authenticatedFetch } from "../services/apiService";
 import { useAuth } from "../contexts/AuthContext";
-import { getCurrentStoreId } from "../utils/tenantResolver";
 
 // Página de Histórico de Pedidos com filtro por data
 // (OrderHistoryPage)
@@ -22,17 +21,12 @@ const OrderHistoryPage: React.FC = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const storeId = getCurrentStoreId();
       let url = `${BACKEND_URL}/api/orders/history`;
       const params: string[] = [];
       if (startDate) params.push(`start=${startDate}`);
       if (endDate) params.push(`end=${endDate}`);
       if (params.length > 0) url += `?${params.join("&")}`;
-      const resp = await authenticatedFetch(url, {
-        headers: {
-          "x-store-id": storeId,
-        },
-      });
+      const resp = await authenticatedFetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar histórico de pedidos");
       const data: Order[] = await resp.json();
       setOrders(data);

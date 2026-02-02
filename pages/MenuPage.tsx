@@ -7,8 +7,7 @@ import {
   getDynamicCartSuggestion,
   getChefMessage,
 } from "../services/geminiService";
-import { getProducts } from "../services/apiService"; // 🏪 MULTI-TENANT
-import { getCurrentStoreId } from "../utils/tenantResolver"; // 🏪 MULTI-TENANT
+import { getProducts } from "../services/apiService";
 import type { Product, CartItem } from "../types";
 
 // URL da API
@@ -138,7 +137,6 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
     console.log("🔍 [CART SUGGESTION] Buscando produto:", {
       suggestion: cartSuggestion,
       menuLength: menu.length,
-      menuStores: [...new Set(menu.map((p) => p.storeId || "no-store"))],
     });
 
     const found = menu.find(
@@ -152,7 +150,6 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
       console.log("✅ [CART SUGGESTION] Produto encontrado:", {
         name: found.name,
         id: found.id,
-        storeId: found.storeId || "no-store",
       });
     } else {
       console.warn("⚠️ [CART SUGGESTION] Produto não encontrado no menu local");
@@ -490,20 +487,9 @@ const MenuPage: React.FC = () => {
 
   const fetchMenuData = async () => {
     try {
-      const data = await getProducts(); // 🏪 Usa apiService com x-store-id
-
+      const data = await getProducts();
       // ✅ Valida se é array antes de setar
       if (Array.isArray(data)) {
-        console.log(
-          `✅ [MENU] ${data.length} produtos carregados da loja atual:`,
-          {
-            storeId: getCurrentStoreId(),
-            produtos: data.map((p) => ({
-              name: p.name,
-              storeId: p.storeId || "no-store",
-            })),
-          },
-        );
         setMenu(data);
       } else {
         console.error(

@@ -1,7 +1,6 @@
 import React, { createContext, useState, useContext, ReactNode } from "react";
 import type { User, Order } from "../types";
 import { logout as apiLogout } from "../services/apiService";
-import { getCurrentStoreId } from "../utils/tenantResolver";
 
 // Define o formato do contexto de autenticação: quais valores e funções estarão disponíveis
 interface AuthContextType {
@@ -47,12 +46,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       console.log("🧼 Limpando pagamentos pendentes antes de logout...");
 
-      const storeId = getCurrentStoreId();
       const response = await fetch(`${API_URL}/api/payment/clear-queue`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-store-id": storeId, // 🏪 MULTI-TENANT
         },
       });
 

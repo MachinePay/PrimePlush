@@ -10,7 +10,6 @@ import {
   type Category,
 } from "../services/categoryService";
 import CategoryForm from "../components/CategoryForm";
-import { getCurrentStoreId } from "../utils/tenantResolver";
 
 const AdminCategoriesPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -18,7 +17,6 @@ const AdminCategoriesPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const navigate = useNavigate();
-  const storeId = getCurrentStoreId();
 
   // Carrega categorias ao montar o componente
   useEffect(() => {
@@ -66,7 +64,7 @@ const AdminCategoriesPage: React.FC = () => {
       await Swal.fire(
         "Sucesso!",
         "Categoria atualizada com sucesso",
-        "success"
+        "success",
       );
       setShowForm(false);
       setEditingCategory(null);
@@ -76,7 +74,7 @@ const AdminCategoriesPage: React.FC = () => {
       Swal.fire(
         "Erro",
         error.message || "Erro ao atualizar categoria",
-        "error"
+        "error",
       );
     }
   };
@@ -99,7 +97,7 @@ const AdminCategoriesPage: React.FC = () => {
         await Swal.fire(
           "Deletado!",
           "Categoria removida com sucesso",
-          "success"
+          "success",
         );
         loadCategories();
       } catch (error: any) {
@@ -107,7 +105,7 @@ const AdminCategoriesPage: React.FC = () => {
         Swal.fire(
           "Erro",
           error.message || "Erro ao deletar categoria",
-          "error"
+          "error",
         );
       }
     }
@@ -156,9 +154,7 @@ const AdminCategoriesPage: React.FC = () => {
                 <p className="text-stone-600 text-sm mt-1">
                   Organize os produtos em categorias
                 </p>
-                <div className="mt-2 inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold">
-                  🏪 Loja: {storeId}
-                </div>
+                {/* Loja: single-tenant, não exibe mais storeId */}
               </div>
             </div>
             <button

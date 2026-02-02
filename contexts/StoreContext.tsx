@@ -12,12 +12,12 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { getCurrentStoreId } from "../utils/tenantResolver";
+// import { getCurrentStoreId } from "../utils/tenantResolver";
 import { applyStoreTheme } from "../utils/themeColors"; // 🎨 Tema dinâmico
 
 // Configuração padrão da loja
 export interface StoreConfig {
-  id: string;
+  id?: string;
   name: string;
   logo: string | null;
   primaryColor: string;
@@ -57,33 +57,14 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      const storeId = getCurrentStoreId();
-      console.log(`🏪 Carregando configuração da loja: ${storeId}`);
+      // Single-tenant: não há mais storeId
+      console.log(`🏪 Carregando configuração da loja (single-tenant)`);
 
       const BACKEND_URL =
         import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-      // TODO: Quando o backend implementar /api/store-config, descomentar:
-      /*
-      const response = await fetch(`${BACKEND_URL}/api/store-config`, {
-        headers: {
-          'x-store-id': storeId,
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Loja não encontrada');
-        }
-        throw new Error('Erro ao carregar configuração da loja');
-      }
-
-      const config = await response.json();
-      */
-
-      // TEMPORÁRIO: Usa configuração padrão até o backend implementar o endpoint
+      // Single-tenant: Usa configuração fixa
       const config: StoreConfig = {
-        id: storeId,
         ...DEFAULT_STORE_CONFIG,
       };
 

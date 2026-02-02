@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
-import { getCurrentStoreId } from "../utils/tenantResolver"; // 🏪 MULTI-TENANT
+
 import type { User } from "../types";
 
 // --- Componente WelcomeScreen ---
@@ -45,7 +45,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             alt="Self Machine"
             className="w-48 h-auto mx-auto mb-6 rounded-xl"
           />
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">Pastel Kiosk</h1>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+            Pastel Kiosk
+          </h1>
           <p className="text-stone-600">
             Bem-vindo à nossa deliciosa experiência!
           </p>
@@ -100,6 +102,10 @@ interface CPFLoginProps {
 
 const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
   const [cpf, setCpf] = useState("");
+  const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [userFound, setUserFound] = useState<User | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -137,56 +143,40 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
     setCleanedCPF(cleanCPF);
 
     try {
-      const storeId = getCurrentStoreId();
       const response = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || "http://localhost:3001"
-        }/api/users/check-cpf`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/users/check-cpf`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-store-id": storeId, // 🏪 MULTI-TENANT
           },
           body: JSON.stringify({ cpf: cleanCPF }),
-        }
+        },
       );
 
-      if (!response.ok) {
-        throw new Error("Erro ao verificar CPF");
-      }
+      if (!response.ok) throw new Error("Erro ao verificar CPF");
 
       const data = await response.json();
 
       if (data.exists && data.user) {
-        // Usuário encontrado - fazer login direto
-        await Swal.fire({
-          title: "👋 Bem-vindo de volta!",
-          html: `Olá, <strong>${
-            data.user.name
-          }</strong>!<br><br>Você tem <strong>${
-            data.user.pontos || 0
-          } pontos</strong> acumulados! 🌟`,
-          icon: "success",
-          confirmButtonColor: "#f59e0b",
-          confirmButtonText: "Ver Cardápio",
-          timer: 3000,
-          timerProgressBar: true,
-        });
-        onLoginSuccess(data.user);
+        // Se o seu backend exige senha para usuários existentes:
+        setUserFound(data.user);
+        setShowPassword(true);
+
+        // OPCIONAL: Se quiser login direto sem senha para clientes:
+        // await Swal.fire({ title: "Bem-vindo!", icon: "success", timer: 2000 });
+        // onLoginSuccess(data.user);
       } else if (data.requiresRegistration) {
-        // CPF não encontrado - pedir nome para cadastro
-        setRequiresRegistration(true);
+        navigate(`/register?cpf=${cleanCPF}`);
       }
     } catch (err) {
       setError("Erro ao verificar CPF. Tente novamente.");
-      console.error("Erro ao verificar CPF:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // PASSO 2: Cadastrar novo usuário com nome
+  // PASSO 2: Cadastrar novo usuário
   const registerUser = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -199,48 +189,60 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
     setError("");
 
     try {
-      const storeId = getCurrentStoreId();
       const response = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || "http://localhost:3001"
-        }/api/users/register`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/users/register`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-store-id": storeId, // 🏪 MULTI-TENANT
           },
           body: JSON.stringify({ cpf: cleanedCPF, name: name.trim() }),
-        }
+        },
       );
 
       if (!response.ok) {
         if (response.status === 409) {
-          setError("CPF já cadastrado. Tente fazer login.");
+          setError("CPF já cadastrado.");
           setRequiresRegistration(false);
-          setName("");
           return;
         }
         throw new Error("Erro ao cadastrar");
       }
 
       const data = await response.json();
-
-      if (data.success && data.user) {
-        await Swal.fire({
-          title: "🎉 Bem-vindo!",
-          html: `Olá, <strong>${data.user.name}</strong>!<br><br>Sua conta foi criada com sucesso.<br>Aproveite nossos deliciosos pastéis!`,
-          icon: "success",
-          confirmButtonColor: "#f59e0b",
-          confirmButtonText: "Começar Pedido",
-          timer: 3000,
-          timerProgressBar: true,
-        });
+      if (data.user) {
         onLoginSuccess(data.user);
       }
     } catch (err) {
       setError("Erro ao cadastrar. Tente novamente.");
-      console.error("Erro ao cadastrar:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // PASSO 3: Login com Senha
+  const handleLoginWithPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/users/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cpf: cleanedCPF, password }),
+        },
+      );
+
+      const data = await response.json();
+      if (response.ok && data.user) {
+        onLoginSuccess(data.user);
+      } else {
+        setError(data.message || "Senha incorreta.");
+      }
+    } catch (err) {
+      setError("Erro ao autenticar. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
@@ -251,125 +253,112 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            {requiresRegistration ? "Cadastrar Conta" : "Fazer Login"}
+            {requiresRegistration
+              ? "Cadastrar Conta"
+              : showPassword
+                ? "Digite sua senha"
+                : "Fazer Login"}
           </h1>
           <p className="text-stone-600">
             {requiresRegistration
-              ? "Complete seu cadastro com seu nome"
-              : "Digite seu CPF para continuar"}
+              ? "Complete seu cadastro para continuar"
+              : showPassword
+                ? `Olá, ${userFound?.name}!`
+                : "Digite seu CPF para começar"}
           </p>
         </div>
 
-        {!requiresRegistration ? (
-          // PASSO 1: Formulário de CPF
+        {/* FLUXO CPF */}
+        {!requiresRegistration && !showPassword && (
           <form onSubmit={checkCPF} className="space-y-6">
             <div>
-              <label
-                htmlFor="cpf"
-                className="block text-sm font-semibold text-stone-700 mb-2"
-              >
+              <label className="block text-sm font-semibold text-stone-700 mb-2">
                 CPF
               </label>
               <input
-                id="cpf"
                 type="text"
                 value={cpf}
                 onChange={handleCPFChange}
                 placeholder="000.000.000-00"
                 className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-red-600 transition-colors text-lg"
                 autoFocus
-                disabled={isLoading}
               />
               {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
             </div>
-
             <button
               type="submit"
               disabled={isLoading || cpf.replace(/\D/g, "").length !== 11}
-              className="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors text-lg disabled:bg-red-300 disabled:cursor-not-allowed"
+              className="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors disabled:bg-red-300"
             >
               {isLoading ? "Verificando..." : "Continuar"}
             </button>
           </form>
-        ) : (
-          // PASSO 2: Formulário de Cadastro com Nome
-          <form onSubmit={registerUser} className="space-y-6">
-            <div>
-              <label
-                htmlFor="cpf-display"
-                className="block text-sm font-semibold text-stone-700 mb-2"
-              >
-                CPF
-              </label>
-              <input
-                id="cpf-display"
-                type="text"
-                value={cpf}
-                disabled
-                className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg bg-stone-100 text-stone-600 text-lg"
-              />
-            </div>
+        )}
 
+        {/* FLUXO SENHA */}
+        {showPassword && (
+          <form onSubmit={handleLoginWithPassword} className="space-y-6">
             <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-semibold text-stone-700 mb-2"
-              >
-                Nome Completo
+              <label className="block text-sm font-semibold text-stone-700 mb-2">
+                Senha
               </label>
               <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setError("");
-                }}
-                placeholder="Digite seu nome completo"
-                className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-red-600 transition-colors text-lg"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Sua senha"
+                className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-red-600 transition-colors"
                 autoFocus
-                disabled={isLoading}
               />
               {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
             </div>
-
-            <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded">
-              <p className="text-sm text-red-800">
-                <strong>🎉 CPF não cadastrado!</strong>
-                <br />
-                Vamos criar sua conta. Digite seu nome para continuar.
-              </p>
-            </div>
-
             <button
               type="submit"
-              disabled={isLoading || name.trim().length < 3}
-              className="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors text-lg disabled:bg-red-300 disabled:cursor-not-allowed"
+              className="w-full bg-red-600 text-white font-bold py-3 rounded-lg"
             >
-              {isLoading ? "Cadastrando..." : "Cadastrar"}
+              Entrar
             </button>
-
             <button
               type="button"
-              onClick={() => {
-                setRequiresRegistration(false);
-                setName("");
-                setError("");
-              }}
-              className="w-full py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors"
+              onClick={() => setShowPassword(false)}
+              className="w-full text-sm text-stone-500"
             >
-              ← Voltar para CPF
+              ← Voltar
             </button>
           </form>
         )}
 
-        {!requiresRegistration && (
-          <button
-            onClick={onBack}
-            className="w-full mt-4 py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors"
-          >
-            ← Voltar
-          </button>
+        {/* FLUXO CADASTRO */}
+        {requiresRegistration && (
+          <form onSubmit={registerUser} className="space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-stone-700 mb-2">
+                Nome Completo
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Como deseja ser chamado?"
+                className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-red-600 transition-colors"
+                autoFocus
+              />
+              {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-red-600 text-white font-bold py-3 rounded-lg"
+            >
+              Cadastrar e Iniciar
+            </button>
+            <button
+              type="button"
+              onClick={() => setRequiresRegistration(false)}
+              className="w-full text-sm text-stone-500"
+            >
+              ← Voltar
+            </button>
+          </form>
         )}
       </div>
     </div>
@@ -378,152 +367,24 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
 
 // --- Componente LoginPage Principal ---
 const LoginPage: React.FC = () => {
-  const [guestUserName, setGuestUserName] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showCPFLogin, setShowCPFLogin] = useState(false);
   const { login, currentUser } = useAuth();
   const { clearCart } = useCart();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Sempre limpar o nome quando entrar na página de login
-    localStorage.removeItem("guestUserName");
-    setGuestUserName(null);
-  }, []);
-
-  // Se já estiver logado, navegar automaticamente para /menu
-  useEffect(() => {
     if (currentUser) {
-      // naviga no próximo tick para evitar conflitos com render
-      setTimeout(() => navigate("/menu"), 0);
+      navigate("/menu");
     }
   }, [currentUser, navigate]);
 
-  // Função chamada quando o usuário digita seu nome na boas-vindas
-  const handleNameSubmit = async (name: string) => {
-    setIsLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Armazenar nome no localStorage para usar na MenuPage
-      localStorage.setItem("guestUserName", name);
-      setGuestUserName(name);
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Erro ao processar nome:", error);
-      setIsLoading(false);
-    }
-  };
-
-  // Continuar como convidado - cria um usuário 'guest' temporário, faz login e navega para menu
-  const handleGuestContinue = () => {
-    const guestUser: User = {
-      id: `guest_${Date.now()}`,
-      name: guestUserName || "Convidado",
-      historico: [],
-      role: "customer",
-    };
-
-    // Limpa o carrinho antes de fazer login
-    clearCart();
-    // Seta o usuário como logado (mesmo que seja convidado) para permitir o acesso às rotas protegidas
-    login(guestUser);
-    // Navegar no próximo tick para garantir que o AuthProvider atualize `currentUser`
-    setTimeout(() => navigate("/menu"), 0);
-  };
-
-  // Fazer login por CPF
-  const handleCPFLoginClick = () => {
-    setShowCPFLogin(true);
-  };
-
-  // Sucesso no login por CPF
   const handleLoginSuccess = (user: User) => {
-    // Limpa o carrinho antes de fazer login
     clearCart();
     login(user);
-    // Limpar nome de convidado quando faz login
     localStorage.removeItem("guestUserName");
-    // Navegar no próximo tick para garantir que o AuthProvider atualize `currentUser`
-    setTimeout(() => navigate("/menu"), 0);
+    navigate("/menu");
   };
 
-  // Se mostrando tela de login por CPF
-  if (showCPFLogin) {
-    return (
-      <CPFLogin
-        onBack={() => setShowCPFLogin(false)}
-        onLoginSuccess={handleLoginSuccess}
-      />
-    );
-  }
-
-  // Se não tem nome, mostrar tela de boas-vindas
-  if (!guestUserName) {
-    return (
-      <WelcomeScreen onNameSubmit={handleNameSubmit} isLoading={isLoading} />
-    );
-  }
-
-  // Se tem nome, mostrar opções de continuar como convidado ou fazer login
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-128px)] p-4">
-      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-2xl shadow-xl">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-800">Bem-vindo(a)!</h1>
-          <p className="mt-2 text-stone-600">
-            Olá, <strong>{guestUserName}</strong>!
-          </p>
-          <p className="mt-4 text-sm text-stone-600">
-            Você pode continuar como convidado ou fazer login para ganhar
-            pontos.
-          </p>
-        </div>
-
-        {/* Botão para continuar como convidado */}
-        <button
-          onClick={handleGuestContinue}
-          className="w-full flex items-center justify-center p-4 text-lg font-semibold text-white bg-amber-600 rounded-xl border-2 border-amber-600 hover:bg-amber-700 hover:border-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all duration-300 ease-in-out transform hover:-translate-y-1"
-        >
-          🚀 Continuar como Convidado
-        </button>
-
-        {/* Divider */}
-        <div className="relative flex items-center">
-          <div className="flex-1 border-t-2 border-stone-200"></div>
-          <span className="px-3 text-stone-500 text-sm">ou</span>
-          <div className="flex-1 border-t-2 border-stone-200"></div>
-        </div>
-
-        {/* Texto para login */}
-        <div className="text-center">
-          <p className="text-sm text-stone-600 mb-4">
-            ⭐ Faça login com seu CPF para acumular pontos e acessar seu
-            histórico!
-          </p>
-        </div>
-
-        {/* Botão para login por CPF */}
-        <button
-          onClick={handleCPFLoginClick}
-          className="w-full flex items-center justify-center p-4 text-lg font-semibold text-stone-700 bg-blue-50 rounded-xl border-2 border-blue-200 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 ease-in-out transform hover:-translate-y-1"
-        >
-          🔐 Fazer Login com CPF
-        </button>
-
-        {/* Botão para trocar de nome */}
-        <button
-          onClick={() => {
-            localStorage.removeItem("guestUserName");
-            setGuestUserName(null);
-          }}
-          className="w-full py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors"
-        >
-          ← Voltar
-        </button>
-      </div>
-    </div>
-  );
+  return <CPFLogin onBack={() => {}} onLoginSuccess={handleLoginSuccess} />;
 };
 
 export default LoginPage;

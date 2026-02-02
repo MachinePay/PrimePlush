@@ -1,4 +1,3 @@
-// Serviço de API com interceptor automático de x-store-id
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -29,34 +28,7 @@ api.interceptors.response.use(
     if (error.response) {
       console.error(`[API] ❌ ${error.response.status}:`, error.response.data);
 
-      // Erros específicos do multi-tenant
-      if (
-        error.response.status === 400 &&
-        error.response.data.error?.includes("storeId")
-      ) {
-        console.error(
-          "[API] ⚠️ Erro Multi-tenant: x-store-id não foi enviado corretamente",
-        );
-      }
-
-      if (
-        error.response.status === 404 &&
-        error.response.data.error?.includes("Loja não encontrada")
-      ) {
-        console.error(
-          "[API] ⚠️ Loja não configurada no sistema:",
-          error.response.data,
-        );
-      }
-
-      if (
-        error.response.status === 400 &&
-        error.response.data.error?.includes("Credenciais")
-      ) {
-        console.error(
-          "[API] ⚠️ Credenciais do Mercado Pago não configuradas para esta loja",
-        );
-      }
+      // ...existing code...
     } else if (error.request) {
       console.error("[API] ❌ Sem resposta do servidor:", error.request);
     } else {

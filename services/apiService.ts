@@ -12,11 +12,6 @@ export function getToken(): string | null {
   return localStorage.getItem("jwt_token");
 }
 
-// Single-tenant: não há mais storeId dinâmico
-function getStoreId(): string {
-  return "loja_unica";
-}
-
 /**
  * Salva o token JWT no localStorage.
  */
@@ -43,7 +38,6 @@ export async function login(
   password: string,
 ): Promise<boolean> {
   try {
-    const storeId = getStoreId();
     const headers: HeadersInit = {
       "Content-Type": "application/json",
     };
@@ -63,7 +57,7 @@ export async function login(
     if (data.success && data.token) {
       // Salva o token no localStorage
       saveToken(data.token);
-      console.log(`✅ Login bem-sucedido! Role: ${role} | Store: ${storeId}`);
+      console.log(`✅ Login bem-sucedido! Role: ${role}`);
       return true;
     }
     return false;
@@ -81,7 +75,7 @@ export function isAuthenticated(): boolean {
 }
 
 /**
- * Um wrapper para o fetch que adiciona o token de autenticação e storeId automaticamente.
+ * Um wrapper para o fetch que adiciona o token de autenticação automaticamente.
  * @param url - A URL da API para chamar.
  * @param options - As opções do fetch (method, body, etc.).
  */
@@ -121,8 +115,7 @@ export async function authenticatedFetch(
 }
 
 /**
- * Fetch público que adiciona apenas o storeId (sem autenticação)
- * Útil para rotas públicas como /api/menu
+ * Fetch público para rotas como /api/menu
  */
 export async function publicFetch(
   url: string,
