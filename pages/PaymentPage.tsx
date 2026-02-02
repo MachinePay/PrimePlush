@@ -173,9 +173,26 @@ const PaymentPage: React.FC = () => {
   ) => {
     try {
       // 1. Atualiza pedido no banco
+      // Garante que paymentId é string ou null
+      let safePaymentId: string | null = paymentId;
+      if (safePaymentId !== undefined && safePaymentId !== null) {
+        if (typeof safePaymentId !== "string") {
+          safePaymentId = String(safePaymentId);
+        }
+        if (
+          typeof safePaymentId !== "string" ||
+          safePaymentId === "[object Object]" ||
+          Array.isArray(safePaymentId)
+        ) {
+          safePaymentId = null;
+        }
+      }
       await fetchStandard(`${BACKEND_URL}/api/orders/${orderId}`, {
         method: "PUT",
-        body: JSON.stringify({ paymentId, paymentStatus: "paid" }),
+        body: JSON.stringify({
+          paymentId: safePaymentId,
+          paymentStatus: "paid",
+        }),
       });
 
       // 2. Se for cartão, garante limpeza da fila da maquininha
