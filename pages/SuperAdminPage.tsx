@@ -3,29 +3,24 @@ import { login, isAuthenticated, logout } from "../services/apiService";
 import logo from "../assets/primeplush-logo.png";
 
 interface StatsData {
-  total_paid_orders: number;
-  total_received: number;
-  last_received_at: string | null;
-}
-
-interface Order {
-  id: string;
-  userName: string;
-  total: number;
-  timestamp: string;
-  paymentStatus: string;
-  paymentMethod?: string;
-  items: any[];
+  stats: {
+    totalToReceive: number;
+    totalReceived: number;
+    alreadyReceived: number;
+  };
+  history: Array<{
+    id: number;
+    amount: number;
+    date: string;
+  }>;
 }
 
 export default function SuperAdminPage() {
   const [password, setPassword] = useState("");
   const [loggedIn, setLoggedIn] = useState(isAuthenticated());
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState<StatsData | null>(null);
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [data, setData] = useState<StatsData | null>(null);
   const [error, setError] = useState("");
-  const [showOrders, setShowOrders] = useState(false);
 
   useEffect(() => {
     if (loggedIn) {
@@ -53,31 +48,44 @@ export default function SuperAdminPage() {
       if (!response.ok) {
         throw new Error("Erro ao buscar dados");
       }
-      const data = await response.json();
-      setStats(data);
+      const result = await response.json();
+      setData(result);
     } catch (e: any) {
       setError(e.message || "Erro ao buscar dados");
     }
     if (!wasLoading) setLoading(false);
   }
 
-  async function fetchRecentOrders() {
+  async function handleMarkReceived() {
+    if (!data || data.stats.totalToReceive <= 0) {
+      setError("Não há valores a receber");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Confirmar recebimento de R$ ${data.stats.totalToReceive.toFixed(2)}?`,
+    );
+    if (!confirmed) return;
+
     setLoading(true);
+    setError("");
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/orders/history?limit=10`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/super-admin/receivables/mark-received`,
         {
+          method: "POST",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "x-super-admin-password": password,
           },
         },
       );
-      if (!response.ok) throw new Error("Erro ao buscar pedidos");
-      const data = await response.json();
-      setRecentOrders(data.slice(0, 10));
-      setShowOrders(true);
+      if (!response.ok) {
+        throw new Error("Erro ao marcar como recebido");
+      }
+      await fetchStats(); // Atualiza os dados
+      alert("Recebimento registrado com sucesso!");
     } catch (e: any) {
-      setError(e.message || "Erro ao buscar pedidos");
+      setError(e.message || "Erro ao marcar como recebido");
     }
     setLoading(false);
   }
@@ -96,7 +104,7 @@ export default function SuperAdminPage() {
     logout();
     setLoggedIn(false);
     setPassword("");
-    setStats(null);
+    setData(null);
     setError("");
   }
 
@@ -167,177 +175,81 @@ export default function SuperAdminPage() {
         </div>
 
         {/* Stats Cards */}
-        {loading && !stats && (
+        {loading && !data && (
           <div className="text-center py-12">
             <div className="inline-block w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
             <p className="mt-4 text-gray-600">Carregando dados...</p>
           </div>
         )}
 
-        {error && !stats && (
+        {error && !data && (
           <div className="bg-red-50 border-2 border-red-200 text-red-600 p-6 rounded-lg text-center">
             {error}
           </div>
         )}
 
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Card Total de Pedidos Pagos */}
-            <div className="bg-white shadow-xl rounded-2xl p-6 border-2 border-green-200">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">✅</span>
+        {data && (
+          <>
+            {/* Card Total a Receber - DESTAQUE */}
+            <div className="bg-gradient-to-br from-purple-500 to-pink-500 shadow-2xl rounded-3xl p-8 mb-6 border-4 border-white">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
+                  <span className="text-4xl">💰</span>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-700">
-                  Pedidos Pagos
-                </h3>
+                <h2 className="text-2xl font-bold text-white">
+                  Total a Receber
+                </h2>
               </div>
-              <p className="text-4xl font-bold text-green-600">
-                {stats.total_paid_orders}
+              <p className="text-6xl font-bold text-white mb-2">
+                R$ {data.stats.totalToReceive.toFixed(2)}
               </p>
-              <p className="text-sm text-gray-500 mt-2">
-                Total de pedidos confirmados
-              </p>
-            </div>
-
-            {/* Card Valor Total Recebido */}
-            <div className="bg-white shadow-xl rounded-2xl p-6 border-2 border-purple-200">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">💰</span>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-700">
-                  Total Recebido
-                </h3>
-              </div>
-              <p className="text-4xl font-bold text-purple-600">
-                R$ {stats.total_received.toFixed(2)}
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-white text-opacity-90 mb-6">
                 Receita total confirmada
               </p>
+              <button
+                onClick={handleMarkReceived}
+                disabled={loading || data.stats.totalToReceive === 0}
+                className="bg-white text-purple-600 hover:bg-gray-100 font-bold py-4 px-8 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-lg w-full"
+              >
+                {loading ? "Processando..." : "✅ Marcar como Recebido"}
+              </button>
             </div>
 
-            {/* Card Último Recebimento */}
-            <div className="bg-white shadow-xl rounded-2xl p-6 border-2 border-blue-200">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">🕒</span>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-700">
-                  Último Recebimento
-                </h3>
-              </div>
-              <p className="text-lg font-semibold text-blue-600">
-                {stats.last_received_at
-                  ? new Date(stats.last_received_at).toLocaleString("pt-BR")
-                  : "Nenhum recebimento"}
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
-                Data e hora do último pedido pago
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Ações rápidas */}
-        {stats && (
-          <div className="mt-6">
+            {/* Histórico de Recebimentos */}
             <div className="bg-white shadow-xl rounded-2xl p-6 border-2 border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">
-                Ações Rápidas
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <span>📋</span> Histórico de Recebimentos
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button
-                  onClick={fetchRecentOrders}
-                  disabled={loading}
-                  className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition-all shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  📋 Ver Últimos Pedidos
-                </button>
-                <button
-                  onClick={fetchStats}
-                  disabled={loading}
-                  className="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-all shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  🔄 Atualizar Dados
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Tabela de pedidos recentes */}
-        {showOrders && recentOrders.length > 0 && (
-          <div className="mt-6">
-            <div className="bg-white shadow-xl rounded-2xl p-6 border-2 border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-800">
-                  Últimos 10 Pedidos
-                </h2>
-                <button
-                  onClick={() => setShowOrders(false)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
-                >
-                  ×
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b-2 border-gray-200">
-                      <th className="text-left p-3 text-gray-700 font-semibold">
-                        ID
-                      </th>
-                      <th className="text-left p-3 text-gray-700 font-semibold">
-                        Cliente
-                      </th>
-                      <th className="text-left p-3 text-gray-700 font-semibold">
-                        Valor
-                      </th>
-                      <th className="text-left p-3 text-gray-700 font-semibold">
-                        Status
-                      </th>
-                      <th className="text-left p-3 text-gray-700 font-semibold">
-                        Data/Hora
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentOrders.map((order) => (
-                      <tr
-                        key={order.id}
-                        className="border-b border-gray-100 hover:bg-gray-50"
-                      >
-                        <td className="p-3 text-sm font-mono">
-                          {order.id.substring(0, 12)}...
-                        </td>
-                        <td className="p-3">{order.userName}</td>
-                        <td className="p-3 font-semibold text-green-600">
-                          R$ {order.total.toFixed(2)}
-                        </td>
-                        <td className="p-3">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              order.paymentStatus === "paid"
-                                ? "bg-green-100 text-green-700"
-                                : order.paymentStatus === "pending"
-                                  ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {order.paymentStatus === "paid"
-                              ? "✅ Pago"
-                              : order.paymentStatus === "pending"
-                                ? "⏳ Pendente"
-                                : "❌ Cancelado"}
-                          </span>
-                        </td>
-                        <td className="p-3 text-sm text-gray-600">
-                          {new Date(order.timestamp).toLocaleString("pt-BR")}
-                        </td>
-                      </tr>
-                    ))}
+              {data.history.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p className="text-lg">Nenhum recebimento registrado ainda</p>
+                  <p className="text-sm mt-2">
+                    Os recebimentos aparecerão aqui após marcar como recebido
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {data.history.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <span className="text-xl">✅</span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-green-600 text-xl">
+                            R$ {item.amount.toFixed(2)}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Recebido em{" "}
+                            {new Date(item.date).toLocaleString("pt-BR")}
+                          </p>
+                        </div>
+            Indicador de atualização */}
+        {data      ))}
                   </tbody>
                 </table>
               </div>
