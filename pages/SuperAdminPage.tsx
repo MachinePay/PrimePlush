@@ -43,7 +43,7 @@ export default function SuperAdminPage() {
           headers: {
             "x-super-admin-password": password,
           },
-        },
+        }
       );
       if (!response.ok) {
         throw new Error("Erro ao buscar dados");
@@ -63,7 +63,7 @@ export default function SuperAdminPage() {
     }
 
     const confirmed = window.confirm(
-      `Confirmar recebimento de R$ ${data.stats.totalToReceive.toFixed(2)}?`,
+      `Confirmar recebimento de R$ ${data.stats.totalToReceive.toFixed(2)}?`
     );
     if (!confirmed) return;
 
@@ -77,7 +77,7 @@ export default function SuperAdminPage() {
           headers: {
             "x-super-admin-password": password,
           },
-        },
+        }
       );
       if (!response.ok) {
         throw new Error("Erro ao marcar como recebido");
@@ -223,7 +223,9 @@ export default function SuperAdminPage() {
 
               {data.history.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  <p className="text-lg">Nenhum recebimento registrado ainda</p>
+                  <p className="text-lg">
+                    Nenhum recebimento registrado ainda
+                  </p>
                   <p className="text-sm mt-2">
                     Os recebimentos aparecerão aqui após marcar como recebido
                   </p>
@@ -248,17 +250,17 @@ export default function SuperAdminPage() {
                             {new Date(item.date).toLocaleString("pt-BR")}
                           </p>
                         </div>
-            Indicador de atualização */}
-        {data      ))}
-                  </tbody>
-                </table>
-              </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
+          </>
         )}
 
         {/* Indicador de atualização */}
-        {stats && (
+        {data && (
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-500">
               {loading ? (
