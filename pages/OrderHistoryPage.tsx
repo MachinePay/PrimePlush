@@ -147,8 +147,34 @@ const OrderHistoryPage: React.FC = () => {
                   {order.observation}
                 </div>
               )}
-              <div className="text-right text-stone-500 text-xs">
-                Total: R${order.total?.toFixed(2) ?? "-"}
+              <div className="flex flex-wrap justify-between items-end mt-2">
+                <div className="text-stone-500 text-xs">
+                  Total: R${order.total?.toFixed(2) ?? "-"}
+                </div>
+                {/* Exibe status do pagamento */}
+                {order.paymentType === "presencial" &&
+                  order.paymentStatus === "pending" && (
+                    <>
+                      <span className="text-amber-600 font-bold">A PAGAR</span>
+                      <button
+                        className="px-3 py-1 rounded bg-green-600 text-white text-xs font-bold hover:bg-green-700 transition"
+                        onClick={async () => {
+                          // Chama endpoint para marcar como pago
+                          const resp = await authenticatedFetch(
+                            `${BACKEND_URL}/api/orders/${order.id}/mark-paid`,
+                            { method: "PUT" },
+                          );
+                          if (resp.ok) {
+                            fetchOrders();
+                          } else {
+                            alert("Erro ao marcar como pago");
+                          }
+                        }}
+                      >
+                        Marcar como pago
+                      </button>
+                    </>
+                  )}
               </div>
             </div>
           ))}

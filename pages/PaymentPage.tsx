@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import { useQuery } from "@tanstack/react-query"; // Importação Nova
+import { useQuery } from "@tanstack/react-query";
 import { useCart } from "../contexts/CartContext";
 import { useAuth } from "../contexts/AuthContext";
-import { clearPaymentQueue } from "../services/pointService";
+import { clearPaymentQueue } from "../services/pointService"; // Verifique se esse caminho está correto no seu projeto
 import {
   createPixPayment,
   createCardPayment,
@@ -40,14 +40,25 @@ const PaymentPage: React.FC = () => {
   const [paymentType, setPaymentType] = useState<
     "online" | "presencial" | null
   >(null);
+
+  // --- CORREÇÃO: ADICIONADO O ESTADO QUE FALTAVA ---
+  const [presencialStep, setPresencialStep] = useState<
+    "select-method" | "select-installments" | "finalize" | null
+  >(null);
+
   const [paymentMethod, setPaymentMethod] = useState<
     "credit" | "debit" | "pix" | null
   >(null);
+
   const [status, setStatus] = useState<
     "idle" | "processing" | "success" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [paymentStatusMessage, setPaymentStatusMessage] = useState("");
+
+  // Estados para taxa e parcelas (usados em ambos os fluxos)
+  const [selectedInstallments, setSelectedInstallments] = useState<number>(1);
+  const [taxaSelecionada, setTaxaSelecionada] = useState<number>(0); // Corrigido valor inicial para 0 se não tiver taxa padrão
 
   // Estados para PIX
   const [qrCodeBase64, setQrCodeBase64] = useState<string | null>(null);
@@ -59,7 +70,6 @@ const PaymentPage: React.FC = () => {
   const paymentIdRef = useRef<string | null>(null);
 
   // --- REACT QUERY: POLLING INTELIGENTE ---
-  // Substitui o loop while. Só roda quando activePayment existe.
   const { data: paymentStatusData } = useQuery({
     queryKey: ["paymentStatus", activePayment?.id, activePayment?.type],
     queryFn: async () => {
@@ -69,12 +79,9 @@ const PaymentPage: React.FC = () => {
         throw new Error(result.error || "Erro ao verificar status");
       return result;
     },
-    // Só executa se tiver um pagamento ativo e não tiver finalizado ainda
     enabled: !!activePayment && status === "processing",
-    // Polling a cada 3 segundos
     refetchInterval: (query) => {
       const data = query.state.data;
-      // Para o polling se aprovado, cancelado ou rejeitado (status final)
       if (
         data?.status === "approved" ||
         data?.status === "FINISHED" ||
@@ -84,7 +91,6 @@ const PaymentPage: React.FC = () => {
         return false;
       return 3000;
     },
-    // Não refazer busca se o usuário trocar de janela (evita bugs de foco)
     refetchOnWindowFocus: false,
   });
 
@@ -102,7 +108,6 @@ const PaymentPage: React.FC = () => {
       );
     }
 
-    // Detecta pagamento cancelado ou rejeitado
     if (
       (paymentStatusData?.status === "canceled" ||
         paymentStatusData?.status === "rejected") &&
@@ -113,19 +118,17 @@ const PaymentPage: React.FC = () => {
     }
   }, [paymentStatusData, activePayment]);
 
-  // --- EFEITO: Cleanup de Segurança (Zombie Killer) ---
+  // --- EFEITO: Cleanup de Segurança ---
   useEffect(() => {
     paymentIdRef.current = activePayment?.id || null;
   }, [activePayment]);
 
   useEffect(() => {
     return () => {
-      // Se o componente desmontar (usuário clicar em Voltar) e tiver pagamento pendente
       if (paymentIdRef.current) {
         console.log(
           `🧹 Cleanup: Cancelando pagamento ${paymentIdRef.current} no backend...`,
         );
-        // Usa fetch com keepalive para garantir que o cancelamento vá mesmo fechando a aba
         fetchStandard(
           `${BACKEND_URL}/api/payment/cancel/${paymentIdRef.current}`,
           {
@@ -137,12 +140,10 @@ const PaymentPage: React.FC = () => {
     };
   }, []);
 
-  // --- Lógica de Falha de Pagamento ---
   const handlePaymentFailure = (data: any) => {
-    setActivePayment(null); // Para o polling
+    setActivePayment(null);
     setStatus("error");
 
-    // Mensagens específicas baseadas no reason
     const reasonMessages: Record<string, string> = {
       canceled_by_user: "Pagamento cancelado na maquininha pelo usuário",
       payment_error: "Erro ao processar pagamento na maquininha",
@@ -150,7 +151,6 @@ const PaymentPage: React.FC = () => {
       rejected_by_terminal: "Pagamento rejeitado pela maquininha",
     };
 
-    // Prioridade: message do backend > reasonMessages > mensagem genérica
     const errorMsg =
       data.message ||
       (data.reason ? reasonMessages[data.reason] : null) ||
@@ -158,22 +158,14 @@ const PaymentPage: React.FC = () => {
 
     setErrorMessage(errorMsg);
     setQrCodeBase64(null);
-
-    console.log(`❌ Falha: ${errorMsg}`);
-    if (data.reason) console.log(`  Motivo: ${data.reason}`);
-    if (data.orderId) console.log(`  Pedido: ${data.orderId}`);
-    if (data.paymentStatus) console.log(`  Status MP: ${data.paymentStatus}`);
   };
 
-  // --- Lógica de Finalização ---
   const finalizeOrder = async (
     orderId: string,
     paymentId: string,
     type: "pix" | "card",
   ) => {
     try {
-      // 1. Atualiza pedido no banco
-      // Garante que paymentId é string ou null
       let safePaymentId: string | null = paymentId;
       if (safePaymentId !== undefined && safePaymentId !== null) {
         if (typeof safePaymentId !== "string") {
@@ -195,13 +187,11 @@ const PaymentPage: React.FC = () => {
         }),
       });
 
-      // 2. Se for cartão, garante limpeza da fila da maquininha
       if (type === "card") {
         setPaymentStatusMessage("Liberando maquininha...");
         await clearPaymentQueue();
       }
 
-      // 3. Atualiza histórico local
       const orderData: Order = {
         id: orderId,
         userId: currentUser!.id,
@@ -220,8 +210,7 @@ const PaymentPage: React.FC = () => {
 
       addOrderToHistory(orderData);
 
-      // 4. Limpa UI e Redireciona
-      setActivePayment(null); // Para o polling
+      setActivePayment(null);
       setStatus("success");
       clearCart();
       setQrCodeBase64(null);
@@ -239,8 +228,6 @@ const PaymentPage: React.FC = () => {
     }
   };
 
-  // --- Helpers de Criação ---
-
   const createOrder = async () => {
     const orderResp = await fetchStandard(`${BACKEND_URL}/api/orders`, {
       method: "POST",
@@ -253,17 +240,26 @@ const PaymentPage: React.FC = () => {
           quantity: i.quantity,
           price: i.price,
         })),
-        total: cartTotal,
+        total:
+          paymentType === "presencial" &&
+          paymentMethod === "credit" &&
+          taxaSelecionada
+            ? Number(
+                (cartTotal * (1 + (taxaSelecionada || 0) / 100)).toFixed(2),
+              )
+            : cartTotal,
         paymentId: null,
         observation: observation,
+        paymentType: paymentType,
+        paymentMethod: paymentMethod,
+        installments: paymentMethod === "credit" ? selectedInstallments : 1,
+        fee: paymentMethod === "credit" ? taxaSelecionada : 0,
       }),
     });
     if (!orderResp.ok) throw new Error("Erro ao criar pedido");
     const data = await orderResp.json();
     return data.id;
   };
-
-  // --- Handlers de Início ---
 
   const handlePixPayment = async () => {
     setStatus("processing");
@@ -286,8 +282,6 @@ const PaymentPage: React.FC = () => {
 
       setQrCodeBase64(result.qrCode);
       setPaymentStatusMessage("Escaneie o QR Code...");
-
-      // Inicia Polling Automático via React Query
       setActivePayment({ id: result.paymentId, type: "pix", orderId });
     } catch (err: any) {
       console.error(err);
@@ -296,6 +290,7 @@ const PaymentPage: React.FC = () => {
     }
   };
 
+  // Função usada para integração com maquininha (se for usar o fluxo automático)
   const handleCardPayment = async () => {
     setStatus("processing");
     setPaymentStatusMessage("Conectando à maquininha...");
@@ -303,20 +298,28 @@ const PaymentPage: React.FC = () => {
     try {
       const orderId = await createOrder();
 
+      const valorFinal =
+        paymentMethod === "credit"
+          ? Number((cartTotal * (1 + (taxaSelecionada || 0) / 100)).toFixed(2))
+          : cartTotal;
+
+      console.log("[Pagamento] Parcelas selecionadas:", selectedInstallments);
+
       const result = await createCardPayment({
-        amount: cartTotal,
+        amount: valorFinal,
         description: `Pedido ${currentUser!.name}`,
         orderId: orderId,
         paymentMethod: paymentMethod as "credit" | "debit",
+        installments: paymentMethod === "credit" ? selectedInstallments : 1,
       });
+
+      console.log("[API] Resposta completa do pagamento presencial:", result);
 
       if (!result.success || !result.paymentId) {
         throw new Error(result.error || "Erro na maquininha");
       }
 
       setPaymentStatusMessage("Aguardando pagamento na maquininha...");
-
-      // Inicia Polling Automático via React Query
       setActivePayment({ id: result.paymentId, type: "card", orderId });
     } catch (err: any) {
       console.error(err);
@@ -324,49 +327,6 @@ const PaymentPage: React.FC = () => {
       setErrorMessage(err.message || "Erro ao conectar maquininha.");
     }
   };
-
-  const handleCancelPayment = async () => {
-    if (!activePayment) return;
-
-    const result = await Swal.fire({
-      title: "Cancelar?",
-      text: "Deseja cancelar o pagamento?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      confirmButtonText: "Sim, cancelar",
-    });
-
-    if (result.isConfirmed) {
-      try {
-        const cancelResult = await cancelPayment(activePayment.id);
-
-        if (!cancelResult.success) {
-          throw new Error(cancelResult.error || "Erro ao cancelar");
-        }
-
-        setActivePayment(null); // Para o polling imediatamente
-        setStatus("idle");
-        setQrCodeBase64(null);
-        Swal.fire("Cancelado", "Pagamento cancelado.", "success");
-      } catch (e: any) {
-        Swal.fire("Erro", e.message || "Erro ao cancelar.", "error");
-      }
-    }
-  };
-
-  const handlePayment = async () => {
-    if (!paymentMethod) {
-      setErrorMessage("Selecione a forma de pagamento");
-      setStatus("error");
-      setTimeout(() => setStatus("idle"), 3000);
-      return;
-    }
-    if (paymentMethod === "pix") await handlePixPayment();
-    else await handleCardPayment();
-  };
-
-  // --- Renderização ---
 
   if (status === "success") {
     return (
@@ -406,6 +366,7 @@ const PaymentPage: React.FC = () => {
       </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* COLUNA ESQUERDA - RESUMO */}
         <div className="bg-white p-6 rounded-2xl shadow-lg h-fit">
           <h2 className="text-xl font-bold text-stone-800 mb-4 border-b pb-2">
             Resumo do Pedido
@@ -425,11 +386,16 @@ const PaymentPage: React.FC = () => {
           <div className="border-t pt-4 flex justify-between items-center">
             <span className="text-lg text-stone-500">Total a pagar:</span>
             <span className="text-3xl font-bold text-amber-600">
-              R$ {cartTotal.toFixed(2)}
+              {(paymentType === "presencial" || paymentType === "online") &&
+              paymentMethod === "credit" &&
+              taxaSelecionada
+                ? `R$ ${(cartTotal * (1 + taxaSelecionada / 100)).toFixed(2)}`
+                : `R$ ${cartTotal.toFixed(2)}`}
             </span>
           </div>
         </div>
 
+        {/* COLUNA DIREITA - AÇÕES */}
         <div className="flex flex-col gap-4">
           {!paymentType && (
             <>
@@ -451,135 +417,443 @@ const PaymentPage: React.FC = () => {
             </>
           )}
 
-          {/* Pagamento Online (em breve) */}
+          {/* Pagamento Online */}
           {paymentType === "online" && (
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded text-center text-blue-800 font-semibold">
               <span className="block text-2xl mb-2">💻 Pagamento Online</span>
-              <span>Em breve você poderá pagar online pelo Mercado Pago!</span>
-              <button
-                className="mt-4 px-4 py-2 rounded bg-stone-200 text-stone-700 hover:bg-stone-300"
-                onClick={() => setPaymentType(null)}
-              >
-                Voltar
-              </button>
+              <div className="flex flex-col gap-4 items-center justify-center">
+                <div className="flex gap-4 mb-4">
+                  <button
+                    className={`px-6 py-3 rounded font-bold text-lg transition-all ${
+                      paymentMethod === "credit"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-blue-700 border border-blue-600"
+                    }`}
+                    onClick={() => setPaymentMethod("credit")}
+                  >
+                    Cartão de Crédito
+                  </button>
+                  <button
+                    className={`px-6 py-3 rounded font-bold text-lg transition-all ${
+                      paymentMethod === "debit"
+                        ? "bg-green-600 text-white"
+                        : "bg-white text-green-700 border border-green-600"
+                    }`}
+                    onClick={() => setPaymentMethod("debit")}
+                  >
+                    Cartão de Débito
+                  </button>
+                  <button
+                    className={`px-6 py-3 rounded font-bold text-lg transition-all ${
+                      paymentMethod === "pix"
+                        ? "bg-purple-600 text-white"
+                        : "bg-white text-purple-700 border border-purple-600"
+                    }`}
+                    onClick={() => setPaymentMethod("pix")}
+                  >
+                    PIX
+                  </button>
+                </div>
+
+                {/* PIX Online */}
+                {paymentMethod === "pix" && (
+                  <button
+                    className="px-6 py-3 rounded bg-purple-600 text-white font-bold text-lg hover:bg-purple-700 transition-all mb-2"
+                    onClick={async () => {
+                      setStatus("processing");
+                      setErrorMessage("");
+                      try {
+                        const orderResp = await fetchStandard(
+                          `${BACKEND_URL}/api/orders`,
+                          {
+                            method: "POST",
+                            body: JSON.stringify({
+                              userId: currentUser!.id,
+                              userName: currentUser!.name,
+                              items: cartItems.map((i) => ({
+                                id: i.id,
+                                name: i.name,
+                                quantity: i.quantity,
+                                price: i.price,
+                              })),
+                              total: cartTotal,
+                              paymentId: null,
+                              observation: observation,
+                            }),
+                          },
+                        );
+                        if (!orderResp.ok)
+                          throw new Error("Erro ao criar pedido");
+                        const orderData = await orderResp.json();
+                        const pixResp = await fetchStandard(
+                          `${BACKEND_URL}/api/payment/online-pix`,
+                          {
+                            method: "POST",
+                            body: JSON.stringify({
+                              amount: cartTotal,
+                              description: `Pedido de ${currentUser!.name}`,
+                              orderId: orderData.id,
+                              email: currentUser?.email,
+                              payerName: currentUser?.name,
+                            }),
+                          },
+                        );
+                        const pixData = await pixResp.json();
+                        if (
+                          !pixResp.ok ||
+                          !pixData.paymentId ||
+                          !pixData.qrCodeBase64
+                        ) {
+                          throw new Error(
+                            pixData.error || "Erro ao gerar PIX online",
+                          );
+                        }
+                        setQrCodeBase64(pixData.qrCodeBase64);
+                        setPaymentStatusMessage(
+                          "Escaneie o QR Code para pagar!",
+                        );
+                        setActivePayment({
+                          id: pixData.paymentId,
+                          type: "pix",
+                          orderId: orderData.id,
+                        });
+                      } catch (err: any) {
+                        setStatus("error");
+                        setErrorMessage(
+                          err.message || "Erro no pagamento online PIX.",
+                        );
+                      }
+                    }}
+                  >
+                    Gerar QR Code PIX
+                  </button>
+                )}
+
+                {/* Cartão Online (Crédito ou Débito) */}
+                {(paymentMethod === "credit" || paymentMethod === "debit") && (
+                  <>
+                    {paymentMethod === "credit" && (
+                      <div className="mb-2">
+                        <span className="font-semibold text-blue-700">
+                          Parcelamento disponível:
+                        </span>
+                        <ul className="text-sm text-blue-800 mt-1 flex flex-wrap gap-2">
+                          {[
+                            { parcelas: 1, taxa: 0 },
+                            { parcelas: 2, taxa: 2.53 },
+                            { parcelas: 3, taxa: 2.83 },
+                            { parcelas: 4, taxa: 4.73 },
+                            { parcelas: 5, taxa: 4.83 },
+                            { parcelas: 6, taxa: 4.93 },
+                            { parcelas: 7, taxa: 6.23 },
+                            { parcelas: 8, taxa: 6.42 },
+                            { parcelas: 9, taxa: 7.11 },
+                            { parcelas: 10, taxa: 7.79 },
+                            { parcelas: 11, taxa: 9.01 },
+                            { parcelas: 12, taxa: 9.12 },
+                          ].map((opt) => (
+                            <li key={opt.parcelas}>
+                              <button
+                                className={`px-2 py-1 rounded ${
+                                  selectedInstallments === opt.parcelas
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-white text-blue-700 border border-blue-600"
+                                }`}
+                                onClick={() => {
+                                  setSelectedInstallments(opt.parcelas);
+                                  setTaxaSelecionada(opt.taxa);
+                                }}
+                              >
+                                {opt.parcelas}x - Taxa: {opt.taxa.toFixed(2)}%
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="mt-2 text-blue-900 font-bold">
+                          Total com taxa: R${" "}
+                          {(
+                            cartTotal *
+                            (1 + (taxaSelecionada || 0) / 100)
+                          ).toFixed(2)}
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      className={`px-6 py-3 rounded ${
+                        paymentMethod === "credit"
+                          ? "bg-blue-600"
+                          : "bg-green-600"
+                      } text-white font-bold text-lg hover:opacity-90 transition-all mb-2`}
+                      onClick={async () => {
+                        setStatus("processing");
+                        setErrorMessage("");
+                        try {
+                          const orderResp = await fetchStandard(
+                            `${BACKEND_URL}/api/orders`,
+                            {
+                              method: "POST",
+                              body: JSON.stringify({
+                                userId: currentUser!.id,
+                                userName: currentUser!.name,
+                                items: cartItems.map((i) => ({
+                                  id: i.id,
+                                  name: i.name,
+                                  quantity: i.quantity,
+                                  price: i.price,
+                                })),
+                                total: cartTotal,
+                                paymentId: null,
+                                observation: observation,
+                              }),
+                            },
+                          );
+                          if (!orderResp.ok)
+                            throw new Error("Erro ao criar pedido");
+                          const orderData = await orderResp.json();
+
+                          // ATENÇÃO: Usando prompt como fallback simples
+                          const cardToken = prompt(
+                            "Cole o cardToken gerado pelo MercadoPago.js:",
+                          );
+                          if (!cardToken)
+                            throw new Error("Token do cartão não informado.");
+
+                          const installments =
+                            paymentMethod === "credit"
+                              ? parseInt(
+                                  prompt("Número de parcelas (1-12):", "1") ||
+                                    "1",
+                                  10,
+                                )
+                              : 1;
+
+                          const cardResp = await fetchStandard(
+                            `${BACKEND_URL}/api/payment/online-card`,
+                            {
+                              method: "POST",
+                              body: JSON.stringify({
+                                amount: cartTotal,
+                                description: `Pedido de ${currentUser!.name}`,
+                                orderId: orderData.id,
+                                cardToken,
+                                email: currentUser?.email,
+                                payerName: currentUser?.name,
+                                installments,
+                              }),
+                            },
+                          );
+                          const cardData = await cardResp.json();
+                          if (!cardResp.ok || !cardData.paymentId) {
+                            throw new Error(
+                              cardData.error ||
+                                "Erro ao pagar com cartão online",
+                            );
+                          }
+                          setPaymentStatusMessage(
+                            "Pagamento com cartão enviado! Aguarde aprovação...",
+                          );
+                          setActivePayment({
+                            id: cardData.paymentId,
+                            type: "card",
+                            orderId: orderData.id,
+                          });
+                        } catch (err: any) {
+                          setStatus("error");
+                          setErrorMessage(
+                            err.message || "Erro no pagamento online cartão.",
+                          );
+                        }
+                      }}
+                    >
+                      {paymentMethod === "credit"
+                        ? "Pagar com Crédito Online"
+                        : "Pagar com Débito Online"}
+                    </button>
+                  </>
+                )}
+
+                <button
+                  className="mt-4 px-4 py-2 rounded bg-stone-200 text-stone-700 hover:bg-stone-300"
+                  onClick={() => setPaymentType(null)}
+                >
+                  Voltar
+                </button>
+
+                {status === "processing" && qrCodeBase64 && (
+                  <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-purple-300 text-center mt-4">
+                    <h3 className="text-purple-900 font-bold text-xl mb-4">
+                      Pague com PIX
+                    </h3>
+                    <img
+                      src={`data:image/png;base64,${qrCodeBase64}`}
+                      alt="QR Code"
+                      className="w-64 h-64 mx-auto mb-4"
+                    />
+                    <p className="text-purple-600 text-sm">
+                      Escaneie com o app do seu banco
+                    </p>
+                  </div>
+                )}
+                {status === "error" && (
+                  <div className="bg-red-100 text-red-700 p-3 rounded-lg text-center font-semibold mt-4">
+                    {errorMessage}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Pagamento Presencial */}
+          {/* Pagamento Presencial (Modo Manual/A Pagar) */}
           {paymentType === "presencial" && (
-            <>
-              <h2 className="text-xl font-bold text-stone-800 mb-2">
-                Escolha a forma de pagamento presencial:
-              </h2>
-              <PaymentOption
-                label="Cartão de Crédito"
-                icon="💳"
-                selected={paymentMethod === "credit"}
-                onClick={() => setPaymentMethod("credit")}
-              />
-              <PaymentOption
-                label="Cartão de Débito"
-                icon="💳"
-                selected={paymentMethod === "debit"}
-                onClick={() => setPaymentMethod("debit")}
-              />
-              <PaymentOption
-                label="PIX"
-                icon="💠"
-                selected={paymentMethod === "pix"}
-                onClick={() => setPaymentMethod("pix")}
-              />
+            <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded text-center text-amber-800 font-semibold">
+              <span className="block text-2xl mb-2">
+                🏪 Pagamento na Loja Girakids
+              </span>
 
-              {status === "processing" && !qrCodeBase64 && (
-                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded animate-pulse text-center text-blue-800 font-semibold">
-                  {paymentStatusMessage}
+              {/* Step 1: Seleção do método */}
+              {presencialStep === null || presencialStep === "select-method" ? (
+                <div className="flex flex-col gap-4 items-center justify-center">
+                  <span className="mb-2">Escolha a forma de pagamento:</span>
+                  <button
+                    className={`px-6 py-3 rounded font-bold text-lg transition-all ${
+                      paymentMethod === "credit"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-blue-700 border border-blue-600"
+                    }`}
+                    onClick={() => {
+                      setPaymentMethod("credit");
+                      setPresencialStep("select-installments");
+                    }}
+                  >
+                    Crédito
+                  </button>
+                  <button
+                    className={`px-6 py-3 rounded font-bold text-lg transition-all ${
+                      paymentMethod === "debit"
+                        ? "bg-green-600 text-white"
+                        : "bg-white text-green-700 border border-green-600"
+                    }`}
+                    onClick={() => {
+                      setPaymentMethod("debit");
+                      setPresencialStep("finalize");
+                    }}
+                  >
+                    Débito
+                  </button>
+                  <button
+                    className={`px-6 py-3 rounded font-bold text-lg transition-all ${
+                      paymentMethod === "pix"
+                        ? "bg-purple-600 text-white"
+                        : "bg-white text-purple-700 border border-purple-600"
+                    }`}
+                    onClick={() => {
+                      setPaymentMethod("pix");
+                      setPresencialStep("finalize");
+                    }}
+                  >
+                    PIX
+                  </button>
                 </div>
-              )}
+              ) : null}
 
-              {status === "processing" && qrCodeBase64 && (
-                <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-purple-300 text-center">
-                  <h3 className="text-purple-900 font-bold text-xl mb-4">
-                    Pague com PIX
-                  </h3>
-                  <img
-                    src={`data:image/png;base64,${qrCodeBase64}`}
-                    alt="QR Code"
-                    className="w-64 h-64 mx-auto mb-4"
-                  />
-                  <p className="text-purple-600 text-sm">
-                    Escaneie com o app do seu banco
-                  </p>
-                </div>
-              )}
+              {/* Step 2: Seleção de parcelas para crédito */}
+              {presencialStep === "select-installments" &&
+                paymentMethod === "credit" && (
+                  <div className="mb-2">
+                    <span className="font-semibold text-blue-700">
+                      Parcelamento disponível:
+                    </span>
+                    <ul className="text-sm text-blue-800 mt-1 flex flex-wrap gap-2">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(
+                        (parcelas) => (
+                          <li key={parcelas}>
+                            <button
+                              className={`px-2 py-1 rounded ${
+                                selectedInstallments === parcelas
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-white text-blue-700 border border-blue-600"
+                              }`}
+                              onClick={() => {
+                                setSelectedInstallments(parcelas);
+                                setPresencialStep("finalize");
+                              }}
+                            >
+                              {parcelas}x
+                            </button>
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  </div>
+                )}
 
-              {status === "error" && (
-                <div className="bg-red-100 text-red-700 p-3 rounded-lg text-center font-semibold">
-                  {errorMessage}
-                </div>
-              )}
-
-              {status === "processing" ? (
+              {/* Step 3: Finalizar pedido */}
+              {presencialStep === "finalize" && (
                 <button
-                  onClick={handleCancelPayment}
-                  className="mt-4 w-full py-4 rounded-xl font-bold text-xl bg-amber-600 text-white hover:bg-amber-700 shadow-lg transition-transform hover:scale-105"
+                  className="mt-4 px-6 py-3 rounded bg-amber-600 text-white font-bold text-lg hover:bg-amber-700 transition-all"
+                  onClick={async () => {
+                    setStatus("processing");
+                    setErrorMessage("");
+                    try {
+                      const orderResp = await fetchStandard(
+                        `${BACKEND_URL}/api/orders`,
+                        {
+                          method: "POST",
+                          body: JSON.stringify({
+                            userId: currentUser!.id,
+                            userName: currentUser!.name,
+                            items: cartItems.map((i) => ({
+                              id: i.id,
+                              name: i.name,
+                              quantity: i.quantity,
+                              price: i.price,
+                            })),
+                            total: cartTotal,
+                            paymentType: "presencial",
+                            paymentMethod,
+                            installments:
+                              paymentMethod === "credit"
+                                ? selectedInstallments
+                                : 1,
+                            paymentStatus: "pending",
+                            observation,
+                          }),
+                        },
+                      );
+                      if (!orderResp.ok)
+                        throw new Error("Erro ao criar pedido");
+                      setStatus("success");
+                      clearCart();
+                      setPresencialStep(null);
+                      setPaymentType(null);
+                    } catch (err: any) {
+                      setStatus("error");
+                      setErrorMessage(
+                        err.message || "Erro ao salvar pedido presencial.",
+                      );
+                    }
+                  }}
                 >
-                  ❌ Cancelar Pagamento
-                </button>
-              ) : (
-                <button
-                  onClick={handlePayment}
-                  disabled={!paymentMethod}
-                  className={`mt-4 w-full py-4 rounded-xl font-bold text-xl shadow-lg transition-transform ${
-                    !paymentMethod
-                      ? "bg-stone-300 text-stone-500 cursor-not-allowed"
-                      : "bg-green-600 text-white hover:bg-green-700 hover:scale-105"
-                  }`}
-                >
-                  Pagar R$ {cartTotal.toFixed(2)}
+                  Finalizar Pedido
                 </button>
               )}
 
               <button
-                className="mt-2 px-4 py-2 rounded bg-stone-200 text-stone-700 hover:bg-stone-300"
+                className="mt-4 px-4 py-2 rounded bg-stone-200 text-stone-700 hover:bg-stone-300"
                 onClick={() => {
                   setPaymentType(null);
+                  setPresencialStep(null);
                   setPaymentMethod(null);
                 }}
               >
                 Voltar
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
     </div>
   );
 };
-
-const PaymentOption: React.FC<{
-  label: string;
-  icon: string;
-  selected: boolean;
-  onClick: () => void;
-}> = ({ label, icon, selected, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all duration-200 text-left ${
-      selected
-        ? "border-amber-500 bg-amber-50 shadow-md transform scale-102"
-        : "border-stone-200 bg-white hover:border-amber-300 hover:bg-stone-50"
-    }`}
-  >
-    <span className="text-3xl">{icon}</span>
-    <span
-      className={`font-semibold text-lg ${
-        selected ? "text-amber-900" : "text-stone-600"
-      }`}
-    >
-      {label}
-    </span>
-    {selected && <span className="ml-auto text-amber-600 font-bold">✓</span>}
-  </button>
-);
 
 export default PaymentPage;

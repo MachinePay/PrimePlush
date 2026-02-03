@@ -68,6 +68,7 @@ export async function createCardPayment(paymentData: {
   description?: string;
   orderId: string;
   paymentMethod?: "credit" | "debit";
+  installments?: number;
 }): Promise<PaymentResponse> {
   try {
     const response = await api.post("/api/payment/create", {
@@ -75,6 +76,7 @@ export async function createCardPayment(paymentData: {
       description: paymentData.description || `Pedido ${paymentData.orderId}`,
       orderId: paymentData.orderId,
       paymentMethod: paymentData.paymentMethod,
+      installments: paymentData.installments,
     });
 
     return {
@@ -99,7 +101,7 @@ export async function createCardPayment(paymentData: {
  * O backend detecta automaticamente se é PIX (Payments API) ou Point (Payment Intent API)
  */
 export async function checkPaymentStatus(
-  paymentId: string
+  paymentId: string,
 ): Promise<PaymentStatusResponse> {
   try {
     const response = await api.get(`/api/payment/status/${paymentId}`);
@@ -128,7 +130,7 @@ export async function checkPaymentStatus(
  * Endpoint: DELETE /api/payment/cancel/:paymentId
  */
 export async function cancelPayment(
-  paymentId: string
+  paymentId: string,
 ): Promise<PaymentResponse> {
   try {
     const response = await api.delete(`/api/payment/cancel/${paymentId}`);
@@ -226,14 +228,14 @@ export async function startPaymentPolling(
   paymentId: string,
   onStatusChange: (status: PaymentStatusResponse) => void,
   intervalMs: number = 3000,
-  timeoutMs: number = 300000
+  timeoutMs: number = 300000,
 ): Promise<PaymentStatusResponse> {
   return new Promise((resolve, reject) => {
     let attempts = 0;
     const maxAttempts = Math.floor(timeoutMs / intervalMs);
 
     console.log(
-      `🔄 Iniciando polling de pagamento ${paymentId} (máx ${maxAttempts} tentativas)`
+      `🔄 Iniciando polling de pagamento ${paymentId} (máx ${maxAttempts} tentativas)`,
     );
 
     const interval = setInterval(async () => {
@@ -247,7 +249,7 @@ export async function startPaymentPolling(
 
         if (result.success) {
           console.log(
-            `🔍 Polling ${paymentId} [${attempts}/${maxAttempts}]: ${result.status}`
+            `🔍 Polling ${paymentId} [${attempts}/${maxAttempts}]: ${result.status}`,
           );
 
           // Status finais que param o polling
@@ -266,7 +268,7 @@ export async function startPaymentPolling(
         // Timeout
         if (attempts >= maxAttempts) {
           console.warn(
-            `⏱️ Timeout no polling de ${paymentId} após ${attempts} tentativas`
+            `⏱️ Timeout no polling de ${paymentId} após ${attempts} tentativas`,
           );
           clearInterval(interval);
           resolve({

@@ -41,6 +41,12 @@ export interface Order {
   timestamp: string;
   status: "active" | "completed";
   observation?: string;
+  // Novos campos para pagamento
+  paymentType?: "online" | "presencial";
+  paymentMethod?: "credit" | "debit" | "pix";
+  installments?: number;
+  fee?: number;
+  paymentStatus?: "pending" | "paid" | "canceled";
 }
 
 export type UserRole = "customer" | "kitchen" | "admin";
