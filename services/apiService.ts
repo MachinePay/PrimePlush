@@ -29,12 +29,12 @@ export function logout(): void {
 
 /**
  * Tenta fazer login e salva o token se for bem-sucedido.
- * @param role - 'admin' ou 'kitchen'
+ * @param role - 'admin', 'kitchen' ou 'superadmin'
  * @param password - A senha correspondente
  * @returns True se o login foi bem-sucedido, false caso contrário.
  */
 export async function login(
-  role: "admin" | "kitchen",
+  role: "admin" | "kitchen" | "superadmin",
   password: string,
 ): Promise<boolean> {
   try {
