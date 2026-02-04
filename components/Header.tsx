@@ -21,7 +21,7 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-white/90 backdrop-blur-md border-b border-stone-200 sticky top-0 z-50 h-16">
+    <header className="bg-gradient-to-r from-blue-800 via-blue-700 to-blue-300 border-b border-stone-200 sticky top-0 z-50 h-16">
       <div className="container mx-auto px-4 h-full flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2">
