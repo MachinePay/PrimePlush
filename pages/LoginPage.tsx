@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import "../assets/animated-gradient.css";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { useAuth } from "../contexts/AuthContext";
@@ -37,7 +38,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-stone-100 to-red-50 p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen animated-gradient p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-10">
         <div className="text-center mb-8">
           <img
@@ -70,17 +71,17 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 setError("");
               }}
               placeholder="Digite seu nome"
-              className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-red-600 transition-colors"
+              className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-blue-600 transition-colors"
               autoFocus
               disabled={isLoading}
             />
-            {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+            {error && <p className="text-blue-600 text-sm mt-2">{error}</p>}
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-amber-600 text-white font-bold py-3 rounded-lg hover:bg-amber-700 transition-colors text-lg disabled:bg-amber-300 disabled:cursor-wait"
+            className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors text-lg disabled:bg-blue-300 disabled:cursor-wait"
           >
             {isLoading ? "Carregando..." : "Começar Pedido"}
           </button>
@@ -249,7 +250,7 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-stone-100 to-red-50 p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-stone-100 to-blue-50 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
@@ -280,15 +281,15 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
                 value={cpf}
                 onChange={handleCPFChange}
                 placeholder="000.000.000-00"
-                className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-red-600 transition-colors text-lg"
+                className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-blue-600 transition-colors text-lg"
                 autoFocus
               />
-              {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+              {error && <p className="text-blue-600 text-sm mt-2">{error}</p>}
             </div>
             <button
               type="submit"
               disabled={isLoading || cpf.replace(/\D/g, "").length !== 11}
-              className="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors disabled:bg-red-300"
+              className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300"
             >
               {isLoading ? "Verificando..." : "Continuar"}
             </button>
@@ -307,14 +308,14 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Sua senha"
-                className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-red-600 transition-colors"
+                className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-blue-600 transition-colors"
                 autoFocus
               />
-              {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+              {error && <p className="text-blue-600 text-sm mt-2">{error}</p>}
             </div>
             <button
               type="submit"
-              className="w-full bg-red-600 text-white font-bold py-3 rounded-lg"
+              className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg"
             >
               Entrar
             </button>
@@ -340,14 +341,14 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Como deseja ser chamado?"
-                className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-red-600 transition-colors"
+                className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-blue-600 transition-colors"
                 autoFocus
               />
-              {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+              {error && <p className="text-blue-600 text-sm mt-2">{error}</p>}
             </div>
             <button
               type="submit"
-              className="w-full bg-red-600 text-white font-bold py-3 rounded-lg"
+              className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg"
             >
               Cadastrar e Iniciar
             </button>

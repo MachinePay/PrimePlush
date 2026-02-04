@@ -108,7 +108,7 @@ const Header: React.FC = () => {
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="text-stone-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-all"
+                  className="text-stone-400 hover:text-blue-600 hover:bg-blue-100 p-2 rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                   title="Sair"
                 >
                   <svg

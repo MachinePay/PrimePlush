@@ -252,7 +252,7 @@ export default function PaymentOnline({
         </div>
 
         {error && (
-          <div className="mt-4 bg-red-50 border-2 border-red-200 text-red-600 p-4 rounded-lg text-center text-sm">
+          <div className="mt-4 bg-blue-50 border-2 border-blue-200 text-blue-600 p-4 rounded-lg text-center text-sm">
             {error}
           </div>
         )}

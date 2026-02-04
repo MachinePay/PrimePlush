@@ -355,10 +355,10 @@ const PaymentPage: React.FC = () => {
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
-      <h1 className="text-3xl font-bold text-amber-800 mb-8 flex items-center gap-2">
+      <h1 className="text-3xl font-bold text-blue-800 mb-8 flex items-center gap-2">
         <button
           onClick={() => navigate("/menu")}
-          className="text-amber-600 hover:bg-amber-100 p-2 rounded-full"
+          className="text-blue-600 hover:bg-blue-100 p-2 rounded-full transition-all duration-300 ease-in-out transform hover:scale-110 shadow-lg"
           disabled={status === "processing"}
         >
           ←
@@ -386,7 +386,7 @@ const PaymentPage: React.FC = () => {
           </ul>
           <div className="border-t pt-4 flex justify-between items-center">
             <span className="text-lg text-stone-500">Total a pagar:</span>
-            <span className="text-3xl font-bold text-amber-600">
+            <span className="text-3xl font-bold text-blue-600">
               {(paymentType === "presencial" || paymentType === "online") &&
               paymentMethod === "credit" &&
               taxaSelecionada
@@ -410,7 +410,7 @@ const PaymentPage: React.FC = () => {
                 💻 Pagamento Online (Mercado Pago)
               </button>
               <button
-                className="p-4 rounded-xl border-2 border-amber-500 bg-amber-50 text-amber-900 font-bold text-lg hover:bg-amber-100 transition-all"
+                className="p-4 rounded-xl border-2 border-blue-500 bg-blue-50 text-blue-900 font-bold text-lg hover:bg-blue-100 transition-all"
                 onClick={() => setPaymentType("presencial")}
               >
                 🏪 Pagar na Loja Girakids
@@ -455,7 +455,7 @@ const PaymentPage: React.FC = () => {
 
           {/* Pagamento Presencial (Modo Manual/A Pagar) */}
           {paymentType === "presencial" && (
-            <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded text-center text-amber-800 font-semibold">
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded text-center text-blue-800 font-semibold">
               <span className="block text-2xl mb-2">
                 🏪 Pagamento na Loja Girakids
               </span>
@@ -540,7 +540,7 @@ const PaymentPage: React.FC = () => {
               {/* Step 3: Finalizar pedido */}
               {presencialStep === "finalize" && (
                 <button
-                  className="mt-4 px-6 py-3 rounded bg-amber-600 text-white font-bold text-lg hover:bg-amber-700 transition-all"
+                  className="mt-4 px-6 py-3 rounded bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 transition-all"
                   onClick={async () => {
                     setStatus("processing");
                     setErrorMessage("");

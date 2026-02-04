@@ -77,7 +77,7 @@ const RegisterPage: React.FC = () => {
           title: "Cadastro realizado!",
           text: "Sua conta foi criada com sucesso.",
           icon: "success",
-          confirmButtonColor: "#f59e0b",
+          confirmButtonColor: "#2563eb",
         });
         navigate("/login");
       }
@@ -89,7 +89,7 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-stone-100 to-red-50 p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-stone-100 to-blue-50 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-10">
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Cadastro</h1>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -212,7 +212,7 @@ const RegisterPage: React.FC = () => {
               disabled={isLoading}
             />
           </div>
-          {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+          {error && <p className="text-blue-600 text-sm mt-2">{error}</p>}
           <button
             type="submit"
             disabled={isLoading}

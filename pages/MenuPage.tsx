@@ -276,7 +276,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                 <div className="flex items-center bg-stone-100 rounded-xl border border-stone-300 overflow-hidden h-12 md:h-14 shadow-inner">
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    className="w-12 md:w-14 h-full flex items-center justify-center text-stone-600 font-bold text-2xl hover:bg-red-100 hover:text-red-600 transition-colors active:bg-red-200"
+                    className="w-12 md:w-14 h-full flex items-center justify-center text-stone-600 font-bold text-2xl hover:bg-blue-100 hover:text-blue-700 transition-colors active:bg-blue-200"
                   >
                     -
                   </button>
@@ -653,11 +653,11 @@ const MenuPage: React.FC = () => {
             </div>
 
             {suggestion && !isSuggestionLoading && (
-              <div className="bg-orange-50 border border-orange-200 p-5 rounded-xl shadow-sm">
-                <h3 className="font-bold text-orange-800 text-base md:text-lg">
+              <div className="bg-blue-50 border border-blue-200 p-5 rounded-xl shadow-sm">
+                <h3 className="font-bold text-blue-800 text-base md:text-lg">
                   ✨ Sugestão Especial
                 </h3>
-                <p className="text-orange-900 text-lg md:text-xl mt-2 font-medium">
+                <p className="text-blue-900 text-lg md:text-xl mt-2 font-medium">
                   {suggestion}
                 </p>
               </div>

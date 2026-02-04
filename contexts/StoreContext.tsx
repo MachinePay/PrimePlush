@@ -38,9 +38,9 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 const DEFAULT_STORE_CONFIG: Omit<StoreConfig, "id"> = {
   name: "Pastel Kiosk",
   logo: null,
-  primaryColor: "#dc8d26ff", // red-600 - amarelo pastel
+  primaryColor: "#2563eb", // azul escuro
   secondaryColor: "#1f2937", // gray-800 - preto profundo
-  accentColor: "#dd9e4cff", // red-600 - amarelo pastel
+  accentColor: "#60a5fa", // azul claro
 };
 
 interface StoreProviderProps {
