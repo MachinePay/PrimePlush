@@ -261,9 +261,11 @@ export default function PaymentOnline({
           <p className="text-2xl font-bold text-purple-600">
             Total: R$ {total.toFixed(2)}
           </p>
-          <p className="text-sm text-gray-500 mt-2">
-            Pedido #{orderId.substring(0, 12)}
-          </p>
+          {orderId && (
+            <p className="text-sm text-gray-500 mt-2">
+              Pedido #{orderId.substring(0, 12)}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -287,9 +289,11 @@ export default function PaymentOnline({
         <p className="text-center text-3xl font-bold text-purple-600">
           R$ {total.toFixed(2)}
         </p>
-        <p className="text-center text-sm text-gray-600 mt-2">
-          Pedido #{orderId.substring(0, 12)}
-        </p>
+        {orderId && (
+          <p className="text-center text-sm text-gray-600 mt-2">
+            Pedido #{orderId.substring(0, 12)}
+          </p>
+        )}
       </div>
 
       <div className="space-y-3">
