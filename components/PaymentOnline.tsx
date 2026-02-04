@@ -10,7 +10,7 @@ import React, { useState, useEffect } from "react";
  */
 
 interface PaymentOnlineProps {
-  orderId: string;
+  orderId: string | null;
   total: number;
   items: Array<{
     name: string;
@@ -86,7 +86,7 @@ export default function PaymentOnline({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             items,
-            orderId,
+            orderId: orderId || "temp",
             payerEmail: userEmail,
             payerName: userName,
           }),
@@ -119,8 +119,8 @@ export default function PaymentOnline({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             amount: total,
-            description: `Pedido ${orderId}`,
-            orderId,
+            description: orderId ? `Pedido ${orderId}` : "Pedido PrimePlush",
+            orderId: orderId || "temp",
             payerEmail: userEmail,
           }),
         },

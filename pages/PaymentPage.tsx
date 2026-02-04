@@ -12,6 +12,7 @@ import {
   cancelPayment,
 } from "../services/paymentService";
 import type { Order, CartItem } from "../types";
+import PaymentOnline from "../components/PaymentOnline";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -417,290 +418,39 @@ const PaymentPage: React.FC = () => {
             </>
           )}
 
-          {/* Pagamento Online */}
+          {/* Pagamento Online com Mercado Pago */}
           {paymentType === "online" && (
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded text-center text-blue-800 font-semibold">
-              <span className="block text-2xl mb-2">💻 Pagamento Online</span>
-              <div className="flex flex-col gap-4 items-center justify-center">
-                <div className="flex gap-4 mb-4">
-                  <button
-                    className={`px-6 py-3 rounded font-bold text-lg transition-all ${
-                      paymentMethod === "credit"
-                        ? "bg-blue-600 text-white"
-                        : "bg-white text-blue-700 border border-blue-600"
-                    }`}
-                    onClick={() => setPaymentMethod("credit")}
-                  >
-                    Cartão de Crédito
-                  </button>
-                  <button
-                    className={`px-6 py-3 rounded font-bold text-lg transition-all ${
-                      paymentMethod === "debit"
-                        ? "bg-green-600 text-white"
-                        : "bg-white text-green-700 border border-green-600"
-                    }`}
-                    onClick={() => setPaymentMethod("debit")}
-                  >
-                    Cartão de Débito
-                  </button>
-                  <button
-                    className={`px-6 py-3 rounded font-bold text-lg transition-all ${
-                      paymentMethod === "pix"
-                        ? "bg-purple-600 text-white"
-                        : "bg-white text-purple-700 border border-purple-600"
-                    }`}
-                    onClick={() => setPaymentMethod("pix")}
-                  >
-                    PIX
-                  </button>
-                </div>
-
-                {/* PIX Online */}
-                {paymentMethod === "pix" && (
-                  <button
-                    className="px-6 py-3 rounded bg-purple-600 text-white font-bold text-lg hover:bg-purple-700 transition-all mb-2"
-                    onClick={async () => {
-                      setStatus("processing");
-                      setErrorMessage("");
-                      try {
-                        const orderResp = await fetchStandard(
-                          `${BACKEND_URL}/api/orders`,
-                          {
-                            method: "POST",
-                            body: JSON.stringify({
-                              userId: currentUser!.id,
-                              userName: currentUser!.name,
-                              items: cartItems.map((i) => ({
-                                id: i.id,
-                                name: i.name,
-                                quantity: i.quantity,
-                                price: i.price,
-                              })),
-                              total: cartTotal,
-                              paymentId: null,
-                              observation: observation,
-                            }),
-                          },
-                        );
-                        if (!orderResp.ok)
-                          throw new Error("Erro ao criar pedido");
-                        const orderData = await orderResp.json();
-                        const pixResp = await fetchStandard(
-                          `${BACKEND_URL}/api/payment/online-pix`,
-                          {
-                            method: "POST",
-                            body: JSON.stringify({
-                              amount: cartTotal,
-                              description: `Pedido de ${currentUser!.name}`,
-                              orderId: orderData.id,
-                              email: currentUser?.email,
-                              payerName: currentUser?.name,
-                            }),
-                          },
-                        );
-                        const pixData = await pixResp.json();
-                        if (
-                          !pixResp.ok ||
-                          !pixData.paymentId ||
-                          !pixData.qrCodeBase64
-                        ) {
-                          throw new Error(
-                            pixData.error || "Erro ao gerar PIX online",
-                          );
-                        }
-                        setQrCodeBase64(pixData.qrCodeBase64);
-                        setPaymentStatusMessage(
-                          "Escaneie o QR Code para pagar!",
-                        );
-                        setActivePayment({
-                          id: pixData.paymentId,
-                          type: "pix",
-                          orderId: orderData.id,
-                        });
-                      } catch (err: any) {
-                        setStatus("error");
-                        setErrorMessage(
-                          err.message || "Erro no pagamento online PIX.",
-                        );
-                      }
-                    }}
-                  >
-                    Gerar QR Code PIX
-                  </button>
-                )}
-
-                {/* Cartão Online (Crédito ou Débito) */}
-                {(paymentMethod === "credit" || paymentMethod === "debit") && (
-                  <>
-                    {paymentMethod === "credit" && (
-                      <div className="mb-2">
-                        <span className="font-semibold text-blue-700">
-                          Parcelamento disponível:
-                        </span>
-                        <ul className="text-sm text-blue-800 mt-1 flex flex-wrap gap-2">
-                          {[
-                            { parcelas: 1, taxa: 0 },
-                            { parcelas: 2, taxa: 2.53 },
-                            { parcelas: 3, taxa: 2.83 },
-                            { parcelas: 4, taxa: 4.73 },
-                            { parcelas: 5, taxa: 4.83 },
-                            { parcelas: 6, taxa: 4.93 },
-                            { parcelas: 7, taxa: 6.23 },
-                            { parcelas: 8, taxa: 6.42 },
-                            { parcelas: 9, taxa: 7.11 },
-                            { parcelas: 10, taxa: 7.79 },
-                            { parcelas: 11, taxa: 9.01 },
-                            { parcelas: 12, taxa: 9.12 },
-                          ].map((opt) => (
-                            <li key={opt.parcelas}>
-                              <button
-                                className={`px-2 py-1 rounded ${
-                                  selectedInstallments === opt.parcelas
-                                    ? "bg-blue-600 text-white"
-                                    : "bg-white text-blue-700 border border-blue-600"
-                                }`}
-                                onClick={() => {
-                                  setSelectedInstallments(opt.parcelas);
-                                  setTaxaSelecionada(opt.taxa);
-                                }}
-                              >
-                                {opt.parcelas}x - Taxa: {opt.taxa.toFixed(2)}%
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                        <div className="mt-2 text-blue-900 font-bold">
-                          Total com taxa: R${" "}
-                          {(
-                            cartTotal *
-                            (1 + (taxaSelecionada || 0) / 100)
-                          ).toFixed(2)}
-                        </div>
-                      </div>
-                    )}
-                    <button
-                      className={`px-6 py-3 rounded ${
-                        paymentMethod === "credit"
-                          ? "bg-blue-600"
-                          : "bg-green-600"
-                      } text-white font-bold text-lg hover:opacity-90 transition-all mb-2`}
-                      onClick={async () => {
-                        setStatus("processing");
-                        setErrorMessage("");
-                        try {
-                          const orderResp = await fetchStandard(
-                            `${BACKEND_URL}/api/orders`,
-                            {
-                              method: "POST",
-                              body: JSON.stringify({
-                                userId: currentUser!.id,
-                                userName: currentUser!.name,
-                                items: cartItems.map((i) => ({
-                                  id: i.id,
-                                  name: i.name,
-                                  quantity: i.quantity,
-                                  price: i.price,
-                                })),
-                                total: cartTotal,
-                                paymentId: null,
-                                observation: observation,
-                              }),
-                            },
-                          );
-                          if (!orderResp.ok)
-                            throw new Error("Erro ao criar pedido");
-                          const orderData = await orderResp.json();
-
-                          // ATENÇÃO: Usando prompt como fallback simples
-                          const cardToken = prompt(
-                            "Cole o cardToken gerado pelo MercadoPago.js:",
-                          );
-                          if (!cardToken)
-                            throw new Error("Token do cartão não informado.");
-
-                          const installments =
-                            paymentMethod === "credit"
-                              ? parseInt(
-                                  prompt("Número de parcelas (1-12):", "1") ||
-                                    "1",
-                                  10,
-                                )
-                              : 1;
-
-                          const cardResp = await fetchStandard(
-                            `${BACKEND_URL}/api/payment/online-card`,
-                            {
-                              method: "POST",
-                              body: JSON.stringify({
-                                amount: cartTotal,
-                                description: `Pedido de ${currentUser!.name}`,
-                                orderId: orderData.id,
-                                cardToken,
-                                email: currentUser?.email,
-                                payerName: currentUser?.name,
-                                installments,
-                              }),
-                            },
-                          );
-                          const cardData = await cardResp.json();
-                          if (!cardResp.ok || !cardData.paymentId) {
-                            throw new Error(
-                              cardData.error ||
-                                "Erro ao pagar com cartão online",
-                            );
-                          }
-                          setPaymentStatusMessage(
-                            "Pagamento com cartão enviado! Aguarde aprovação...",
-                          );
-                          setActivePayment({
-                            id: cardData.paymentId,
-                            type: "card",
-                            orderId: orderData.id,
-                          });
-                        } catch (err: any) {
-                          setStatus("error");
-                          setErrorMessage(
-                            err.message || "Erro no pagamento online cartão.",
-                          );
-                        }
-                      }}
-                    >
-                      {paymentMethod === "credit"
-                        ? "Pagar com Crédito Online"
-                        : "Pagar com Débito Online"}
-                    </button>
-                  </>
-                )}
-
-                <button
-                  className="mt-4 px-4 py-2 rounded bg-stone-200 text-stone-700 hover:bg-stone-300"
-                  onClick={() => setPaymentType(null)}
-                >
-                  Voltar
-                </button>
-
-                {status === "processing" && qrCodeBase64 && (
-                  <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-purple-300 text-center mt-4">
-                    <h3 className="text-purple-900 font-bold text-xl mb-4">
-                      Pague com PIX
-                    </h3>
-                    <img
-                      src={`data:image/png;base64,${qrCodeBase64}`}
-                      alt="QR Code"
-                      className="w-64 h-64 mx-auto mb-4"
-                    />
-                    <p className="text-purple-600 text-sm">
-                      Escaneie com o app do seu banco
-                    </p>
-                  </div>
-                )}
-                {status === "error" && (
-                  <div className="bg-red-100 text-red-700 p-3 rounded-lg text-center font-semibold mt-4">
-                    {errorMessage}
-                  </div>
-                )}
-              </div>
-            </div>
+            <PaymentOnline
+              orderId={null}
+              total={cartTotal}
+              items={cartItems.map((i) => ({
+                id: i.id,
+                name: i.name,
+                quantity: i.quantity,
+                price: i.price,
+              }))}
+              userEmail={currentUser?.email || ""}
+              userName={currentUser?.name || ""}
+              onSuccess={(paymentId) => {
+                Swal.fire({
+                  icon: "success",
+                  title: "Pagamento Aprovado!",
+                  text: `Seu pedido foi pago com sucesso!`,
+                  confirmButtonText: "OK",
+                }).then(() => {
+                  clearCart();
+                  navigate("/menu");
+                });
+              }}
+              onError={(error) => {
+                Swal.fire({
+                  icon: "error",
+                  title: "Erro no Pagamento",
+                  text: error,
+                  confirmButtonText: "Tentar Novamente",
+                });
+              }}
+            />
           )}
 
           {/* Pagamento Presencial (Modo Manual/A Pagar) */}
