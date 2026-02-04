@@ -213,17 +213,6 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
             {cartSuggestion && (
               <div className="p-5 bg-gradient-to-r from-blue-100 to-blue-50 border-l-8 border-blue-600 rounded-xl shadow-md mb-6">
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-start gap-3">
-                    <span className="text-3xl">✨</span>
-                    <div>
-                      <p className="text-sm font-bold text-blue-800 uppercase tracking-wide mb-1">
-                        Dica do Chef
-                      </p>
-                      <p className="text-lg md:text-xl text-gray-900 font-medium leading-snug">
-                        {cartSuggestion}
-                      </p>
-                    </div>
-                  </div>
 
                   {suggestedProduct && (
                     <div className="mt-2 ml-2 flex items-center gap-4 bg-white/60 p-3 rounded-xl border border-blue-200/50 shadow-sm">
