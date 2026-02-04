@@ -133,7 +133,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
       <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg">
         {/* Título muda conforme edição ou criação */}
-        <h2 className="text-2xl font-bold mb-6 text-amber-800">
+        <h2 className="text-2xl font-bold mb-6 text-blue-800">
           {product ? "Editar Produto" : "Adicionar Produto"}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -151,7 +151,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
               value={formData.name}
               onChange={handleChange}
               required
-              className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+              className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-blue-600 focus:ring-blue-200"
             />
           </div>
           <div className="flex gap-4">
@@ -170,7 +170,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 onChange={handleChange}
                 required
                 step="0.01"
-                className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-blue-600 focus:ring-blue-200"
               />
             </div>
             <div className="flex-1">
@@ -188,7 +188,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 onChange={handleChange}
                 required
                 step="0.01"
-                className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-blue-600 focus:ring-blue-200"
               />
             </div>
           </div>
@@ -205,7 +205,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 id="category"
                 value={formData.category}
                 onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-blue-600 focus:ring-blue-200"
               >
                 {categories.length > 0 ? (
                   categories.map((cat) => (
@@ -239,7 +239,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 onChange={handleChange}
                 required
                 min="0"
-                className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-blue-600 focus:ring-blue-200"
               />
               <p className="mt-1 text-xs text-stone-500">
                 Alerta de estoque baixo quando atingir esse valor
@@ -299,7 +299,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
             {/* Botão salvar submete o formulário */}
             <button
               type="submit"
-              className="bg-amber-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-amber-700"
+              className="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700"
             >
               Salvar
             </button>
@@ -480,7 +480,7 @@ const AdminPage: React.FC = () => {
     <div className="container mx-auto p-6">
       {/* Cabeçalho */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold text-amber-800">
+        <h1 className="text-4xl font-bold text-blue-800">
           Painel Administrativo
         </h1>
         <div className="flex gap-3">
@@ -502,7 +502,7 @@ const AdminPage: React.FC = () => {
               setEditingProduct(null);
               setIsFormOpen(true);
             }}
-            className="bg-amber-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-amber-600 transition-colors shadow-md"
+            className="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
           >
             + Adicionar Produto
           </button>
@@ -513,7 +513,7 @@ const AdminPage: React.FC = () => {
                 navigate("/admin/login");
               }
             }}
-            className="bg-amber-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-amber-600 transition-colors shadow-md"
+            className="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
           >
             🚪 Sair
           </button>
@@ -540,9 +540,9 @@ const AdminPage: React.FC = () => {
             {stats.lowStock}
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500">
+        <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-600">
           <div className="text-sm text-stone-500 mb-1">Esgotados</div>
-          <div className="text-3xl font-bold text-red-600">
+          <div className="text-3xl font-bold text-blue-700">
             {stats.outOfStock}
           </div>
         </div>
@@ -667,7 +667,7 @@ const AdminPage: React.FC = () => {
                   <span
                     className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       (product.stock || 0) === 0
-                        ? "bg-red-100 text-red-800"
+                        ? "bg-blue-100 text-blue-800"
                         : product.minStock !== undefined &&
                             product.stock !== undefined &&
                             product.stock < product.minStock
@@ -680,7 +680,7 @@ const AdminPage: React.FC = () => {
                   {product.minStock !== undefined &&
                     product.stock !== undefined &&
                     product.stock < product.minStock && (
-                      <span className="ml-2 text-xs text-red-600 font-bold animate-pulse">
+                      <span className="ml-2 text-xs text-blue-600 font-bold animate-pulse">
                         Estoque baixo!
                       </span>
                     )}
@@ -692,13 +692,13 @@ const AdminPage: React.FC = () => {
                       setEditingProduct(product);
                       setIsFormOpen(true);
                     }}
-                    className="text-amber-600 hover:text-amber-900 mr-4"
+                    className="text-blue-600 hover:text-blue-900 mr-4"
                   >
                     Editar
                   </button>
                   <button
                     onClick={() => handleDeleteProduct(product.id)}
-                    className="text-red-600 hover:text-red-900"
+                    className="text-blue-700 hover:text-blue-900"
                   >
                     Remover
                   </button>
