@@ -45,7 +45,7 @@ const OrderHistoryPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-6 min-h-screen bg-stone-100">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="text-3xl font-bold text-amber-800">
+        <h1 className="text-3xl font-bold text-blue-800">
           Histórico de Pedidos
         </h1>
         <button
@@ -55,7 +55,7 @@ const OrderHistoryPage: React.FC = () => {
               navigate("/admin/login");
             }
           }}
-          className="bg-amber-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-amber-600 transition-colors shadow-md"
+          className="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
         >
           🚪 Sair
         </button>
@@ -119,7 +119,7 @@ const OrderHistoryPage: React.FC = () => {
           {orders.map((order) => (
             <div
               key={order.id}
-              className="bg-white rounded-xl shadow-md p-6 border-l-4 border-amber-500"
+              className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-600"
             >
               <div className="flex flex-wrap justify-between items-center mb-2">
                 <div className="font-bold text-lg text-stone-800">
@@ -155,7 +155,7 @@ const OrderHistoryPage: React.FC = () => {
                 {order.paymentType === "presencial" &&
                   order.paymentStatus === "pending" && (
                     <>
-                      <span className="text-amber-600 font-bold">A PAGAR</span>
+                      <span className="text-blue-600 font-bold">A PAGAR</span>
                       <button
                         className="px-3 py-1 rounded bg-green-600 text-white text-xs font-bold hover:bg-green-700 transition"
                         onClick={async () => {
