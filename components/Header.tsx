@@ -103,7 +103,7 @@ const Header: React.FC = () => {
               <div className="flex items-center gap-3">
                 <div className="hidden sm:block text-right leading-tight">
                   <p className="text-xs text-white font-medium">Olá,</p>
-                  <p className="text-sm font-bold text-stone-800 max-w-[100px] truncate">
+                  <p className="text-sm font-bold max-w-[100px] truncate" style={{ color: 'orange' }}>
                     {currentUser.name}
                   </p>
                 </div>

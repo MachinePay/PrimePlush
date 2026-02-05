@@ -128,7 +128,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
 
   const containerClass = isMobile
     ? "fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-[0_-10px_60px_rgba(0,0,0,0.4)] flex flex-col max-h-[90vh] transition-transform duration-300 ease-out transform translate-y-0 border-t border-stone-200"
-    : "flex flex-col h-full bg-white border-l border-stone-200";
+    : "flex flex-col h-full border-l border-stone-200";
 
   // Lógica para encontrar o produto sugerido
   const suggestedProduct = useMemo(() => {
@@ -173,7 +173,10 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
     }, 2000); // Oculta a mensagem após 2 segundos
   };
   return (
-    <div className={containerClass}>
+    <div
+      className={containerClass}
+      style={isMobile ? undefined : { background: '#FFF6E5' }}
+    >
       {/* Header do Carrinho */}
       <div
         className={`p-5 flex items-center justify-between ${
@@ -570,7 +573,7 @@ const MenuPage: React.FC = () => {
   }, [dynamicCategories, categorizedMenu]);
 
   return (
-    <div className="flex h-screen w-full bg-stone-100 overflow-hidden font-sans">
+    <div className="flex h-screen w-full overflow-hidden font-sans" style={{ background: '#FFF6E5' }}>
       {/* 1. SIDEBAR ESQUERDA */}
       <CategorySidebar
         categories={displayCategories} // 🆕 Usa categorias dinâmicas ordenadas
