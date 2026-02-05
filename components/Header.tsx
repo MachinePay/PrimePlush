@@ -101,14 +101,14 @@ const Header: React.FC = () => {
 
               <div className="flex items-center gap-3">
                 <div className="hidden sm:block text-right leading-tight">
-                  <p className="text-xs text-stone-400 font-medium">Olá,</p>
-                  <p className="text-sm font-bold text-stone-700 max-w-[100px] truncate">
+                  <p className="text-xs text-white font-medium">Olá,</p>
+                  <p className="text-sm font-bold text-stone-800 max-w-[100px] truncate">
                     {currentUser.name}
                   </p>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="text-stone-400 hover:text-blue-600 hover:bg-blue-100 p-2 rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                  className="text-white hover:text-blue-600 hover:bg-blue-100 p-2 rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                   title="Sair"
                 >
                   <svg
@@ -129,7 +129,7 @@ const Header: React.FC = () => {
               </div>
             </>
           ) : (
-            <span className="text-sm text-stone-500">Bem-vindo!</span>
+            <span className="text-sm text-white">Bem-vindo!</span>
           )}
         </div>
       </div>

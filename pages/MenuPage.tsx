@@ -207,45 +207,8 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
             <span className="text-6xl mb-4">🛍️</span>
             <p className="text-xl">Seu carrinho está vazio.</p>
           </div>
-        ) : (
-          <>
-            {/* SUGESTÃO DE UPSELL (GRANDE E VISÍVEL) */}
-            {cartSuggestion && (
-              <div className="p-5 bg-gradient-to-r from-blue-100 to-blue-50 border-l-8 border-blue-600 rounded-xl shadow-md mb-6">
-                <div className="flex flex-col gap-3">
-
-                  {suggestedProduct && (
-                    <div className="mt-2 ml-2 flex items-center gap-4 bg-white/60 p-3 rounded-xl border border-blue-200/50 shadow-sm">
-                      <div className="hidden xs:block w-16 h-16 bg-gray-200 rounded-lg overflow-hidden shrink-0">
-                        {suggestedProduct.imageUrl ? (
-                          <img
-                            src={suggestedProduct.imageUrl}
-                            alt={suggestedProduct.name}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : null}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-base font-bold text-gray-900 truncate">
-                          {suggestedProduct.name}
-                        </p>
-                        <p className="text-base font-bold text-blue-700">
-                          R$ {suggestedProduct.price.toFixed(2)}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => onAddToCart(suggestedProduct)}
-                        className="bg-blue-600 text-white text-base font-bold px-5 py-3 rounded-xl shadow-md hover:bg-blue-700 transition-colors whitespace-nowrap"
-                      >
-                        + Adicionar
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
+        ) :
+          (<>
             {/* ITENS DO CARRINHO (BOTÕES GRANDES) */}
             {cartItems.map((item) => (
               <div
