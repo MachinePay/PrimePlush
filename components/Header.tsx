@@ -48,9 +48,7 @@ const Header: React.FC = () => {
             (!currentUser.role || currentUser.role === "customer") && (
               <NavLink
                 to="/menu"
-                style={({ isActive }) =>
-                  isActive ? activeLinkStyle : undefined
-                }
+                
                 className="text-white transition-colors font-medium"
               >
                 Catálogo
