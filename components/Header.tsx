@@ -69,19 +69,15 @@ const Header: React.FC = () => {
             <>
               <NavLink
                 to="/admin"
-                style={({ isActive }) =>
-                  isActive ? activeLinkStyle : undefined
-                }
-                className="text-stone-500 hover:text-blue-700 transition-colors font-medium"
+                
+                className="text-white hover:text-blue-700 transition-colors font-medium"
               >
                 Produtos
               </NavLink>
               <NavLink
                 to="/admin/reports"
-                style={({ isActive }) =>
-                  isActive ? activeLinkStyle : undefined
-                }
-                className="text-stone-500 hover:text-blue-700 transition-colors font-medium"
+                
+                className="text-[#FFA500] hover:text-blue-700 transition-colors font-medium"
               >
                 Relatórios IA
               </NavLink>
