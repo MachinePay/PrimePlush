@@ -25,28 +25,31 @@ interface PaymentOnlineProps {
 
 type PaymentMethod = "checkout-pro" | "pix" | "card";
 
-export default function PaymentOnline({
-    // Substitua pela sua public key do Mercado Pago
-    const MP_PUBLIC_KEY = import.meta.env.VITE_MP_PUBLIC_KEY || "";
-    // Estado para status de pagamento cartão
-    const [cardStatus, setCardStatus] = useState<string>("");
-    // Estado para resposta do backend
-    const [cardResult, setCardResult] = useState<any>(null);
-    // Estado para dados do cartão (token, etc)
-    const [cardTokenData, setCardTokenData] = useState<any>(null);
-    // Estado para dados extras do cartão
-    const [cardExtra, setCardExtra] = useState<any>({});
-    // Importação dinâmica do MercadoPagoCardForm e Installments
-    const MercadoPagoCardForm = React.lazy(() => import("./MercadoPagoCardForm"));
-    const MercadoPagoInstallments = React.lazy(() => import("./MercadoPagoInstallments"));
-  orderId,
-  total,
-  items,
-  userEmail = "cliente@primeplush.com",
-  userName = "Cliente",
-  onSuccess,
-  onError,
-}: PaymentOnlineProps) {
+export default function PaymentOnline(props: PaymentOnlineProps) {
+  // Chave pública do Mercado Pago fornecida pelo usuário
+  const MP_PUBLIC_KEY = "APP_USR-3cf663c4-9d4b-4045-9744-173080ab84e5";
+  // Estado para status de pagamento cartão
+  const [cardStatus, setCardStatus] = useState<string>("");
+  // Estado para resposta do backend
+  const [cardResult, setCardResult] = useState<any>(null);
+  // Estado para dados do cartão (token, etc)
+  const [cardTokenData, setCardTokenData] = useState<any>(null);
+  // Estado para dados extras do cartão
+  const [cardExtra, setCardExtra] = useState<any>({});
+  // Importação dinâmica do MercadoPagoCardForm e Installments
+  const MercadoPagoCardForm = React.lazy(() => import("./MercadoPagoCardForm"));
+
+  // ...existing code...
+  const MercadoPagoInstallments = React.lazy(() => import("./MercadoPagoInstallments"));
+  const {
+    orderId,
+    total,
+    items,
+    userEmail = "cliente@primeplush.com",
+    userName = "Cliente",
+    onSuccess,
+    onError,
+  } = props;
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [cardStep, setCardStep] = useState<'form' | 'confirm'>("form");
   const [cardData, setCardData] = useState<any>(null);
