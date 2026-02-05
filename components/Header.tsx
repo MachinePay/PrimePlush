@@ -34,7 +34,6 @@ const Header: React.FC = () => {
               src={logo}
               alt="PrimePlush logo"
               className="w-12 h-12 rounded-lg group-hover:scale-105 transition-transform object-cover"
-              style={{ background: "#fff" }}
             />
             <span className="text-xl font-bold text-stone-800 tracking-tight">
               PrimePlush
