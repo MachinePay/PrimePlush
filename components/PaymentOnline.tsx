@@ -242,11 +242,11 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
         </h2>
         <div className="space-y-4">
           <button
-            onClick={() => setSelectedMethod("checkout-pro")}
-            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-between"
+            onClick={handleCheckoutPro}
+            className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-between"
           >
-            <span>💳 Pagar com MercadoPago</span>
-            <span className="text-sm opacity-90">Cartão, PIX, Boleto...</span>
+            <span>💳 Cartão de Crédito (Mercado Pago)</span>
+            <span className="text-sm">Parcelado</span>
           </button>
           <button
             onClick={() => setSelectedMethod("pix")}
@@ -254,13 +254,6 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
           >
             <span>💚 PIX</span>
             <span className="text-sm opacity-90">Pagamento instantâneo</span>
-          </button>
-          <button
-            onClick={() => setSelectedMethod("card")}
-            className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-between"
-          >
-            <span>💳 Cartão de Crédito</span>
-            <span className="text-sm">Parcelado</span>
           </button>
         </div>
         {error && (
@@ -282,98 +275,5 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
     );
   }
 
-  // Fluxo cartão de crédito parcelado
-  if (selectedMethod === "card") {
-    return (
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md mx-auto">
-        <h2 className="text-2xl font-bold text-center mb-6 text-purple-600">💳 Cartão de Crédito</h2>
-        <React.Suspense fallback={<div>Carregando formulário...</div>}>
-          {!cardTokenData && (
-            <MercadoPagoCardForm
-              publicKey={MP_PUBLIC_KEY}
-              amount={total}
-              onToken={(tokenData: any) => {
-                setCardTokenData(tokenData);
-                // Buscar opções de parcelas (já vem pelo SDK normalmente, mas pode customizar aqui)
-                // setInstallmentsOptions(...)
-              }}
-            />
-          )}
-          {/* Após tokenização, exibe seleção de parcelas e botão de pagar */}
-          {cardTokenData && (
-            <>
-              <div className="mb-4">
-                <strong>Valor total:</strong> R$ {total.toFixed(2)}
-              </div>
-              {/* Exemplo: opções de parcelas (mock ou do SDK) */}
-              {installmentsOptions.length > 0 && (
-                <MercadoPagoInstallments
-                  options={installmentsOptions}
-                  selected={selectedInstallments}
-                  onSelect={setSelectedInstallments}
-                />
-              )}
-              <button
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl mt-4"
-                disabled={cardLoading}
-                onClick={async () => {
-                  setCardLoading(true);
-                  setCardStatus("");
-                  setError("");
-                  try {
-                    // Montar payload conforme solicitado
-                    const payload = {
-                      token: cardTokenData.token,
-                      amount: total,
-                      description: orderId ? `Pedido ${orderId}` : "Pedido PrimePlush",
-                      orderId: orderId || "temp",
-                      installments: selectedInstallments,
-                      payerEmail: userEmail,
-                      issuerId: cardTokenData.issuerId,
-                      paymentMethodId: cardTokenData.paymentMethodId,
-                    };
-                    const response = await fetch(`${API_URL}/api/payment-online/create-card-payment`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(payload),
-                    });
-                    const data = await response.json();
-                    if (data.status === "approved") {
-                      setCardResult(data);
-                      setCardStatus("Pagamento aprovado!");
-                      onSuccess?.(data.paymentId || "");
-                    } else {
-                      setCardStatus("Pagamento não aprovado: " + (data.status_detail || data.status));
-                      setError(data.status_detail || "Erro ao processar pagamento");
-                    }
-                  } catch (err: any) {
-                    setError(err.message);
-                  } finally {
-                    setCardLoading(false);
-                  }
-                }}
-              >
-                {cardLoading ? "Processando..." : "Pagar"}
-              </button>
-              {cardStatus && <div className="mt-4 text-green-600 font-bold">{cardStatus}</div>}
-              {error && <div className="mt-2 text-red-600">{error}</div>}
-            </>
-          )}
-        </React.Suspense>
-        <button
-          onClick={() => {
-            setSelectedMethod(null);
-            setCardTokenData(null);
-            setInstallmentsOptions([]);
-            setSelectedInstallments(1);
-            setCardStatus("");
-            setError("");
-          }}
-          className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-xl transition-all mt-6"
-        >
-          ← Voltar
-        </button>
-      </div>
-    );
-  }
+  // Removeu o fluxo customizado de cartão de crédito. Agora só usa Checkout Pro.
 }
