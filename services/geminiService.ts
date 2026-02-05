@@ -41,7 +41,9 @@ export const getMenuSuggestion = async (
   }
 
   const prompt = `
-Você é o Chef da Pastelaria Kiosk Pro. Fale diretamente com ${clientName} de forma calorosa e amigável.
+Você é um atendente de loja de pelúcias online. Fale diretamente com ${clientName} de forma calorosa, simpática e profissional.
+
+Catálogo atual do site: ${menu.map((p) => `${p.name} (R$ ${p.price.toFixed(2)})`).join(", ")}
 
 Carrinho atual: ${cartDetails || "vazio"}
 
@@ -49,12 +51,14 @@ ${contexto}
 
 Regras:
 - Use o nome ${clientName} na mensagem
-- Seja específico sobre O QUE recomendar (nome do produto)
-- Dê um MOTIVO convincente (está calor, combina perfeitamente, finalizar com chave de ouro, etc)
+- Recomende apenas produtos do catálogo acima, com os valores reais do site
+- Não ofereça descontos nem mencione promoções
+- Seja específico sobre O QUE recomendar (nome do produto do catálogo)
+- Dê um motivo convincente (ex: "é um dos mais procurados", "combina com o que já escolheu", "ótima opção para presentear", etc)
 - Máximo 25 palavras
-- Tom brasileiro, caloroso e persuasivo
+- Tom brasileiro, caloroso, simpático e profissional
 
-Exemplo: "${clientName}, que tal uma Coca-Cola geladinha? Vai combinar perfeitamente com esse pastel de carne! 🥤"
+Exemplo: "${clientName}, que tal levar o ${menu[0]?.name}? Ele é um dos favoritos da nossa loja! 🧸"
   `;
 
   try {
@@ -119,16 +123,18 @@ export const getDynamicCartSuggestion = async (
   }
 
   const prompt = `
-Você é o Chef da pastelaria falando com ${clientName}.
+Você é um atendente de loja de pelúcias online falando com ${clientName}.
+
+Catálogo atual do site: ${menu.map((p) => `${p.name} (R$ ${p.price.toFixed(2)})`).join(", ")}
 
 Carrinho: ${cartNames}
 
-Sugira adicionar: ${sugestao}
+Sugira adicionar: ${sugestao} (apenas produtos do catálogo acima)
 Motivo: ${motivo}
 
-Crie uma frase curta (máximo 20 palavras), chamando ${clientName} pelo nome, de forma entusiasmada e persuasiva.
+Crie uma frase curta (máximo 20 palavras), chamando ${clientName} pelo nome, de forma simpática e profissional. Não ofereça descontos nem promoções.
 
-Exemplo: "${clientName}, que tal adicionar uma Coca geladinha? Vai combinar perfeitamente! 🥤✨"
+Exemplo: "${clientName}, que tal levar também o ${menu[0]?.name}? É uma ótima escolha para presentear! 🧸"
   `;
 
   try {
@@ -160,7 +166,9 @@ export const getChefMessage = async (
   const orderCount = userHistory?.length || 0;
 
   const prompt = `
-Você é o Chef da Pastelaria Kiosk Pro. 
+Você é um atendente de loja de pelúcias online.
+
+Catálogo atual do site: ${menu?.map((p) => `${p.name} (R$ ${p.price.toFixed(2)})`).join(", ")}
 
 Cliente: ${clientName}
 Status: ${
@@ -173,10 +181,11 @@ Crie uma mensagem calorosa e pessoal (máximo 25 palavras):
 - Use o nome ${clientName}
 - Se for novo: dê boas-vindas entusiasmadas
 - Se for recorrente: agradeça a fidelidade e demonstre alegria em vê-lo(a) novamente
-- Tom brasileiro, caloroso como se fosse um amigo
+- Recomende um produto do catálogo acima, sem oferecer descontos
+- Tom brasileiro, caloroso, simpático e profissional
 
-Exemplo novo: "Olá ${clientName}! Seja muito bem-vindo(a)! Nossos pastéis estão quentinhos esperando por você! 🔥😊"
-Exemplo recorrente: "${clientName}, que alegria ter você aqui de novo! Preparei tudo com carinho especial! 💛"
+Exemplo novo: "Olá ${clientName}! Seja muito bem-vindo(a)! Temos pelúcias lindas como o ${menu?.[0]?.name} esperando por você! 🧸"
+Exemplo recorrente: "${clientName}, que alegria ter você aqui de novo! O ${menu?.[0]?.name} é sempre um sucesso entre nossos clientes! 💛"
   `;
 
   try {
