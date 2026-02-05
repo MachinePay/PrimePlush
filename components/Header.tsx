@@ -51,7 +51,7 @@ const Header: React.FC = () => {
                 style={({ isActive }) =>
                   isActive ? activeLinkStyle : undefined
                 }
-                className="text-stone-500 hover:text-whitetransition-colors font-medium"
+                className="text-white transition-colors font-medium"
               >
                 Catálogo
               </NavLink>

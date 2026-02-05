@@ -26,6 +26,19 @@ interface PaymentOnlineProps {
 type PaymentMethod = "checkout-pro" | "pix" | "card";
 
 export default function PaymentOnline({
+    // Substitua pela sua public key do Mercado Pago
+    const MP_PUBLIC_KEY = import.meta.env.VITE_MP_PUBLIC_KEY || "";
+    // Estado para status de pagamento cartão
+    const [cardStatus, setCardStatus] = useState<string>("");
+    // Estado para resposta do backend
+    const [cardResult, setCardResult] = useState<any>(null);
+    // Estado para dados do cartão (token, etc)
+    const [cardTokenData, setCardTokenData] = useState<any>(null);
+    // Estado para dados extras do cartão
+    const [cardExtra, setCardExtra] = useState<any>({});
+    // Importação dinâmica do MercadoPagoCardForm e Installments
+    const MercadoPagoCardForm = React.lazy(() => import("./MercadoPagoCardForm"));
+    const MercadoPagoInstallments = React.lazy(() => import("./MercadoPagoInstallments"));
   orderId,
   total,
   items,
@@ -34,9 +47,12 @@ export default function PaymentOnline({
   onSuccess,
   onError,
 }: PaymentOnlineProps) {
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(
-    null,
-  );
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
+  const [cardStep, setCardStep] = useState<'form' | 'confirm'>("form");
+  const [cardData, setCardData] = useState<any>(null);
+  const [installmentsOptions, setInstallmentsOptions] = useState<any[]>([]);
+  const [selectedInstallments, setSelectedInstallments] = useState<number>(1);
+  const [cardLoading, setCardLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pixData, setPixData] = useState<{
     qrCode: string;
@@ -221,9 +237,7 @@ export default function PaymentOnline({
         <h2 className="text-2xl font-bold text-center mb-6 text-purple-600">
           💳 Escolha a forma de pagamento
         </h2>
-
         <div className="space-y-4">
-          {/* Checkout Pro */}
           <button
             onClick={() => setSelectedMethod("checkout-pro")}
             className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-between"
@@ -231,8 +245,6 @@ export default function PaymentOnline({
             <span>💳 Pagar com MercadoPago</span>
             <span className="text-sm opacity-90">Cartão, PIX, Boleto...</span>
           </button>
-
-          {/* PIX */}
           <button
             onClick={() => setSelectedMethod("pix")}
             className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-between"
@@ -240,23 +252,19 @@ export default function PaymentOnline({
             <span>💚 PIX</span>
             <span className="text-sm opacity-90">Pagamento instantâneo</span>
           </button>
-
-          {/* Cartão - Desabilitado (necessita Public Key configurada) */}
           <button
-            disabled
-            className="w-full bg-gray-300 text-gray-500 font-bold py-4 px-6 rounded-xl cursor-not-allowed flex items-center justify-between opacity-60"
+            onClick={() => setSelectedMethod("card")}
+            className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-between"
           >
             <span>💳 Cartão de Crédito</span>
-            <span className="text-sm">Em breve</span>
+            <span className="text-sm">Parcelado</span>
           </button>
         </div>
-
         {error && (
           <div className="mt-4 bg-blue-50 border-2 border-blue-200 text-blue-600 p-4 rounded-lg text-center text-sm">
             {error}
           </div>
         )}
-
         <div className="mt-6 text-center">
           <p className="text-2xl font-bold text-purple-600">
             Total: R$ {total.toFixed(2)}
@@ -271,48 +279,98 @@ export default function PaymentOnline({
     );
   }
 
-  // Confirmação antes de processar
-  return (
-    <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md mx-auto">
-      <h2 className="text-2xl font-bold text-center mb-6 text-purple-600">
-        Confirmar Pagamento
-      </h2>
-
-      <div className="bg-purple-50 rounded-xl p-6 mb-6">
-        <p className="text-center text-lg font-semibold mb-2">
-          {selectedMethod === "checkout-pro"
-            ? "💳 Checkout MercadoPago"
-            : selectedMethod === "pix"
-              ? "💚 PIX"
-              : "💳 Cartão de Crédito"}
-        </p>
-        <p className="text-center text-3xl font-bold text-purple-600">
-          R$ {total.toFixed(2)}
-        </p>
-        {orderId && (
-          <p className="text-center text-sm text-gray-600 mt-2">
-            Pedido #{orderId.substring(0, 12)}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-3">
+  // Fluxo cartão de crédito parcelado
+  if (selectedMethod === "card") {
+    return (
+      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md mx-auto">
+        <h2 className="text-2xl font-bold text-center mb-6 text-purple-600">💳 Cartão de Crédito</h2>
+        <React.Suspense fallback={<div>Carregando formulário...</div>}>
+          {!cardTokenData && (
+            <MercadoPagoCardForm
+              publicKey={MP_PUBLIC_KEY}
+              amount={total}
+              onToken={(tokenData: any) => {
+                setCardTokenData(tokenData);
+                // Buscar opções de parcelas (já vem pelo SDK normalmente, mas pode customizar aqui)
+                // setInstallmentsOptions(...)
+              }}
+            />
+          )}
+          {/* Após tokenização, exibe seleção de parcelas e botão de pagar */}
+          {cardTokenData && (
+            <>
+              <div className="mb-4">
+                <strong>Valor total:</strong> R$ {total.toFixed(2)}
+              </div>
+              {/* Exemplo: opções de parcelas (mock ou do SDK) */}
+              {installmentsOptions.length > 0 && (
+                <MercadoPagoInstallments
+                  options={installmentsOptions}
+                  selected={selectedInstallments}
+                  onSelect={setSelectedInstallments}
+                />
+              )}
+              <button
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl mt-4"
+                disabled={cardLoading}
+                onClick={async () => {
+                  setCardLoading(true);
+                  setCardStatus("");
+                  setError("");
+                  try {
+                    // Montar payload conforme solicitado
+                    const payload = {
+                      token: cardTokenData.token,
+                      amount: total,
+                      description: orderId ? `Pedido ${orderId}` : "Pedido PrimePlush",
+                      orderId: orderId || "temp",
+                      installments: selectedInstallments,
+                      payerEmail: userEmail,
+                      issuerId: cardTokenData.issuerId,
+                      paymentMethodId: cardTokenData.paymentMethodId,
+                    };
+                    const response = await fetch(`${API_URL}/api/payment-online/create-card-payment`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload),
+                    });
+                    const data = await response.json();
+                    if (data.status === "approved") {
+                      setCardResult(data);
+                      setCardStatus("Pagamento aprovado!");
+                      onSuccess?.(data.paymentId || "");
+                    } else {
+                      setCardStatus("Pagamento não aprovado: " + (data.status_detail || data.status));
+                      setError(data.status_detail || "Erro ao processar pagamento");
+                    }
+                  } catch (err: any) {
+                    setError(err.message);
+                  } finally {
+                    setCardLoading(false);
+                  }
+                }}
+              >
+                {cardLoading ? "Processando..." : "Pagar"}
+              </button>
+              {cardStatus && <div className="mt-4 text-green-600 font-bold">{cardStatus}</div>}
+              {error && <div className="mt-2 text-red-600">{error}</div>}
+            </>
+          )}
+        </React.Suspense>
         <button
-          onClick={
-            selectedMethod === "checkout-pro" ? handleCheckoutPro : handlePIX
-          }
-          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl"
-        >
-          ✅ Confirmar e Pagar
-        </button>
-
-        <button
-          onClick={() => setSelectedMethod(null)}
-          className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-xl transition-all"
+          onClick={() => {
+            setSelectedMethod(null);
+            setCardTokenData(null);
+            setInstallmentsOptions([]);
+            setSelectedInstallments(1);
+            setCardStatus("");
+            setError("");
+          }}
+          className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-xl transition-all mt-6"
         >
           ← Voltar
         </button>
       </div>
-    </div>
-  );
+    );
+  }
 }
