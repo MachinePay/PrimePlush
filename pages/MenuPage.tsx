@@ -586,7 +586,7 @@ const MenuPage: React.FC = () => {
       <main className="flex-1 flex flex-col h-full relative overflow-hidden">
         {/* Header Mobile */}
         <header className="md:hidden bg-white/90 backdrop-blur-md p-4 sticky top-0 z-20 border-b border-stone-200 shadow-sm flex justify-between items-center">
-          <h2 className="font-bold text-blue-800 text-xl">
+          <h2 className="font-bold text-xl">
             {selectedCategory || "Cardápio"}
           </h2>
           <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm border border-blue-200">
