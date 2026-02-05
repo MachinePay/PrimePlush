@@ -175,7 +175,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
   return (
     <div
       className={containerClass}
-      style={isMobile ? undefined : { background: '#FFF6E5' }}
+      style={isMobile ? undefined : { background: '#e8c88c' }}
     >
       {/* Header do Carrinho */}
       <div

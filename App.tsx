@@ -146,7 +146,7 @@ const RouterBody: React.FC = () => {
     <div className="min-h-screen bg-stone-100 text-stone-800">
       <InactivityGuard />
       <Header />
-      <main className="p-4 md:p-8">
+      <main className="p-4 md:p-8 bg-" style={{ background: '#FFF6E5' }}>
         <Routes>
           <Route path="/superadmin" element={<SuperAdminPage />} />
           <Route path="/" element={<LoginPage />} />
