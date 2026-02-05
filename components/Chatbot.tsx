@@ -61,11 +61,8 @@ const Chatbot: React.FC = () => {
       {/* Botão do Header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`p-2 rounded-full transition-all duration-200 flex items-center gap-2 ${
-          isOpen
-            ? "bg-amber-100 text-amber-700"
-            : "text-stone-500 hover:bg-stone-100 hover:text-amber-600"
-        }`}
+        className={"p-2 rounded-full transition-all duration-200 flex items-center gap-2"}
+        style={{ color: 'orange' }}
         title="Ajuda com IA"
       >
         <svg
