@@ -52,6 +52,25 @@ const MercadoPagoCardForm: React.FC<Props> = ({
       callbacks: {
         onFormMounted: (error) => {
           if (error) console.error("Erro ao montar o formulário:", error);
+          // Log para depuração
+          setTimeout(() => {
+            const issuer = document.getElementById("form-checkout__issuer");
+            const installments = document.getElementById("form-checkout__installments");
+            const idType = document.getElementById("form-checkout__identificationType");
+            console.log("Issuer select:", issuer);
+            console.log("Installments select:", installments);
+            console.log("IdentificationType select:", idType);
+            // Se algum campo estiver vazio, tenta popular manualmente
+            if (issuer && issuer.children.length === 0) {
+              issuer.innerHTML = '<option value="">Selecione o banco</option>';
+            }
+            if (installments && installments.children.length === 0) {
+              installments.innerHTML = '<option value="">Selecione as parcelas</option>';
+            }
+            if (idType && idType.children.length === 0) {
+              idType.innerHTML = '<option value="CPF">CPF</option>';
+            }
+          }, 1000);
         },
         onSubmit: (event) => {
           event.preventDefault();
