@@ -21,8 +21,9 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-gradient-to-r from-white via-blue-300 to-blue-500 border-b border-stone-200 sticky top-0 z-50 h-16">
-      <div className="container mx-auto px-4 h-full flex items-center justify-between">
+    <>
+      <header className="bg-gradient-to-r from-white via-blue-300 to-blue-500 border-b border-stone-200 sticky top-0 z-50 h-16">
+        <div className="container mx-auto px-4 h-full flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2">
           <NavLink
@@ -132,8 +133,11 @@ const Header: React.FC = () => {
             <span className="text-sm text-white">Bem-vindo!</span>
           )}
         </div>
-      </div>
-    </header>
+        </div>
+      </header>
+      {/* Traço laranja embaixo do header */}
+      <div style={{ height: '4px', background: 'orange', width: '100%' }} />
+    </>
   );
 };
 
