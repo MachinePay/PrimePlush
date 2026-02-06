@@ -179,6 +179,8 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
   }
 
   if (pixData) {
+    const isQrCodeBase64Valid = typeof pixData.qrCodeBase64 === 'string' && pixData.qrCodeBase64.length > 0;
+    const isQrCodeValid = typeof pixData.qrCode === 'string' && pixData.qrCode.length > 0;
     return (
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md mx-auto">
         <h2 className="text-2xl font-bold text-center mb-6 text-purple-600">
@@ -186,11 +188,15 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
         </h2>
 
         <div className="bg-gray-50 rounded-xl p-6 mb-6">
-          <img
-            src={`data:image/png;base64,${pixData.qrCodeBase64}`}
-            alt="QR Code PIX"
-            className="w-full max-w-xs mx-auto mb-4"
-          />
+          {isQrCodeBase64Valid ? (
+            <img
+              src={`data:image/png;base64,${pixData.qrCodeBase64}`}
+              alt="QR Code PIX"
+              className="w-full max-w-xs mx-auto mb-4"
+            />
+          ) : (
+            <p className="text-center text-red-500 mb-4">QR Code não disponível</p>
+          )}
 
           <p className="text-center text-sm text-gray-600 mb-4">
             Escaneie o QR Code com seu app de banco
@@ -201,13 +207,14 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
               Código PIX Copia e Cola:
             </p>
             <p className="text-xs break-all font-mono bg-gray-100 p-2 rounded">
-              {pixData.qrCode}
+              {isQrCodeValid ? pixData.qrCode : 'Código não disponível'}
             </p>
           </div>
 
           <button
             onClick={copyPixCode}
             className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition-all"
+            disabled={!isQrCodeValid}
           >
             📋 Copiar Código PIX
           </button>
