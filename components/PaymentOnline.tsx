@@ -143,17 +143,35 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
         },
       );
 
-      if (!response.ok) throw new Error("Erro ao gerar PIX");
+      if (!response.ok) {
+        let msg = "Erro ao gerar PIX";
+        try {
+          const errData = await response.json();
+          if (errData && errData.message) msg = errData.message;
+        } catch {}
+        throw new Error(msg);
+      }
 
       const data = await response.json();
 
+      const qrCode = data.qr_code || data.qrCodeCopyPaste || data.qrCode || data.qr_code_copy_paste;
+      const qrCodeBase64 = data.qr_code_base64 || data.qrCodeBase64;
+      const paymentId = data.id || data.paymentId;
+
+      if (!qrCode || !qrCodeBase64 || !paymentId) {
+        setError("Não foi possível gerar o PIX. Tente novamente ou entre em contato com o suporte.");
+        setPixData(null);
+        return;
+      }
+
       setPixData({
-        qrCode: data.qr_code || data.qrCodeCopyPaste || data.qrCode || data.qr_code_copy_paste,
-        qrCodeBase64: data.qr_code_base64 || data.qrCodeBase64,
-        paymentId: data.id || data.paymentId,
+        qrCode,
+        qrCodeBase64,
+        paymentId,
       });
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Erro inesperado ao gerar PIX");
+      setPixData(null);
       onError?.(err.message);
     } finally {
       setLoading(false);
@@ -262,7 +280,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
           </button>
         </div>
         {error && (
-          <div className="mt-4 bg-blue-50 border-2 border-blue-200 text-blue-600 p-4 rounded-lg text-center text-sm">
+          <div className="mt-4 bg-red-50 border-2 border-red-200 text-red-600 p-4 rounded-lg text-center text-sm">
             {error}
           </div>
         )}
