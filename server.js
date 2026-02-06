@@ -1,3 +1,26 @@
+// Endpoint de histórico de pedidos para o usuário (usado no frontend)
+app.get("/api/orders/history", async (req, res) => {
+  try {
+    const { userId } = req.query;
+    let query = db("orders")
+      .whereIn("status", ["active", "preparing", "completed"]) // Inclui todos os relevantes
+      .orWhere(function () {
+        this.whereIn("paymentStatus", ["paid", "authorized"]);
+      })
+      .orderBy("timestamp", "desc");
+    if (userId) query = query.where({ userId });
+    const allOrders = await query.select("*");
+    res.json(
+      allOrders.map((o) => ({
+        ...o,
+        items: parseJSON(o.items),
+        total: parseFloat(o.total),
+      })),
+    );
+  } catch (err) {
+    res.status(500).json({ error: "Erro histórico" });
+  }
+});
 import express from "express";
 import fs from "fs/promises";
 import path from "path";
