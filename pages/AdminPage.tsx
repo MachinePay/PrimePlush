@@ -334,9 +334,24 @@ const AdminPage: React.FC = () => {
   });
 
   // Carrega os dados iniciais do backend
+
   useEffect(() => {
     loadProducts();
+    loadOrdersCount();
   }, []);
+
+  // Busca o total de pedidos dos últimos 30 dias
+  const loadOrdersCount = async () => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+      const res = await fetch(`${API_URL}/api/orders/last30days-count`);
+      if (!res.ok) throw new Error("Erro ao buscar total de pedidos");
+      const data = await res.json();
+      setStats((prev) => ({ ...prev, totalOrders: data.totalOrders || 0 }));
+    } catch (err) {
+      console.error("Erro ao buscar total de pedidos:", err);
+    }
+  };
 
   const loadProducts = async () => {
     try {

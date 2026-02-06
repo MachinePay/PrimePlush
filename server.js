@@ -22,6 +22,27 @@ app.get("/api/orders/history", async (req, res) => {
   }
 });
 import express from "express";
+// Endpoint: total de pedidos nos últimos 30 dias
+app.get("/api/orders/last30days-count", async (req, res) => {
+  try {
+    // Data de 30 dias atrás
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    // Conta pedidos pagos ou autorizados, ou status active/preparing/completed
+    const countResult = await db("orders")
+      .where(function () {
+        this.whereIn("status", ["active", "preparing", "completed"])
+          .orWhere(function () {
+            this.whereIn("paymentStatus", ["paid", "authorized"]);
+          });
+      })
+      .andWhere("timestamp", ">=", thirtyDaysAgo)
+      .count({ total: "id" })
+      .first();
+    res.json({ totalOrders: Number(countResult?.total || 0) });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao contar pedidos dos últimos 30 dias" });
+  }
+});
 import fs from "fs/promises";
 import path from "path";
 import cors from "cors";
