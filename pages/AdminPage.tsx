@@ -501,6 +501,7 @@ const AdminPage: React.FC = () => {
             disabled={isLoadingAnalysis}
             className="bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 transition-colors shadow-md disabled:bg-indigo-300 flex items-center gap-2"
           >
+            
             {isLoadingAnalysis ? "⏳ Analisando..." : "🤖 Análise com IA"}
           </button>
           <button
