@@ -1114,10 +1114,16 @@ app.delete(
   },
 );
 
+// Histórico de pedidos do usuário (inclui pagos, ativos, preparando e completados)
 app.get("/api/user-orders", async (req, res) => {
   try {
     const { userId } = req.query;
-    let query = db("orders").orderBy("timestamp", "desc");
+    let query = db("orders")
+      .whereIn("status", ["active", "preparing", "completed"])
+      .orWhere(function () {
+        this.whereIn("paymentStatus", ["paid", "authorized"]);
+      })
+      .orderBy("timestamp", "desc");
     if (userId) query = query.where({ userId });
     const allOrders = await query.select("*");
     res.json(

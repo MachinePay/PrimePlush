@@ -266,7 +266,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
               id="observation"
               value={observation}
               onChange={handleObservationChange}
-              placeholder="Ex: Sem cebola, molho à parte, bem passado..."
+              placeholder="Ex: Em caixa, em sacos..."
               className="w-full p-3 border-2 border-stone-300 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all text-lg"
               rows={2}
             />
