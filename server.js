@@ -1242,9 +1242,11 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
 
       console.log(`💳 Payment Intent ${id} | State: ${intent.state}`);
       const orderId = intent.additional_info?.external_reference;
+      console.log(`[WEBHOOK] Referência externa recebida:`, orderId);
 
       // Se foi cancelado, já processa aqui
       if (intent.state === "CANCELED") {
+        console.log(`[WEBHOOK] Pedido será cancelado. orderId:`, orderId);
         console.log(`❌ Payment Intent CANCELADO via IPN`);
 
         // Limpa a fila
@@ -1259,6 +1261,9 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
         if (orderId) {
           try {
             const order = await db("orders").where({ id: orderId }).first();
+            if (!order) {
+              console.error(`[WEBHOOK] Pedido não encontrado no banco para orderId:`, orderId);
+            }
             if (order && order.paymentStatus === "pending") {
               // Libera estoque
               const items = parseJSON(order.items);
@@ -1289,7 +1294,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
                 paymentStatus: "canceled",
                 status: "canceled",
               });
-              console.log(`✅ Pedido ${orderId} cancelado via IPN`);
+              console.log(`[WEBHOOK] Pedido ${orderId} cancelado via IPN`);
             }
           } catch (dbError) {
             console.error(
@@ -1303,6 +1308,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
 
       // Se tem payment.id, busca o pagamento real
       if (intent.payment && intent.payment.id) {
+        console.log(`[WEBHOOK] intent.payment.id encontrado:`, intent.payment.id);
         const paymentId = intent.payment.id;
         console.log(`💳 Buscando detalhes do pagamento real: ${paymentId}`);
 
@@ -1312,6 +1318,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
         });
 
         if (paymentResp.ok) {
+          console.log(`[WEBHOOK] Detalhes do pagamento real recebidos para paymentId:`, paymentId);
           const payment = await paymentResp.json();
           console.log(`💳 Pagamento ${paymentId} | Status: ${payment.status}`);
 
@@ -1319,6 +1326,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
             payment.status === "approved" ||
             payment.status === "authorized"
           ) {
+            console.log(`[WEBHOOK] Pagamento aprovado/autorizado. orderId:`, payment.external_reference);
             // Limpa a fila
             try {
               await paymentService.clearPaymentQueue(storeConfig);
@@ -1336,6 +1344,15 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
               status: payment.status,
               timestamp: Date.now(),
             });
+            // LOG extra para update de pedido
+            if (payment.external_reference) {
+              const pedido = await db("orders").where({ id: payment.external_reference }).first();
+              if (!pedido) {
+                console.error(`[WEBHOOK] [APROVADO] Pedido não encontrado para orderId:`, payment.external_reference);
+              } else {
+                console.log(`[WEBHOOK] [APROVADO] Pedido encontrado para orderId:`, payment.external_reference, 'Status atual:', pedido.status, 'PaymentStatus:', pedido.paymentStatus);
+              }
+            }
 
             console.log(
               `✅ Pagamento ${paymentId} confirmado via IPN! Valor: R$ ${payment.transaction_amount}`,
@@ -1350,6 +1367,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
             payment.status === "cancelled" ||
             payment.status === "refunded"
           ) {
+            console.log(`[WEBHOOK] Pagamento rejeitado/cancelado/refundado. orderId:`, payment.external_reference);
             // Limpa a fila
             try {
               await paymentService.clearPaymentQueue(storeConfig);
@@ -1384,6 +1402,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
 
     // Fallback: payment PIX
     if (topic === "payment" && id) {
+      console.log(`[WEBHOOK] IPN tipo payment recebido. id:`, id);
       console.log(`📨 Processando IPN de pagamento PIX: ${id}`);
 
       // Tenta buscar com todas as lojas possíveis
@@ -1417,8 +1436,10 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
       }
 
       console.log(`💚 Pagamento PIX ${id} | Status: ${payment.status}`);
+      console.log(`[WEBHOOK] external_reference recebido:`, payment.external_reference);
 
       if (payment.status === "approved") {
+        console.log(`[WEBHOOK] Pagamento PIX aprovado. orderId:`, payment.external_reference);
         console.log(`✅ Pagamento PIX ${id} APROVADO via IPN!`);
 
         // Atualiza pedido no banco
@@ -1426,12 +1447,15 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
         if (orderId) {
           try {
             const order = await db("orders").where({ id: orderId }).first();
+            if (!order) {
+              console.error(`[WEBHOOK] [PIX] Pedido não encontrado para orderId:`, orderId);
+            }
             if (order && order.paymentStatus === "pending") {
               await db("orders").where({ id: orderId }).update({
                 paymentStatus: "paid",
                 status: "preparing",
               });
-              console.log(`✅ Pedido ${orderId} marcado como PAGO via IPN PIX`);
+              console.log(`[WEBHOOK] [PIX] Pedido ${orderId} marcado como PAGO via IPN PIX`);
             }
           } catch (dbError) {
             console.error(
