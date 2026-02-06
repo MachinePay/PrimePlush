@@ -132,7 +132,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/payment-online/create-pix-direct`,
+        `${API_URL}/api/payment/create-pix`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -150,9 +150,9 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
       const data = await response.json();
 
       setPixData({
-        qrCode: data.qrCode,
-        qrCodeBase64: data.qrCodeBase64,
-        paymentId: data.paymentId,
+        qrCode: data.qr_code || data.qrCodeCopyPaste || data.qrCode || data.qr_code_copy_paste,
+        qrCodeBase64: data.qr_code_base64 || data.qrCodeBase64,
+        paymentId: data.id || data.paymentId,
       });
     } catch (err: any) {
       setError(err.message);
