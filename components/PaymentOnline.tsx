@@ -275,5 +275,13 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
     );
   }
 
+  // Chama handlePIX automaticamente ao selecionar PIX
+  useEffect(() => {
+    if (selectedMethod === "pix" && !pixData && !loading) {
+      handlePIX();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMethod]);
+
   // Removeu o fluxo customizado de cartão de crédito. Agora só usa Checkout Pro.
 }
