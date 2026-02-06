@@ -491,6 +491,12 @@ const AdminPage: React.FC = () => {
             📂 Categorias
           </button>
           <button
+            onClick={() => navigate("/orders/history")}
+            className="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition-colors shadow-md"
+          >
+            📋 Histórico de Pedidos
+          </button>
+          <button
             onClick={handleGenerateAnalysis}
             disabled={isLoadingAnalysis}
             className="bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 transition-colors shadow-md disabled:bg-indigo-300 flex items-center gap-2"
