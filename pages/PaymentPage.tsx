@@ -67,6 +67,10 @@ const PaymentPage: React.FC = () => {
   // Estado que ATIVA o React Query (substitui o loop while)
   const [activePayment, setActivePayment] = useState<ActivePaymentState>(null);
 
+  // Novo estado para orderId do pagamento online
+  const [onlineOrderId, setOnlineOrderId] = useState<string | null>(null);
+  const [creatingOnlineOrder, setCreatingOnlineOrder] = useState(false);
+
   // Ref para limpeza (cleanup) ao desmontar a página
   const paymentIdRef = useRef<string | null>(null);
 
@@ -420,37 +424,86 @@ const PaymentPage: React.FC = () => {
 
           {/* Pagamento Online com Mercado Pago */}
           {paymentType === "online" && (
-            <PaymentOnline
-              orderId={null}
-              total={cartTotal}
-              items={cartItems.map((i) => ({
-                id: i.id,
-                name: i.name,
-                quantity: i.quantity,
-                price: i.price,
-              }))}
-              userEmail={currentUser?.email || ""}
-              userName={currentUser?.name || ""}
-              onSuccess={(paymentId) => {
-                Swal.fire({
-                  icon: "success",
-                  title: "Pagamento Aprovado!",
-                  text: `Seu pedido foi pago com sucesso!`,
-                  confirmButtonText: "OK",
-                }).then(() => {
-                  clearCart();
-                  navigate("/menu");
-                });
-              }}
-              onError={(error) => {
-                Swal.fire({
-                  icon: "error",
-                  title: "Erro no Pagamento",
-                  text: error,
-                  confirmButtonText: "Tentar Novamente",
-                });
-              }}
-            />
+            <>
+              {/* Cria o pedido antes de exibir o PaymentOnline */}
+              {!onlineOrderId && !creatingOnlineOrder && (
+                <button
+                  className="w-full bg-blue-600 text-white font-bold py-4 px-6 rounded-xl mb-4"
+                  onClick={async () => {
+                    setCreatingOnlineOrder(true);
+                    try {
+                      const orderResp = await fetchStandard(`${BACKEND_URL}/api/orders`, {
+                        method: "POST",
+                        body: JSON.stringify({
+                          userId: currentUser!.id,
+                          userName: currentUser!.name,
+                          items: cartItems.map((i) => ({
+                            id: i.id,
+                            name: i.name,
+                            quantity: i.quantity,
+                            price: i.price,
+                          })),
+                          total: cartTotal,
+                          observation,
+                          status: "pending",
+                        }),
+                      });
+                      if (!orderResp.ok) throw new Error("Erro ao criar pedido");
+                      const data = await orderResp.json();
+                      setOnlineOrderId(data.id);
+                    } catch (err: any) {
+                      Swal.fire({
+                        icon: "error",
+                        title: "Erro ao criar pedido",
+                        text: err.message || "Erro desconhecido",
+                        confirmButtonText: "OK",
+                      });
+                      setPaymentType(null);
+                    } finally {
+                      setCreatingOnlineOrder(false);
+                    }
+                  }}
+                  disabled={creatingOnlineOrder}
+                >
+                  {creatingOnlineOrder ? "Criando pedido..." : "Gerar Pedido e Pagar"}
+                </button>
+              )}
+              {onlineOrderId && (
+                <PaymentOnline
+                  orderId={onlineOrderId}
+                  total={cartTotal}
+                  items={cartItems.map((i) => ({
+                    id: i.id,
+                    name: i.name,
+                    quantity: i.quantity,
+                    price: i.price,
+                  }))}
+                  userEmail={currentUser?.email || ""}
+                  userName={currentUser?.name || ""}
+                  onSuccess={(paymentId) => {
+                    Swal.fire({
+                      icon: "success",
+                      title: "Pagamento Aprovado!",
+                      text: `Seu pedido foi pago com sucesso!`,
+                      confirmButtonText: "OK",
+                    }).then(() => {
+                      clearCart();
+                      setOnlineOrderId(null);
+                      setPaymentType(null);
+                      navigate("/menu");
+                    });
+                  }}
+                  onError={(error) => {
+                    Swal.fire({
+                      icon: "error",
+                      title: "Erro no Pagamento",
+                      text: error,
+                      confirmButtonText: "Tentar Novamente",
+                    });
+                  }}
+                />
+              )}
+            </>
           )}
 
           {/* Pagamento Presencial (Modo Manual/A Pagar) */}
