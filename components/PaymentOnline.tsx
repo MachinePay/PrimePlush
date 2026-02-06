@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 /**
  * Componente de Pagamento Online com MercadoPago
@@ -126,7 +126,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
     }
   };
 
-  const handlePIX = async () => {
+  const handlePIX = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -160,7 +160,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_URL, orderId, total, userEmail, onError]);
 
   const copyPixCode = () => {
     if (pixData?.qrCode) {
@@ -281,7 +281,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
       handlePIX();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMethod]);
+  }, [selectedMethod, pixData, loading, handlePIX]);
 
   // Removeu o fluxo customizado de cartão de crédito. Agora só usa Checkout Pro.
 }
