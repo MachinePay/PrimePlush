@@ -118,7 +118,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
             onClick={handleCheckoutPro}
             className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-between"
           >
-            <span>💳 Cartão de Crédito / Débito (Mercado Pago, Pix ou Crédito)</span>
+            <span>💳 Crédito, Débito ou Pix (Mercado Pago)</span>
             <span className="text-sm">Parcelado</span>
           </button>
         </div>
