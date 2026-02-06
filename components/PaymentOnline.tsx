@@ -36,11 +36,9 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
   const [cardTokenData, setCardTokenData] = useState<any>(null);
   // Estado para dados extras do cartão
   const [cardExtra, setCardExtra] = useState<any>({});
-  // Importação dinâmica do MercadoPagoCardForm e Installments
-  const MercadoPagoCardForm = React.lazy(() => import("./MercadoPagoCardForm"));
 
   // ...existing code...
-  const MercadoPagoInstallments = React.lazy(() => import("./MercadoPagoInstallments"));
+  // Removido React.lazy pois não está mais em uso
   const {
     orderId,
     total,
