@@ -8,10 +8,10 @@
 # Commit as mudanças
 git add .
 git commit -m "Backend pronto para Render"
-git push origin main
+git push origin main 
 ```
 
-### 2️⃣ Deploy no Render (8 minutos)
+###  2️⃣ Deploy no Render (8 minutos)
 
 1. Acesse: https://render.com
 
