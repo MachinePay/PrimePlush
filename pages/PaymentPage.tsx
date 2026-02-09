@@ -220,9 +220,11 @@ const PaymentPage: React.FC = () => {
       clearCart();
       setQrCodeBase64(null);
 
+      // Abre o PDF imediatamente após sucesso
+      window.open(`${BACKEND_URL}/api/orders/${orderId}/receipt-pdf`, '_blank');
+
+      // Redireciona para a página inicial após 5 segundos
       setTimeout(async () => {
-        // Abre o PDF do pedido em nova aba
-        window.open(`${BACKEND_URL}/api/orders/${orderId}/receipt-pdf`, '_blank');
         await logout();
         navigate("/", { replace: true });
       }, 5000);
