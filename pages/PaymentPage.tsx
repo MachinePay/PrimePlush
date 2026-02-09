@@ -648,12 +648,23 @@ const PaymentPage: React.FC = () => {
                           }),
                         },
                       );
-                      if (!orderResp.ok)
-                        throw new Error("Erro ao criar pedido");
+                      if (!orderResp.ok) throw new Error("Erro ao criar pedido");
+                      const orderData = await orderResp.json();
                       setStatus("success");
                       clearCart();
                       setPresencialStep(null);
                       setPaymentType(null);
+
+                      // Abrir PDF em nova aba se o pedido foi criado com sucesso
+                      if (orderData && orderData.id) {
+                        const pdfUrl = `${BACKEND_URL}/api/orders/${orderData.id}/receipt-pdf`;
+                        window.open(pdfUrl, '_blank');
+                      }
+
+                      // Redirecionar para o catálogo após um pequeno delay
+                      setTimeout(() => {
+                        navigate("/");
+                      }, 500);
                     } catch (err: any) {
                       setStatus("error");
                       setErrorMessage(
