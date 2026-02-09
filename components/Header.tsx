@@ -79,7 +79,7 @@ const Header: React.FC = () => {
                 Relatórios IA
               </NavLink>
               <NavLink
-                to="/superadmin"
+                to="/superadmin/login"
                 className="bg-blue-600 text-white font-bold py-1 px-4 rounded-lg ml-2 hover:bg-blue-700 transition-colors shadow-md"
               >
                 SuperAdmin

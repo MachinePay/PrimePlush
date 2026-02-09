@@ -150,7 +150,7 @@ const RouterBody: React.FC = () => {
       <Header />
       <main className="p-4 md:p-8 bg-" style={{ background: '#FFF6E5' }}>
         <Routes>
-          <Route path="/superadmin" element={<SuperAdminPage />} />
+          <Route path="/superadmin/login" element={<SuperAdminPage />} />
           <Route path="/" element={<LoginPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
