@@ -119,7 +119,8 @@ const OrderHistoryPage: React.FC = () => {
           {orders.map((order) => (
             <div
               key={order.id}
-              className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-600"
+              className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-600 cursor-pointer hover:shadow-lg transition"
+              onClick={() => navigate("/historico/detalhes", { state: { order } })}
             >
               <div className="flex flex-wrap justify-between items-center mb-2">
                 <div className="font-bold text-lg text-stone-800">

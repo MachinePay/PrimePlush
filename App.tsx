@@ -27,6 +27,8 @@ import InactivityGuard from "./components/InactivityGuard";
 import { configurePoint, checkPointStatus } from "./services/pointService";
 import type { UserRole } from "./types";
 
+import OrderDetailPage from "./pages/OrderDetailPage";
+
 // 1. Configuração do Cliente React Query
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -186,6 +188,19 @@ const RouterBody: React.FC = () => {
                 redirectTo="/admin/login"
               >
                 <OrderHistoryPage />
+              </RoleProtectedRoute>
+            }
+          />
+
+          {/* Rota protegida para detalhes do pedido */}
+          <Route
+            path="/historico/detalhes"
+            element={
+              <RoleProtectedRoute
+                allowedRoles={["admin", "kitchen"]}
+                redirectTo="/admin/login"
+              >
+                <OrderDetailPage />
               </RoleProtectedRoute>
             }
           />
