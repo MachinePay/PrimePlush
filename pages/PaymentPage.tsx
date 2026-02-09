@@ -221,6 +221,8 @@ const PaymentPage: React.FC = () => {
       setQrCodeBase64(null);
 
       setTimeout(async () => {
+        // Abre o PDF do pedido em nova aba
+        window.open(`${BACKEND_URL}/api/orders/${orderId}/receipt-pdf`, '_blank');
         await logout();
         navigate("/", { replace: true });
       }, 5000);
