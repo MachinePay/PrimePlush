@@ -33,8 +33,7 @@ export async function sendOrderPdfEmail({ order, email }) {
   });
 
   // --- PDF DESIGN ---
-  // Logo (SVG emoji fallback)
-  doc.image(__dirname + '/../public/favicon.png', doc.page.width/2 - 40, 20, { width: 80 }).moveDown();
+  // Logo removida (imagem não encontrada). Pode adicionar PNG em backend/public e restaurar esta linha se desejar.
 
   // Cabeçalho
   doc
