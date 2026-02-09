@@ -37,7 +37,19 @@ const OrderDetailPage: React.FC = () => {
           <span className="font-semibold">Data/Hora:</span> {new Date(order.timestamp).toLocaleString()}
         </div>
         <div className="mb-2 text-stone-700">
-          <span className="font-semibold">Forma de Pagamento:</span> {order.paymentType || "-"}
+          <span className="font-semibold">Forma de Pagamento:</span> {(() => {
+            if (!order.paymentType) return "-";
+            if (order.paymentType === "presencial") {
+              return "Presencial";
+            }
+            if (order.paymentType === "online") {
+              if (order.paymentMethod === "credit") return "Cartão de Crédito (Mercado Pago)";
+              if (order.paymentMethod === "debit") return "Cartão de Débito (Mercado Pago)";
+              if (order.paymentMethod === "pix") return "Pix (Mercado Pago)";
+              return "Online (Mercado Pago)";
+            }
+            return order.paymentType;
+          })()}
         </div>
         <div className="mb-2 text-stone-700">
           <span className="font-semibold">Status do Pagamento:</span> {order.paymentStatus || "-"}
