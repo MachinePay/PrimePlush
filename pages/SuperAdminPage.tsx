@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { login, isAuthenticated, logout } from "../services/apiService";
 import logo from "../assets/primeplush-logo.png";
 import SuperAdminReceivablesDetails from "../components/SuperAdminReceivablesDetails";
+import type { Order } from "../types";
 
 interface StatsData {
   stats: {
