@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { login, isAuthenticated, logout } from "../services/apiService";
 import logo from "../assets/primeplush-logo.png";
+import SuperAdminReceivablesDetails from "../components/SuperAdminReceivablesDetails";
 
 interface StatsData {
   stats: {
@@ -13,6 +14,7 @@ interface StatsData {
     amount: number;
     date: string;
   }>;
+  orders?: Order[]; // Adiciona lista de pedidos para detalhamento
 }
 
 export default function SuperAdminPage() {
@@ -214,6 +216,16 @@ export default function SuperAdminPage() {
                 {loading ? "Processando..." : "✅ Marcar como Recebido"}
               </button>
             </div>
+
+            {/* Detalhamento dos pedidos e cálculo */}
+            {data.orders && data.orders.length > 0 && (
+              <SuperAdminReceivablesDetails
+                orders={data.orders}
+                totalToReceive={data.stats.totalToReceive}
+                totalReceived={data.stats.totalReceived}
+                alreadyReceived={data.stats.alreadyReceived}
+              />
+            )}
 
             {/* Histórico de Recebimentos */}
             <div className="bg-white shadow-xl rounded-2xl p-6 border-2 border-gray-200">

@@ -68,17 +68,21 @@ const Header: React.FC = () => {
             <>
               <NavLink
                 to="/admin"
-                
                 className="text-white hover:text-blue-700 transition-colors font-medium"
               >
                 Produtos
               </NavLink>
               <NavLink
                 to="/admin/reports"
-                
                 className="text-[#FFA500] hover:text-blue-700 transition-colors font-medium"
               >
                 Relatórios IA
+              </NavLink>
+              <NavLink
+                to="/superadmin"
+                className="bg-blue-600 text-white font-bold py-1 px-4 rounded-lg ml-2 hover:bg-blue-700 transition-colors shadow-md"
+              >
+                SuperAdmin
               </NavLink>
             </>
           )}
