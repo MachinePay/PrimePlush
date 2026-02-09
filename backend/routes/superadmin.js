@@ -15,11 +15,29 @@ function superAdminAuth(req, res, next) {
 // Endpoint detalhado para recebíveis do SuperAdmin
 router.get('/super-admin/receivables', superAdminAuth, async (req, res) => {
   try {
-    // Busca todos os pedidos pagos (ajuste conforme sua lógica)
-    const orders = await getAllOrders({ paymentStatus: 'paid' });
+    // Busca todos os pedidos pagos ou autorizados (Mercado Pago)
+    const orders = await getAllOrders({ paymentStatus: ['paid', 'authorized'] });
+
     // Cálculo dos totais
-    const totalPedidos = orders.reduce((sum, o) => sum + o.total, 0);
-    const taxas = orders.reduce((sum, o) => sum + (o.fee || 0), 0);
+    let totalPedidos = 0;
+    let taxas = 0;
+    const detailedOrders = orders.map((o) => {
+      // Mercado Pago: paymentType = 'mercadopago' ou similar
+      const isMercadoPago = o.paymentType && o.paymentType.toLowerCase().includes('mercado');
+      const fee = o.fee || 0;
+      const valorBruto = isMercadoPago ? o.total - fee : o.total;
+      // Valor a receber = valorBruto
+      totalPedidos += o.total;
+      taxas += fee;
+      return {
+        ...o,
+        valorBruto,
+        fee,
+        calculo: isMercadoPago ? `${o.total} - ${fee} = ${valorBruto}` : `${o.total}`,
+        paymentType: o.paymentType || 'presencial',
+      };
+    });
+
     // Simule valores já recebidos e recebidos no período
     const alreadyReceived = 0; // Busque do banco se necessário
     const totalToReceive = totalPedidos - taxas - alreadyReceived;
@@ -33,7 +51,7 @@ router.get('/super-admin/receivables', superAdminAuth, async (req, res) => {
         alreadyReceived
       },
       history,
-      orders // Lista detalhada dos pedidos
+      orders: detailedOrders // Lista detalhada dos pedidos
     });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao buscar dados', details: err.message });
