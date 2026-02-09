@@ -20,7 +20,7 @@ interface StatsData {
 
 export default function SuperAdminPage() {
   const [password, setPassword] = useState("");
-  const [loggedIn, setLoggedIn] = useState(isAuthenticated());
+  const [loggedIn, setLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<StatsData | null>(null);
   const [error, setError] = useState("");
@@ -109,6 +109,10 @@ export default function SuperAdminPage() {
     setPassword("");
     setData(null);
     setError("");
+    // Limpa qualquer persistência de login
+    if (window && window.localStorage) {
+      window.localStorage.removeItem("superadmin_logged_in");
+    }
   }
 
   if (!loggedIn) {

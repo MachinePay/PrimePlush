@@ -23,7 +23,7 @@ import AdminReportsPage from "./pages/AdminReportsPage";
 import AdminCategoriesPage from "./pages/AdminCategoriesPage"; // 🆕
 import Header from "./components/Header";
 import Chatbot from "./components/Chatbot";
-import InactivityGuard from "./components/InactivityGuard";
+// import InactivityGuard from "./components/InactivityGuard";
 import { configurePoint, checkPointStatus } from "./services/pointService";
 import type { UserRole } from "./types";
 
@@ -146,7 +146,7 @@ const RouterBody: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-100 text-stone-800">
-      <InactivityGuard />
+      {/* <InactivityGuard /> */}
       <Header />
       <main className="p-4 md:p-8 bg-" style={{ background: '#FFF6E5' }}>
         <Routes>
