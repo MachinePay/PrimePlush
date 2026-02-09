@@ -33,6 +33,8 @@ export async function createPixPayment(paymentData: {
   orderId: string;
   email?: string;
   payerName?: string;
+  items?: any[];
+  user?: { email?: string; name?: string };
 }): Promise<PaymentResponse> {
   try {
     const response = await api.post("/api/payment/create-pix", {
@@ -41,6 +43,8 @@ export async function createPixPayment(paymentData: {
       orderId: paymentData.orderId,
       email: paymentData.email || "cliente@totem.com.br",
       payerName: paymentData.payerName || "Cliente",
+      items: paymentData.items,
+      user: paymentData.user,
     });
 
     return {
@@ -69,6 +73,8 @@ export async function createCardPayment(paymentData: {
   orderId: string;
   paymentMethod?: "credit" | "debit";
   installments?: number;
+  items?: any[];
+  user?: { email?: string; name?: string };
 }): Promise<PaymentResponse> {
   try {
     const response = await api.post("/api/payment/create", {
@@ -77,6 +83,8 @@ export async function createCardPayment(paymentData: {
       orderId: paymentData.orderId,
       paymentMethod: paymentData.paymentMethod,
       installments: paymentData.installments,
+      items: paymentData.items,
+      user: paymentData.user,
     });
 
     return {

@@ -279,6 +279,16 @@ const PaymentPage: React.FC = () => {
         orderId: orderId,
         email: currentUser?.email,
         payerName: currentUser?.name,
+        items: cartItems.map((i) => ({
+          id: i.id,
+          name: i.name,
+          quantity: i.quantity,
+          price: i.price,
+        })),
+        user: {
+          email: currentUser?.email,
+          name: currentUser?.name,
+        },
       });
 
       if (!result.success || !result.paymentId || !result.qrCode) {
@@ -316,6 +326,16 @@ const PaymentPage: React.FC = () => {
         orderId: orderId,
         paymentMethod: paymentMethod as "credit" | "debit",
         installments: paymentMethod === "credit" ? selectedInstallments : 1,
+        items: cartItems.map((i) => ({
+          id: i.id,
+          name: i.name,
+          quantity: i.quantity,
+          price: i.price,
+        })),
+        user: {
+          email: currentUser?.email,
+          name: currentUser?.name,
+        },
       });
 
       console.log("[API] Resposta completa do pagamento presencial:", result);
@@ -349,7 +369,8 @@ const PaymentPage: React.FC = () => {
             Pagamento Aprovado!
           </h2>
           <p className="text-stone-600 text-lg mb-6">
-            Pedido enviado para a cozinha.
+            Pedido enviado para a cozinha.<br />
+            <span className="block mt-2 text-green-700 font-semibold">Comprovante enviado para seu e-mail!</span>
           </p>
           <p className="text-sm text-stone-400">Redirecionando...</p>
         </div>

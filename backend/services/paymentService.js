@@ -1,3 +1,7 @@
+// Função para buscar todos os pedidos pagos ou autorizados (para SuperAdmin)
+import { getAllOrders as _getAllOrders } from "./getAllOrders.js";
+
+export const getAllOrders = _getAllOrders;
 /**
  * Serviço de Pagamento Multi-tenant
  * Todas as funções aceitam storeConfig com credenciais da loja
