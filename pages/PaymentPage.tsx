@@ -220,8 +220,29 @@ const PaymentPage: React.FC = () => {
       clearCart();
       setQrCodeBase64(null);
 
-      // Abre o PDF imediatamente após sucesso
-      window.open(`${BACKEND_URL}/api/orders/${orderId}/receipt-pdf`, '_blank');
+      // Baixa o PDF automaticamente após sucesso
+      const pdfUrl = `${BACKEND_URL}/api/orders/${orderId}/receipt-pdf`;
+      fetch(pdfUrl)
+        .then((res) => res.blob())
+        .then((blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `pedido-${orderId}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+        });
+
+      // Gera link do WhatsApp com o PDF
+      const whatsappNumber = 11989009259; // ajuste conforme seu modelo de usuário
+      const whatsappMsg = encodeURIComponent(
+        `Olá! Segue o comprovante do seu pedido: ${pdfUrl}`,
+      );
+      const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMsg}`;
+      // Abre WhatsApp em nova aba (opcional: pode exibir botão/link na tela de sucesso)
+      window.open(whatsappLink, "_blank");
 
       // Redireciona para a página inicial após 5 segundos
       setTimeout(async () => {
@@ -373,8 +394,11 @@ const PaymentPage: React.FC = () => {
             Pagamento Aprovado!
           </h2>
           <p className="text-stone-600 text-lg mb-6">
-            Pedido enviado para a cozinha.<br />
-            <span className="block mt-2 text-green-700 font-semibold">Comprovante enviado para seu e-mail!</span>
+            Pedido enviado para a cozinha.
+            <br />
+            <span className="block mt-2 text-green-700 font-semibold">
+              Comprovante enviado para seu e-mail!
+            </span>
           </p>
           <p className="text-sm text-stone-400">Redirecionando...</p>
         </div>
@@ -457,23 +481,27 @@ const PaymentPage: React.FC = () => {
                   onClick={async () => {
                     setCreatingOnlineOrder(true);
                     try {
-                      const orderResp = await fetchStandard(`${BACKEND_URL}/api/orders`, {
-                        method: "POST",
-                        body: JSON.stringify({
-                          userId: currentUser!.id,
-                          userName: currentUser!.name,
-                          items: cartItems.map((i) => ({
-                            id: i.id,
-                            name: i.name,
-                            quantity: i.quantity,
-                            price: i.price,
-                          })),
-                          total: cartTotal,
-                          observation,
-                          status: "pending",
-                        }),
-                      });
-                      if (!orderResp.ok) throw new Error("Erro ao criar pedido");
+                      const orderResp = await fetchStandard(
+                        `${BACKEND_URL}/api/orders`,
+                        {
+                          method: "POST",
+                          body: JSON.stringify({
+                            userId: currentUser!.id,
+                            userName: currentUser!.name,
+                            items: cartItems.map((i) => ({
+                              id: i.id,
+                              name: i.name,
+                              quantity: i.quantity,
+                              price: i.price,
+                            })),
+                            total: cartTotal,
+                            observation,
+                            status: "pending",
+                          }),
+                        },
+                      );
+                      if (!orderResp.ok)
+                        throw new Error("Erro ao criar pedido");
                       const data = await orderResp.json();
                       setOnlineOrderId(data.id);
                     } catch (err: any) {
@@ -490,7 +518,9 @@ const PaymentPage: React.FC = () => {
                   }}
                   disabled={creatingOnlineOrder}
                 >
-                  {creatingOnlineOrder ? "Criando pedido..." : "Gerar Pedido e Pagar"}
+                  {creatingOnlineOrder
+                    ? "Criando pedido..."
+                    : "Gerar Pedido e Pagar"}
                 </button>
               )}
               {onlineOrderId && (
@@ -648,7 +678,8 @@ const PaymentPage: React.FC = () => {
                           }),
                         },
                       );
-                      if (!orderResp.ok) throw new Error("Erro ao criar pedido");
+                      if (!orderResp.ok)
+                        throw new Error("Erro ao criar pedido");
                       const orderData = await orderResp.json();
                       setStatus("success");
                       clearCart();
@@ -658,7 +689,7 @@ const PaymentPage: React.FC = () => {
                       // Abrir PDF em nova aba se o pedido foi criado com sucesso
                       if (orderData && orderData.id) {
                         const pdfUrl = `${BACKEND_URL}/api/orders/${orderData.id}/receipt-pdf`;
-                        window.open(pdfUrl, '_blank');
+                        window.open(pdfUrl, "_blank");
                       }
 
                       // Redirecionar para o catálogo após um pequeno delay
