@@ -31,18 +31,9 @@ export default function PaymentPendingPage() {
         .then((res) => res.json())
         .then((data) => {
           if (data.status === "approved") {
-            setStatus("approved");
-            setMessage(
-              `📨 Processando notificação de pagamento: ${data.paymentId || paymentId}\n💳 Pagamento ${data.paymentId || paymentId} | Status: approved | Valor: R$ ${data.amount || "-"}\n✅ Pagamento confirmado via Webhook! Valor: R$ ${data.amount || "-"}\n📦 Processando desconto de estoque para pedido: ${data.orderId || orderId}\n🎉 Estoque atualizado com sucesso e pedido marcado como pago!`
-            );
-            if (!pdfOpenedRef.current) {
-              const pdfOrderId = data.orderId || orderId;
-              if (pdfOrderId) {
-                const pdfUrl = `${BACKEND_URL}/api/orders/${pdfOrderId}/receipt-pdf`;
-                window.open(pdfUrl, "_blank");
-                pdfOpenedRef.current = true;
-              }
-            }
+            // Redireciona para PaymentSuccessPage com os parâmetros
+            const successUrl = `/payment-success?payment_id=${data.paymentId || paymentId}&order_id=${data.orderId || orderId}`;
+            window.location.href = successUrl;
             stopped = true;
             clearInterval(interval);
           } else {
