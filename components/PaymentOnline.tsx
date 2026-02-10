@@ -82,8 +82,8 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
 
       const data = await response.json();
 
-      // Redireciona para página do MercadoPago
-      window.location.href = data.initPoint;
+      // Abre a página do MercadoPago em uma nova aba
+      window.open(data.initPoint, '_blank', 'noopener,noreferrer');
     } catch (err: any) {
       setError(err.message);
       onError?.(err.message);

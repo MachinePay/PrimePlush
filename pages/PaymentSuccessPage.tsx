@@ -24,6 +24,12 @@ export default function PaymentSuccessPage() {
           if (data.status === "approved") {
             setStatus("approved");
             setMessage("Pagamento confirmado! Obrigado pela compra.");
+            // Abrir PDF do pedido automaticamente
+            const pdfOrderId = data.orderId || orderId;
+            if (pdfOrderId) {
+              const pdfUrl = `${BACKEND_URL}/api/orders/${pdfOrderId}/receipt-pdf`;
+              window.open(pdfUrl, "_blank");
+            }
           } else {
             setStatus("not-approved");
             setMessage(
