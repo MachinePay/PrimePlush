@@ -58,12 +58,8 @@ app.get("/api/super-admin/receivables", async (req, res) => {
       .sum("amount as total")
       .first();
 
-    // Calcular valor a receber e total recebido
-    const totalReceived = paidOrders.reduce((sum, o) => sum + parseFloat(o.total), 0);
-    const alreadyReceived = parseFloat(totalAlreadyReceived.total) || 0;
-    const toReceive = totalReceived - alreadyReceived;
-
-    // Buscar detalhes dos itens dos pedidos
+    // Buscar detalhes dos itens dos pedidos e calcular valor a receber corretamente
+    let totalBrutoReceber = 0;
     const detailedOrders = [];
     for (const order of paidOrders) {
       let items = [];
@@ -94,6 +90,7 @@ app.get("/api/super-admin/receivables", async (req, res) => {
         });
       }
       const orderValueToReceive = detailedItems.reduce((sum, i) => sum + i.valueToReceive, 0);
+      totalBrutoReceber += orderValueToReceive;
       detailedOrders.push({
         id: order.id,
         timestamp: order.timestamp,
@@ -107,6 +104,9 @@ app.get("/api/super-admin/receivables", async (req, res) => {
       });
     }
 
+    const alreadyReceived = parseFloat(totalAlreadyReceived.total) || 0;
+    const toReceive = totalBrutoReceber - alreadyReceived;
+
     // Histórico de recebimentos
     const history = await db("super_admin_receivables")
       .select("*")
@@ -117,7 +117,7 @@ app.get("/api/super-admin/receivables", async (req, res) => {
       success: true,
       stats: {
         totalToReceive: Math.max(0, toReceive),
-        totalReceived: totalReceived,
+        totalReceived: totalBrutoReceber,
         alreadyReceived: alreadyReceived,
       },
       history: history.map((h) => ({
