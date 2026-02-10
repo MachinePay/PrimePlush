@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { login, isAuthenticated, logout } from "../services/apiService";
 import logo from "../assets/primeplush-logo.png";
@@ -19,6 +20,7 @@ interface StatsData {
   orders?: Order[]; // Adiciona lista de pedidos para detalhamento
 }
 
+function SuperAdminPage() {
   const [password, setPassword] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -118,6 +120,7 @@ interface StatsData {
       window.localStorage.removeItem("superadmin_logged_in");
     }
   }
+
 
   if (!loggedIn) {
     return (
@@ -299,3 +302,5 @@ interface StatsData {
     </div>
   );
 }
+
+export default SuperAdminPage;
