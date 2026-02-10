@@ -49,7 +49,7 @@ export interface Order {
   paymentStatus?: "pending" | "paid" | "canceled";
 }
 
-export type UserRole = "customer" | "kitchen" | "admin";
+export type UserRole = "customer" | "kitchen" | "admin" | "superadmin";
 
 export interface User {
   id: string;
