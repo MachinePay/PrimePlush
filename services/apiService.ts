@@ -1,3 +1,11 @@
+// Atualiza os dados do usuário (self-service)
+export async function updateUser(userId: string, userData: any) {
+  const response = await authenticatedFetch(`${API_URL}/users/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify(userData),
+  });
+  return response.json();
+}
 // Serviço de API com autenticação JWT e Multi-tenant
 
 import api from "./api";

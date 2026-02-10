@@ -1,14 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import { useAuth } from "../contexts/AuthContext";
+import { updateUser } from "../services/apiService";
 
 const RegisterPage: React.FC = () => {
+  const { currentUser, login } = useAuth();
   const [cpf, setCpf] = useState("");
-  React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const cpfParam = params.get("cpf");
-    if (cpfParam) setCpf(cpfParam);
-  }, []);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [cep, setCep] = useState("");
@@ -18,6 +16,24 @@ const RegisterPage: React.FC = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const isEdit = !!currentUser;
+
+  // Preencher campos se for edição
+  useEffect(() => {
+    if (isEdit && currentUser) {
+      setCpf(currentUser.cpf || "");
+      setName(currentUser.name || "");
+      setEmail(currentUser.email || "");
+      setCep(currentUser.cep || "");
+      setAddress(currentUser.address || "");
+      setPhone(currentUser.telefone || currentUser.phone || "");
+      setPassword(""); // nunca preencher senha
+    } else {
+      const params = new URLSearchParams(window.location.search);
+      const cpfParam = params.get("cpf");
+      if (cpfParam) setCpf(cpfParam);
+    }
+  }, [isEdit, currentUser]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,37 +68,67 @@ const RegisterPage: React.FC = () => {
     setIsLoading(true);
     setError("");
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/users/register`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cpf,
-            name,
-            email,
-            cep,
-            address,
-            phone,
-            password,
-          }),
-        },
-      );
-      if (!response.ok) {
-        throw new Error("Erro ao cadastrar");
-      }
-      const data = await response.json();
-      if (data.success) {
-        await Swal.fire({
-          title: "Cadastro realizado!",
-          text: "Sua conta foi criada com sucesso.",
-          icon: "success",
-          confirmButtonColor: "#2563eb",
+      if (isEdit && currentUser) {
+        // Atualizar dados do usuário
+        const data = await updateUser(currentUser.id, {
+          cpf,
+          name,
+          email,
+          cep,
+          address,
+          phone,
+          password,
         });
-        navigate("/login");
+        if (data.success) {
+          login({ ...currentUser, ...data.user });
+          await Swal.fire({
+            title: "Dados atualizados!",
+            text: "Suas informações foram salvas.",
+            icon: "success",
+            confirmButtonColor: "#2563eb",
+          });
+          navigate("/menu");
+        } else {
+          setError(data.error || "Erro ao atualizar dados");
+        }
+      } else {
+        // Cadastro normal
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/users/register`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              cpf,
+              name,
+              email,
+              cep,
+              address,
+              phone,
+              password,
+            }),
+          },
+        );
+        if (!response.ok) {
+          throw new Error("Erro ao cadastrar");
+        }
+        const data = await response.json();
+        if (data.success) {
+          await Swal.fire({
+            title: "Cadastro realizado!",
+            text: "Sua conta foi criada com sucesso.",
+            icon: "success",
+            confirmButtonColor: "#2563eb",
+          });
+          navigate("/login");
+        }
       }
     } catch (err) {
-      setError("Erro ao cadastrar. Tente novamente.");
+      setError(
+        isEdit
+          ? "Erro ao atualizar dados. Tente novamente."
+          : "Erro ao cadastrar. Tente novamente.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +137,9 @@ const RegisterPage: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-stone-100 to-blue-50 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-10">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">Cadastro</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-6">
+          {isEdit ? "Editar meus dados" : "Cadastro"}
+        </h1>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label
@@ -218,7 +266,13 @@ const RegisterPage: React.FC = () => {
             disabled={isLoading}
             className="w-full bg-amber-600 text-white font-bold py-3 rounded-lg hover:bg-amber-700 transition-colors text-lg disabled:bg-amber-300 disabled:cursor-wait"
           >
-            {isLoading ? "Cadastrando..." : "Cadastrar"}
+            {isLoading
+              ? isEdit
+                ? "Salvando..."
+                : "Cadastrando..."
+              : isEdit
+                ? "Salvar alterações"
+                : "Cadastrar"}
           </button>
         </form>
       </div>
