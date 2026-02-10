@@ -1602,7 +1602,12 @@ app.get("/api/orders/history", async (req, res) => {
     );
     const { start, end } = req.query;
     let query = db("orders")
-      .whereIn("paymentStatus", ["paid", "authorized"])
+      .where(function () {
+        this.whereIn("paymentStatus", ["paid", "authorized"])
+          .orWhere(function () {
+            this.where("paymentType", "presencial");
+          });
+      })
       .orderBy("timestamp", "desc");
     if (start) query = query.where("timestamp", ">=", start);
     if (end) query = query.where("timestamp", "<=", end);

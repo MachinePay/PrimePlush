@@ -38,38 +38,45 @@ const SuperAdminReceivablesDetails: React.FC<SuperAdminReceivablesDetailsProps> 
         <span className="font-semibold">Total recebido (histórico):</span> R${totalReceived.toFixed(2)}
       </div>
       {orders.length === 0 && <div>Nenhum pedido encontrado.</div>}
-      {orders.map((order) => (
-        <div key={order.id} className="order-card border rounded-lg p-4 mb-6 bg-purple-50">
-          <div className="mb-2">
-            <b>Pedido #{order.id}</b> | Cliente: {order.userName || '-'} | Data: {new Date(order.timestamp).toLocaleString()}
-          </div>
-          <div className="mb-2">
-            Total do pedido: R$ {order.total?.toFixed(2) ?? "0.00"} | Valor a receber deste pedido: <b>R$ {order.orderValueToReceive?.toFixed(2) ?? "0.00"}</b>
-          </div>
-          <table className="w-full text-xs mb-2">
-            <thead>
-              <tr className="bg-purple-100">
-                <th className="py-1 px-2 text-left">Produto</th>
-                <th className="py-1 px-2 text-left">Preço Venda</th>
-                <th className="py-1 px-2 text-left">Preço Bruto</th>
-                <th className="py-1 px-2 text-left">Qtd</th>
-                <th className="py-1 px-2 text-left">Valor a Receber</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.items.map((item, idx) => (
-                <tr key={idx} className="border-b">
-                  <td className="py-1 px-2">{item.name}</td>
-                  <td className="py-1 px-2">R$ {item.price?.toFixed(2) ?? "0.00"}</td>
-                  <td className="py-1 px-2">R$ {item.precoBruto?.toFixed(2) ?? "0.00"}</td>
-                  <td className="py-1 px-2">{item.quantity}</td>
-                  <td className="py-1 px-2">R$ {item.valueToReceive?.toFixed(2) ?? "0.00"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
+      <table className="w-full text-xs mb-6">
+        <thead>
+          <tr className="bg-purple-100">
+            <th className="py-1 px-2 text-left">Pedido</th>
+            <th className="py-1 px-2 text-left">Cliente</th>
+            <th className="py-1 px-2 text-left">Data</th>
+            <th className="py-1 px-2 text-left">Total</th>
+            <th className="py-1 px-2 text-left">Valor a Receber</th>
+            <th className="py-1 px-2 text-left">Status</th>
+            <th className="py-1 px-2 text-left">Tipo Pagamento</th>
+            <th className="py-1 px-2 text-left">Status Pagamento</th>
+            <th className="py-1 px-2 text-left">Itens</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((order) => (
+            <tr key={order.id} className="border-b align-top">
+              <td className="py-1 px-2 font-bold">#{order.id}</td>
+              <td className="py-1 px-2">{order.userName || '-'}</td>
+              <td className="py-1 px-2">{new Date(order.timestamp).toLocaleString()}</td>
+              <td className="py-1 px-2">R$ {order.total?.toFixed(2) ?? "0.00"}</td>
+              <td className="py-1 px-2 font-bold">R$ {order.orderValueToReceive?.toFixed(2) ?? "0.00"}</td>
+              <td className="py-1 px-2">{order.status || '-'}</td>
+              <td className="py-1 px-2">{order.paymentType || '-'}</td>
+              <td className="py-1 px-2">{order.paymentStatus || '-'}</td>
+              <td className="py-1 px-2">
+                <ul>
+                  {order.items.map((item, idx) => (
+                    <li key={idx}>
+                      {item.name} (Qtd: {item.quantity})<br />
+                      Preço: R$ {item.price?.toFixed(2) ?? "0.00"} | Bruto: R$ {item.precoBruto?.toFixed(2) ?? "0.00"} | Valor a Receber: R$ {item.valueToReceive?.toFixed(2) ?? "0.00"}
+                    </li>
+                  ))}
+                </ul>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
       <div className="text-xs text-gray-500">
         <span>O valor a receber é calculado como: <br />
         <span className="font-mono">(Preço de venda - Preço bruto) x quantidade para cada item, somando todos os pedidos.</span></span>
@@ -365,7 +372,10 @@ function SuperAdminPage() {
                     userName: order.userName,
                     total: order.total,
                     orderValueToReceive,
-                    items
+                    items,
+                    status: order.status,
+                    paymentType: order.paymentType,
+                    paymentStatus: order.paymentStatus
                   };
                 })}
                 totalToReceive={data.stats.totalToReceive}
