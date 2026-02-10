@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { login, isAuthenticated, logout } from "../services/apiService";
 import logo from "../assets/primeplush-logo.png";
 import SuperAdminReceivablesDetails from "../components/SuperAdminReceivablesDetails";
+import { useNavigate } from "react-router-dom";
 import type { Order } from "../types";
 
 interface StatsData {
@@ -18,12 +19,12 @@ interface StatsData {
   orders?: Order[]; // Adiciona lista de pedidos para detalhamento
 }
 
-export default function SuperAdminPage() {
   const [password, setPassword] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<StatsData | null>(null);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (loggedIn) {
@@ -99,8 +100,11 @@ export default function SuperAdminPage() {
     setError("");
     const ok = await login("superadmin", password);
     setLoading(false);
-    if (ok) setLoggedIn(true);
-    else setError("Senha incorreta");
+    if (ok) {
+      setLoggedIn(true);
+      // Após login, navega para rota dedicada ao detalhamento
+      navigate("/superadmin/detalhes");
+    } else setError("Senha incorreta");
   }
 
   function handleLogout() {

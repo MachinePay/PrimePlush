@@ -1,3 +1,8 @@
+// ...existing code...
+// ...existing code...
+// Atualizar informações do usuário (incluindo senha)
+
+
 import { sendOrderPdfEmail } from "./services/orderPdfEmail.js";
 import express from "express";
 import fs from "fs/promises";
@@ -10,6 +15,7 @@ import { createClient } from "redis";
 import { MercadoPagoConfig, Payment, Preference } from "mercadopago";
 import paymentRoutes from "./routes/payment.js";
 import * as paymentService from "./services/paymentService.js";
+import PDFDocument from "pdfkit";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -42,54 +48,20 @@ app.get("/api/super-admin/receivables", async (req, res) => {
       });
     }
 
-    // Busca todos os pedidos pagos ou autorizados
-    const orders = await db("orders")
+    // Total de pedidos pagos (valor bruto acumulado)
+    const totalPaidOrders = await db("orders")
       .whereIn("paymentStatus", ["paid", "authorized"])
-      .orderBy("timestamp", "desc");
+      .sum("total as total")
+      .first();
 
     // Total já recebido anteriormente
     const totalAlreadyReceived = await db("super_admin_receivables")
       .sum("amount as total")
       .first();
 
-    // Calcula valor à receber por pedido
-    let totalToReceive = 0;
-    const detailedOrders = orders.map((order) => {
-      let orderValueToReceive = 0;
-      let items = [];
-      try {
-        items = typeof order.items === "string" ? JSON.parse(order.items) : (order.items || []);
-      } catch (e) {
-        items = [];
-      }
-      const itemDetails = items.map((item) => {
-        // price: preço de venda, precoBruto: preço bruto/custo
-        const price = parseFloat(item.price) || 0;
-        const precoBruto = parseFloat(item.precoBruto) || 0;
-        const qty = parseInt(item.quantity) || 1;
-        const valueToReceive = (price - precoBruto) * qty;
-        orderValueToReceive += valueToReceive;
-        return {
-          name: item.name,
-          price,
-          precoBruto,
-          quantity: qty,
-          valueToReceive,
-        };
-      });
-      totalToReceive += orderValueToReceive;
-      return {
-        id: order.id,
-        timestamp: order.timestamp,
-        userName: order.userName,
-        total: parseFloat(order.total),
-        items: itemDetails,
-        orderValueToReceive,
-      };
-    });
-
+    const totalReceived = parseFloat(totalPaidOrders.total) || 0;
     const alreadyReceived = parseFloat(totalAlreadyReceived.total) || 0;
-    const toReceive = totalToReceive - alreadyReceived;
+    const toReceive = totalReceived - alreadyReceived;
 
     // Histórico de recebimentos
     const history = await db("super_admin_receivables")
@@ -101,10 +73,9 @@ app.get("/api/super-admin/receivables", async (req, res) => {
       success: true,
       stats: {
         totalToReceive: Math.max(0, toReceive),
-        totalReceived: totalToReceive,
+        totalReceived: totalReceived,
         alreadyReceived: alreadyReceived,
       },
-      orders: detailedOrders,
       history: history.map((h) => ({
         id: h.id,
         amount: parseFloat(h.amount),
@@ -135,34 +106,19 @@ app.post("/api/super-admin/receivables/mark-received", async (req, res) => {
       });
     }
 
-    // Busca todos os pedidos pagos ou autorizados
-    const orders = await db("orders")
-      .whereIn("paymentStatus", ["paid", "authorized"]);
+    // Calcula quanto tem a receber agora
+    const totalPaidOrders = await db("orders")
+      .whereIn("paymentStatus", ["paid", "authorized"])
+      .sum("total as total")
+      .first();
 
-    // Total já recebido anteriormente
     const totalAlreadyReceived = await db("super_admin_receivables")
       .sum("amount as total")
       .first();
 
-    // Calcula valor à receber por pedido
-    let totalToReceive = 0;
-    orders.forEach((order) => {
-      let items = [];
-      try {
-        items = typeof order.items === "string" ? JSON.parse(order.items) : (order.items || []);
-      } catch (e) {
-        items = [];
-      }
-      items.forEach((item) => {
-        const price = parseFloat(item.price) || 0;
-        const precoBruto = parseFloat(item.precoBruto) || 0;
-        const qty = parseInt(item.quantity) || 1;
-        totalToReceive += (price - precoBruto) * qty;
-      });
-    });
-
+    const totalReceived = parseFloat(totalPaidOrders.total) || 0;
     const alreadyReceived = parseFloat(totalAlreadyReceived.total) || 0;
-    const toReceive = totalToReceive - alreadyReceived;
+    const toReceive = totalReceived - alreadyReceived;
 
     if (toReceive <= 0) {
       return res.status(400).json({
@@ -531,6 +487,66 @@ async function initDatabase() {
   // Modo single-tenant: não cria tabela de lojas
   // Configure as credenciais Mercado Pago no .env
   // ...existing code...
+
+  // Endpoint para gerar e baixar o PDF do pedido
+  app.get("/api/orders/:id/receipt-pdf", async (req, res) => {
+    try {
+      const orderId = req.params.id;
+      // Buscar o pedido no banco de dados
+      const order = await db("orders").where({ id: orderId }).first();
+      if (!order) {
+        return res.status(404).json({ error: "Pedido não encontrado" });
+      }
+      // Buscar itens do pedido a partir da tabela order_products
+      const orderProducts = await db("order_products").where({
+        order_id: order.id,
+      });
+      // Buscar dados dos produtos para cada item
+      const items = [];
+      for (const op of orderProducts) {
+        const product = await db("products")
+          .where({ id: op.product_id })
+          .first();
+        items.push({
+          id: op.product_id,
+          name: product ? product.name : "-",
+          price: op.price,
+          quantity: op.quantity,
+        });
+      }
+      order.items = items;
+
+      // Buscar dados do usuário
+      let user = null;
+      if (order.userId) {
+        user = await db("users").where({ id: order.userId }).first();
+      }
+      if (user) {
+        order.userName = user.name || order.userName;
+        order.email = user.email || order.email;
+        order.cpf = user.cpf || order.cpf;
+        // Adicione outros campos conforme necessário (telefone, endereço, etc.)
+        // Exemplo:
+        order.phone = user.phone || order.phone;
+        order.address = user.address || order.address;
+        order.cep = user.cep || order.cep;
+      }
+
+      // PDF estilizado
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename=pedido-${order.id}.pdf`,
+      );
+      const { generateStyledOrderPdf } =
+        await import("./services/styledOrderPdf.js");
+      generateStyledOrderPdf(order, res);
+    } catch (error) {
+      console.error("Erro ao gerar PDF do pedido:", error);
+      res.status(500).json({ error: "Erro ao gerar PDF do pedido" });
+    }
+  });
+  // ...existing code...
   // ========== LOGIN POR CPF E SENHA ===========
   app.post("/api/users/login", async (req, res) => {
     const { cpf, password } = req.body;
@@ -577,6 +593,8 @@ async function initDatabase() {
     console.log("⚠️ OpenAI NÃO configurada - OPENAI_API_KEY não encontrada");
   }
 }
+
+// ...a definição da rota PUT /api/users/:id deve ser movida para depois dos middlewares, logo após app.use(express.json()) e app.use(cors(...))
 
 // --- Middlewares ---
 
@@ -1264,94 +1282,82 @@ app.post("/api/orders", async (req, res) => {
     installments,
     fee,
   } = req.body;
-  console.log(
-    `📥 [POST /api/orders] Nova ordem recebida para usuário: ${userId}`,
-  );
-
-  const newOrder = {
-    id: `order_${Date.now()}`,
-    userId,
-    observation: observation || null,
-    userName: userName || "Cliente",
-    items: Array.isArray(items) ? JSON.stringify(items) : JSON.stringify([]),
-    total: total || 0,
-    timestamp: new Date().toISOString(),
-    status: paymentId ? "active" : "pending_payment",
-    paymentStatus: paymentId ? "paid" : "pending",
-    paymentId: paymentId || null,
-    paymentType: paymentType || null,
-    paymentMethod: paymentMethod || null,
-    installments: installments || null,
-    fee: fee || null,
-  };
-
-  console.log(`📦 Criando pedido ${newOrder.id}`);
 
   try {
-    // Garante que o usuário existe (para convidados)
-    const userExists = await db("users").where({ id: userId }).first();
-
-    if (!userExists) {
-      await db("users").insert({
-        id: userId,
-        name: userName || "Convidado",
-        email: null,
-        cpf: null,
-        historico: "[]",
-        pontos: 0,
-      });
-    }
-
-    // ✅ RESERVA ESTOQUE AQUI (ANTES de inserir o pedido)
-    console.log(`🔒 Reservando estoque de ${items.length} produto(s)...`);
-
-    for (const item of items) {
-      // Busca produto pelo id (single-tenant)
-      const product = await db("products").where({ id: item.id }).first();
-
-      if (!product) {
-        console.warn(`⚠️ Produto ${item.id} não encontrado no estoque!`);
-        continue;
+    // Iniciamos uma transação para garantir integridade dos dados
+    await db.transaction(async (trx) => {
+      // 1. Garante que o usuário existe
+      const userExists = await trx("users").where({ id: userId }).first();
+      if (!userExists) {
+        await trx("users").insert({
+          id: userId,
+          name: userName || "Convidado",
+          email: null,
+          cpf: null,
+          historico: "[]",
+          pontos: 0,
+        });
       }
 
-      // Se stock é null = ilimitado, não precisa reservar
-      if (product.stock === null) {
-        console.log(`  ℹ️ ${item.name}: estoque ilimitado`);
-        continue;
+      // 2. Checagem de estoque
+      for (const item of items) {
+        const product = await trx("products").where({ id: item.id }).first();
+        if (!product) {
+          throw new Error(`Produto ${item.id} não encontrado no estoque!`);
+        }
+        if (product.stock !== null && product.stock < item.quantity) {
+          throw new Error(
+            `Estoque insuficiente para ${item.name}. Disponível: ${product.stock}, Solicitado: ${item.quantity}`,
+          );
+        }
       }
 
-      // Calcula estoque disponível (total - reservado)
-      const stockAvailable = product.stock - (product.stock_reserved || 0);
+      // 3. Garante precoBruto em todos os itens
+      const itemsWithPrecoBruto = Array.isArray(items)
+        ? items.map((item) => ({
+            ...item,
+            precoBruto:
+              item.precoBruto !== undefined
+                ? Number(item.precoBruto)
+                : 0,
+          }))
+        : [];
 
-      // Verifica se tem estoque disponível suficiente
-      if (stockAvailable < item.quantity) {
-        throw new Error(
-          `Estoque insuficiente para ${item.name}. Disponível: ${stockAvailable}, Solicitado: ${item.quantity}`,
-        );
+      const newOrder = {
+        id: `order_${Date.now()}`,
+        userId: userId,
+        userName: userName || "Cliente",
+        total: total,
+        timestamp: new Date().toISOString(),
+        status: "pending",
+        paymentStatus: "pending",
+        paymentId: paymentId || null,
+        paymentType: paymentType || null,
+        paymentMethod: paymentMethod || null,
+        items: JSON.stringify(itemsWithPrecoBruto),
+        observation: observation || null,
+        installments: installments || null,
+        fee: fee || null,
+        created_at: new Date(),
+      };
+
+      // 4. Salva o pedido
+      await trx("orders").insert(newOrder);
+
+      // 5. Salva os itens do pedido na tabela order_products
+      if (Array.isArray(items) && items.length > 0) {
+        const orderProducts = items.map((item) => ({
+          order_id: newOrder.id,
+          product_id: item.id,
+          quantity: item.quantity || 1,
+          price: item.price !== undefined ? item.price : 0,
+        }));
+        await trx("order_products").insert(orderProducts);
       }
 
-      // Aumenta a RESERVA (não deduz ainda)
-      const newReserved = (product.stock_reserved || 0) + item.quantity;
-
-      await db("products")
-        .where({ id: item.id })
-        .update({ stock_reserved: newReserved });
-
-      console.log(
-        `  🔒 ${item.name}: reserva ${
-          product.stock_reserved || 0
-        } → ${newReserved} (+${item.quantity})`,
-      );
-    }
-
-    console.log(`✅ Estoque reservado com sucesso!`);
-
-    // Salva o pedido
-    await db("orders").insert(newOrder);
-
-    console.log(`✅ Pedido ${newOrder.id} criado com sucesso!`);
-
-    res.status(201).json({ ...newOrder, items: items || [] });
+      console.log(`✅ Pedido ${newOrder.id} criado com sucesso!`);
+      res.status(201).json({ ...newOrder, items: items || [] });
+    });
   } catch (e) {
     console.error("❌ Erro ao salvar pedido:", e);
     res.status(500).json({ error: e.message || "Erro ao salvar ordem" });
@@ -1752,12 +1758,14 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
               try {
                 const order = await db("orders").where({ id: orderId }).first();
                 if (order && order.paymentStatus === "pending") {
-                  await db("orders").where({ id: orderId }).update({
-                    paymentStatus: "paid",
-                    status: "preparing",
-                    paymentType: "online",
-                    paymentMethod: payment.payment_method_id || "unknown",
-                  });
+                  await db("orders")
+                    .where({ id: orderId })
+                    .update({
+                      paymentStatus: "paid",
+                      status: "preparing",
+                      paymentType: "online",
+                      paymentMethod: payment.payment_method_id || "unknown",
+                    });
                   console.log(
                     `✅ Pedido ${orderId} marcado como PAGO via IPN Card`,
                   );
@@ -1981,7 +1989,7 @@ app.post("/api/notifications/mercadopago", async (req, res) => {
 app.get("/api/notifications/mercadopago", (req, res) => {
   res.json({
     status: "ready",
-    message: "IPN endpoint ativo para pagamentos Point",
+    message: "IPN endpoint pronto",
   });
 });
 
@@ -2080,12 +2088,14 @@ app.post("/api/webhooks/mercadopago", async (req, res) => {
               }
 
               // Atualiza o pedido para pago e ativo, salvando forma de pagamento
-              await db("orders").where({ id: externalRef }).update({
-                paymentStatus: "paid",
-                status: "active",
-                paymentType: "online",
-                paymentMethod: payment.payment_method_id || "unknown",
-              });
+              await db("orders")
+                .where({ id: externalRef })
+                .update({
+                  paymentStatus: "paid",
+                  status: "active",
+                  paymentType: "online",
+                  paymentMethod: payment.payment_method_id || "unknown",
+                });
               // Envia PDF por email para o cliente, se houver email
               if (order.email) {
                 try {
@@ -2096,7 +2106,9 @@ app.post("/api/webhooks/mercadopago", async (req, res) => {
                 }
               }
 
-              console.log(`🎉 Estoque atualizado com sucesso e pedido marcado como pago!`);
+              console.log(
+                `🎉 Estoque atualizado com sucesso e pedido marcado como pago!`,
+              );
             } else {
               console.log(`⚠️ Pedido ${externalRef} não encontrado no banco`);
             }
@@ -4143,6 +4155,45 @@ app.get("/api/payment-online/status/:paymentId", async (req, res) => {
 });
 
 // ==========================================
+
+app.put("/api/users/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name, email, cpf, cep, address, phone, password } = req.body;
+  if (!name || !email || !cpf || !cep || !address || !phone || !password) {
+    return res.status(400).json({ error: "Todos os campos são obrigatórios" });
+  }
+  try {
+    // Verifica se o usuário existe
+    const user = await db("users").where({ id }).first();
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+    // Atualiza os dados do usuário
+    await db("users")
+      .where({ id })
+      .update({
+        name: name.trim(),
+        email: email.trim(),
+        cpf: String(cpf).replace(/\D/g, ""),
+        cep: cep.trim(),
+        address: address.trim(),
+        phone: phone.trim(),
+        password: password,
+      });
+    // Retorna o usuário atualizado
+    const updatedUser = await db("users").where({ id }).first();
+    res.json({
+      success: true,
+      user: {
+        ...updatedUser,
+        historico: parseJSON(updatedUser.historico),
+      },
+    });
+  } catch (e) {
+    console.error("Erro ao atualizar usuário:", e);
+    res.status(500).json({ error: "Erro ao atualizar usuário" });
+  }
+});
 
 // --- Inicialização ---
 console.log("🚀 Iniciando servidor...");
