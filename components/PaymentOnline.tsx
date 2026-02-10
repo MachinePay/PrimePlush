@@ -85,9 +85,9 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
       // Abre a página do MercadoPago em uma nova aba
       window.open(data.initPoint, '_blank', 'noopener,noreferrer');
 
-      // Abre a rota /payment-pending em uma nova aba do site
+      // Redireciona a aba atual para /payment-pending
       const pendingUrl = `/payment-pending?payment_id=${data.paymentId || ''}&order_id=${orderId || ''}`;
-      window.open(pendingUrl, '_blank', 'noopener,noreferrer');
+      window.location.href = pendingUrl;
     } catch (err: any) {
       setError(err.message);
       onError?.(err.message);
