@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -8,14 +8,25 @@ export default function PaymentSuccessPage() {
   const [status, setStatus] = useState<string>("checking");
   const [message, setMessage] = useState<string>("");
 
+
+  const pdfOpenedRef = useRef(false);
+
   useEffect(() => {
     // Lê parâmetros da URL
     const params = new URLSearchParams(window.location.search);
     const paymentId = params.get("payment_id");
     const orderId = params.get("order_id");
 
-    // Chama backend para confirmar status
-    if (paymentId || orderId) {
+    if (!paymentId && !orderId) {
+      setStatus("error");
+      setMessage("Parâmetros de pagamento ausentes.");
+      return;
+    }
+
+    let interval: NodeJS.Timeout;
+    let stopped = false;
+
+    const checkStatus = () => {
       fetch(
         `${BACKEND_URL}/api/payment-online/check-status?payment_id=${paymentId || ""}&order_id=${orderId || ""}`
       )
@@ -24,27 +35,33 @@ export default function PaymentSuccessPage() {
           if (data.status === "approved") {
             setStatus("approved");
             setMessage("Pagamento confirmado! Obrigado pela compra.");
-            // Abrir PDF do pedido automaticamente
-            const pdfOrderId = data.orderId || orderId;
-            if (pdfOrderId) {
-              const pdfUrl = `${BACKEND_URL}/api/orders/${pdfOrderId}/receipt-pdf`;
-              window.open(pdfUrl, "_blank");
+            if (!pdfOpenedRef.current) {
+              const pdfOrderId = data.orderId || orderId;
+              if (pdfOrderId) {
+                const pdfUrl = `${BACKEND_URL}/api/orders/${pdfOrderId}/receipt-pdf`;
+                window.open(pdfUrl, "_blank");
+                pdfOpenedRef.current = true;
+              }
             }
+            stopped = true;
+            clearInterval(interval);
           } else {
             setStatus("not-approved");
-            setMessage(
-              "Pagamento não confirmado. Aguarde ou tente novamente."
-            );
+            setMessage("Pagamento não confirmado. Aguarde ou tente novamente.");
           }
         })
         .catch(() => {
           setStatus("error");
           setMessage("Erro ao verificar pagamento.");
         });
-    } else {
-      setStatus("error");
-      setMessage("Parâmetros de pagamento ausentes.");
-    }
+    };
+
+    checkStatus(); // Checa imediatamente
+    interval = setInterval(() => {
+      if (!stopped) checkStatus();
+    }, 10000); // 10 segundos
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
