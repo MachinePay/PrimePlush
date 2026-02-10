@@ -23,21 +23,24 @@ interface SuperAdminReceivablesDetailsProps {
   totalToReceive: number;
   totalReceived: number;
   alreadyReceived: number;
+  receivedOrderIds?: string[];
 }
 
-const SuperAdminReceivablesDetails: React.FC<SuperAdminReceivablesDetailsProps> = ({ orders, totalToReceive, totalReceived, alreadyReceived }) => {
+const SuperAdminReceivablesDetails: React.FC<SuperAdminReceivablesDetailsProps> = ({ orders, totalToReceive, totalReceived, alreadyReceived, receivedOrderIds = [] }) => {
   const safeOrders = Array.isArray(orders) ? orders : [];
   return (
     <div className="bg-white shadow-xl rounded-2xl p-6 border-2 border-purple-200 mt-8">
       <h2 className="text-2xl font-bold text-purple-800 mb-4">Pedidos detalhados para cálculo do valor a receber</h2>
       <div className="mb-4">
-        <span className="font-semibold text-purple-700">Valor a receber (total):</span> <span className="text-lg">R${totalToReceive.toFixed(2)}</span><br />
         <span className="font-semibold">Total já recebido:</span> R${alreadyReceived.toFixed(2)}<br />
         <span className="font-semibold">Total recebido (histórico):</span> R${totalReceived.toFixed(2)}
       </div>
       {safeOrders.length === 0 && <div>Nenhum pedido encontrado.</div>}
       {safeOrders.map((order) => (
-        <div key={order.id} className="order-card border rounded-lg p-4 mb-6 bg-purple-50">
+        <div
+          key={order.id}
+          className={`order-card border rounded-lg p-4 mb-6 ${receivedOrderIds.includes(order.id) ? "bg-green-100 border-green-400" : "bg-purple-50"}`}
+        >
           <div className="mb-2">
             <b>Pedido #{order.id}</b> | Cliente: {order.userName || '-'} | Data: {new Date(order.timestamp).toLocaleString()}
           </div>

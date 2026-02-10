@@ -151,19 +151,46 @@ app.post("/api/super-admin/receivables/mark-received", async (req, res) => {
       });
     }
 
-    // Calcula quanto tem a receber agora
-    const totalPaidOrders = await db("orders")
+    // Buscar todos os pedidos pagos (valor bruto acumulado)
+    const paidOrders = await db("orders")
       .whereIn("paymentStatus", ["paid", "authorized"])
-      .sum("total as total")
-      .first();
+      .orderBy("timestamp", "desc");
+
+    // Calcular valor bruto a receber (lucro bruto)
+    let totalBrutoReceber = 0;
+    const receivedOrderIds = [];
+    for (const order of paidOrders) {
+      let items = [];
+      try {
+        items = Array.isArray(order.items) ? order.items : JSON.parse(order.items);
+      } catch {
+        items = [];
+      }
+      let orderValueToReceive = 0;
+      for (const item of items) {
+        let precoBruto = 0;
+        if (item.productId) {
+          const prod = await db("products").where({ id: item.productId }).first();
+          precoBruto = prod && prod.priceRaw ? parseFloat(prod.priceRaw) : 0;
+        } else if (item.precoBruto) {
+          precoBruto = parseFloat(item.precoBruto);
+        }
+        const price = Number(item.price) || 0;
+        const quantity = Number(item.quantity) || 1;
+        const valueToReceive = (price - precoBruto) * quantity;
+        orderValueToReceive += valueToReceive;
+      }
+      if (orderValueToReceive > 0) {
+        totalBrutoReceber += orderValueToReceive;
+        receivedOrderIds.push(order.id);
+      }
+    }
 
     const totalAlreadyReceived = await db("super_admin_receivables")
       .sum("amount as total")
       .first();
-
-    const totalReceived = parseFloat(totalPaidOrders.total) || 0;
     const alreadyReceived = parseFloat(totalAlreadyReceived.total) || 0;
-    const toReceive = totalReceived - alreadyReceived;
+    const toReceive = totalBrutoReceber - alreadyReceived;
 
     if (toReceive <= 0) {
       return res.status(400).json({
@@ -184,6 +211,7 @@ app.post("/api/super-admin/receivables/mark-received", async (req, res) => {
       success: true,
       message: "Recebimento registrado com sucesso",
       amount: toReceive,
+      receivedOrderIds
     });
   } catch (error) {
     console.error("❌ Erro ao marcar como recebido:", error);
@@ -1357,14 +1385,20 @@ app.post("/api/orders", async (req, res) => {
         }
       }
 
-      // 3. Garante precoBruto em todos os itens
+      // 3. Garante precoBruto em todos os itens (busca do produto cadastrado)
       const itemsWithPrecoBruto = Array.isArray(items)
-        ? items.map((item) => ({
-            ...item,
-            precoBruto:
-              item.precoBruto !== undefined
-                ? Number(item.precoBruto)
-                : 0,
+        ? await Promise.all(items.map(async (item) => {
+            let precoBruto = 0;
+            if (item.precoBruto !== undefined) {
+              precoBruto = Number(item.precoBruto);
+            } else if (item.id) {
+              const prod = await trx("products").where({ id: item.id }).first();
+              precoBruto = prod && prod.priceRaw ? parseFloat(prod.priceRaw) : 0;
+            }
+            return {
+              ...item,
+              precoBruto
+            };
           }))
         : [];
 

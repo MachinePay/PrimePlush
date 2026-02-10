@@ -43,6 +43,7 @@ import logo from "../assets/primeplush-logo.png";
 
 const SuperAdminPage: React.FC = () => {
   const [data, setData] = useState<StatsData | null>(null);
+  const [receivedOrderIds, setReceivedOrderIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [password, setPassword] = useState("");
@@ -141,6 +142,31 @@ const SuperAdminPage: React.FC = () => {
     );
   }
 
+  const handleMarkReceived = async () => {
+    if (!data || data.stats.totalToReceive <= 0) return;
+    if (!window.confirm(`Confirmar recebimento de R$ ${data.stats.totalToReceive.toFixed(2)}?`)) return;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/super-admin/receivables/mark-received`,
+        {
+          method: "POST",
+          headers: {
+            "x-super-admin-password": password,
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Erro ao marcar como recebido");
+      const result = await response.json();
+      setReceivedOrderIds(result.receivedOrderIds || []);
+      await fetchData();
+    } catch (e: any) {
+      setError(e.message || "Erro ao marcar como recebido");
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-6">
       <div className="max-w-6xl mx-auto">
@@ -148,12 +174,25 @@ const SuperAdminPage: React.FC = () => {
         {loading && <div className="text-center">Carregando...</div>}
         {error && <div className="text-red-600 text-center mb-4">{error}</div>}
         {data && (
-          <SuperAdminReceivablesDetails
-            orders={data.orders}
-            totalToReceive={data.stats.totalToReceive}
-            totalReceived={data.stats.totalReceived}
-            alreadyReceived={data.stats.alreadyReceived}
-          />
+          <>
+            <div className="mb-4 flex items-center gap-4">
+              <span className="font-semibold text-purple-700 text-lg">Valor a receber (total): R${data.stats.totalToReceive.toFixed(2)}</span>
+              <button
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                onClick={handleMarkReceived}
+                disabled={loading || data.stats.totalToReceive <= 0}
+              >
+                Recebido
+              </button>
+            </div>
+            <SuperAdminReceivablesDetails
+              orders={data.orders}
+              totalToReceive={data.stats.totalToReceive}
+              totalReceived={data.stats.totalReceived}
+              alreadyReceived={data.stats.alreadyReceived}
+              receivedOrderIds={receivedOrderIds}
+            />
+          </>
         )}
       </div>
     </div>
