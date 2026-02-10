@@ -84,6 +84,11 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
 
       // Abre a página do MercadoPago em uma nova aba
       window.open(data.initPoint, '_blank', 'noopener,noreferrer');
+
+      // Abre uma nova aba de pedido pendente para polling
+      // Usa payment_id e order_id para a URL
+      const pendingUrl = `/payment-pending?payment_id=${data.paymentId || ''}&order_id=${orderId || ''}`;
+      window.open(pendingUrl, '_blank', 'noopener,noreferrer');
     } catch (err: any) {
       setError(err.message);
       onError?.(err.message);
