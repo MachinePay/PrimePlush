@@ -5,6 +5,8 @@ import logo from "../assets/primeplush-logo.png";
 import SuperAdminReceivablesDetails from "../components/SuperAdminReceivablesDetails";
 import { useNavigate } from "react-router-dom";
 import type { Order } from "../types";
+import { useAuth } from "../contexts/AuthContext";
+
 
 interface StatsData {
   stats: {
@@ -27,6 +29,7 @@ function SuperAdminPage() {
   const [data, setData] = useState<StatsData | null>(null);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
 
   useEffect(() => {
     if (loggedIn) {
@@ -104,7 +107,13 @@ function SuperAdminPage() {
     setLoading(false);
     if (ok) {
       setLoggedIn(true);
-      // Após login, navega para rota dedicada ao detalhamento
+      // Salva usuário superadmin no AuthContext
+      authLogin({
+        id: "superadmin",
+        name: "Super Admin",
+        historico: [],
+        role: "superadmin"
+      });
       navigate("/superadmin/detalhes");
     } else setError("Senha incorreta");
   }
