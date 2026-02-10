@@ -1,65 +1,75 @@
+
 import React from "react";
-import type { Order } from "../types";
+
+interface ItemDetail {
+  name: string;
+  price: number;
+  precoBruto: number;
+  quantity: number;
+  valueToReceive: number;
+}
+
+interface OrderDetail {
+  id: string;
+  timestamp: string;
+  userName?: string;
+  total: number;
+  orderValueToReceive: number;
+  items: ItemDetail[];
+}
 
 interface SuperAdminReceivablesDetailsProps {
-  orders: Order[];
+  orders: OrderDetail[];
   totalToReceive: number;
   totalReceived: number;
   alreadyReceived: number;
 }
 
 const SuperAdminReceivablesDetails: React.FC<SuperAdminReceivablesDetailsProps> = ({ orders, totalToReceive, totalReceived, alreadyReceived }) => {
-  // Exemplo de cálculo: totalToReceive = soma dos pedidos confirmados - taxas - já recebido
-  const totalPedidos = orders.reduce((sum, o) => sum + o.total, 0);
-  const taxas = orders.reduce((sum, o) => sum + (o.fee || 0), 0);
-  const valorReceber = totalPedidos - taxas - alreadyReceived;
-
   return (
     <div className="bg-white shadow-xl rounded-2xl p-6 border-2 border-purple-200 mt-8">
       <h2 className="text-2xl font-bold text-purple-800 mb-4">Pedidos detalhados para cálculo do valor a receber</h2>
-      <table className="w-full mb-6 text-sm">
-        <thead>
-          <tr className="bg-purple-100">
-            <th className="py-2 px-3 text-left">ID</th>
-            <th className="py-2 px-3 text-left">Cliente</th>
-            <th className="py-2 px-3 text-left">Data</th>
-            <th className="py-2 px-3 text-left">Total</th>
-            <th className="py-2 px-3 text-left">Taxa</th>
-            <th className="py-2 px-3 text-left">Forma de Pagamento</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((order) => (
-            <tr key={order.id} className="border-b">
-              <td className="py-2 px-3">{order.id.slice(-4)}</td>
-              <td className="py-2 px-3">{order.userName || '-'}</td>
-              <td className="py-2 px-3">{new Date(order.timestamp).toLocaleString()}</td>
-              <td className="py-2 px-3">R${order.total.toFixed(2)}</td>
-              <td className="py-2 px-3">R${order.fee?.toFixed(2) ?? '0.00'}</td>
-              <td className="py-2 px-3">{(() => {
-                if (!order.paymentType) return "-";
-                if (order.paymentType === "presencial") return "Presencial";
-                if (order.paymentType === "online") {
-                  if (order.paymentMethod === "credit") return "Cartão de Crédito (Mercado Pago)";
-                  if (order.paymentMethod === "debit") return "Cartão de Débito (Mercado Pago)";
-                  if (order.paymentMethod === "pix") return "Pix (Mercado Pago)";
-                  return "Online (Mercado Pago)";
-                }
-                return order.paymentType;
-              })()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
       <div className="mb-4">
-        <span className="font-semibold">Total dos pedidos:</span> R${totalPedidos.toFixed(2)}<br />
-        <span className="font-semibold">Total de taxas:</span> R${taxas.toFixed(2)}<br />
-        <span className="font-semibold">Já recebido:</span> R${alreadyReceived.toFixed(2)}<br />
-        <span className="font-semibold text-purple-700">Valor a receber:</span> R${valorReceber.toFixed(2)}
+        <span className="font-semibold text-purple-700">Valor a receber (total):</span> <span className="text-lg">R${totalToReceive.toFixed(2)}</span><br />
+        <span className="font-semibold">Total já recebido:</span> R${alreadyReceived.toFixed(2)}<br />
+        <span className="font-semibold">Total recebido (histórico):</span> R${totalReceived.toFixed(2)}
       </div>
+      {orders.length === 0 && <div>Nenhum pedido encontrado.</div>}
+      {orders.map((order) => (
+        <div key={order.id} className="order-card border rounded-lg p-4 mb-6 bg-purple-50">
+          <div className="mb-2">
+            <b>Pedido #{order.id}</b> | Cliente: {order.userName || '-'} | Data: {new Date(order.timestamp).toLocaleString()}
+          </div>
+          <div className="mb-2">
+            Total do pedido: R$ {order.total?.toFixed(2) ?? "0.00"} | Valor a receber deste pedido: <b>R$ {order.orderValueToReceive?.toFixed(2) ?? "0.00"}</b>
+          </div>
+          <table className="w-full text-xs mb-2">
+            <thead>
+              <tr className="bg-purple-100">
+                <th className="py-1 px-2 text-left">Produto</th>
+                <th className="py-1 px-2 text-left">Preço Venda</th>
+                <th className="py-1 px-2 text-left">Preço Bruto</th>
+                <th className="py-1 px-2 text-left">Qtd</th>
+                <th className="py-1 px-2 text-left">Valor a Receber</th>
+              </tr>
+            </thead>
+            <tbody>
+              {order.items.map((item, idx) => (
+                <tr key={idx} className="border-b">
+                  <td className="py-1 px-2">{item.name}</td>
+                  <td className="py-1 px-2">R$ {item.price?.toFixed(2) ?? "0.00"}</td>
+                  <td className="py-1 px-2">R$ {item.precoBruto?.toFixed(2) ?? "0.00"}</td>
+                  <td className="py-1 px-2">{item.quantity}</td>
+                  <td className="py-1 px-2">R$ {item.valueToReceive?.toFixed(2) ?? "0.00"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
       <div className="text-xs text-gray-500">
         <span>O valor a receber é calculado como: <br />
-        <span className="font-mono">Total dos pedidos - taxas - já recebido</span></span>
+        <span className="font-mono">(Preço de venda - Preço bruto) x quantidade para cada item, somando todos os pedidos.</span></span>
       </div>
     </div>
   );
