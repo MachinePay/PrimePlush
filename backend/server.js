@@ -42,20 +42,54 @@ app.get("/api/super-admin/receivables", async (req, res) => {
       });
     }
 
-    // Total de pedidos pagos (valor bruto acumulado)
-    const totalPaidOrders = await db("orders")
+    // Busca todos os pedidos pagos ou autorizados
+    const orders = await db("orders")
       .whereIn("paymentStatus", ["paid", "authorized"])
-      .sum("total as total")
-      .first();
+      .orderBy("timestamp", "desc");
 
     // Total já recebido anteriormente
     const totalAlreadyReceived = await db("super_admin_receivables")
       .sum("amount as total")
       .first();
 
-    const totalReceived = parseFloat(totalPaidOrders.total) || 0;
+    // Calcula valor à receber por pedido
+    let totalToReceive = 0;
+    const detailedOrders = orders.map((order) => {
+      let orderValueToReceive = 0;
+      let items = [];
+      try {
+        items = typeof order.items === "string" ? JSON.parse(order.items) : (order.items || []);
+      } catch (e) {
+        items = [];
+      }
+      const itemDetails = items.map((item) => {
+        // price: preço de venda, precoBruto: preço bruto/custo
+        const price = parseFloat(item.price) || 0;
+        const precoBruto = parseFloat(item.precoBruto) || 0;
+        const qty = parseInt(item.quantity) || 1;
+        const valueToReceive = (price - precoBruto) * qty;
+        orderValueToReceive += valueToReceive;
+        return {
+          name: item.name,
+          price,
+          precoBruto,
+          quantity: qty,
+          valueToReceive,
+        };
+      });
+      totalToReceive += orderValueToReceive;
+      return {
+        id: order.id,
+        timestamp: order.timestamp,
+        userName: order.userName,
+        total: parseFloat(order.total),
+        items: itemDetails,
+        orderValueToReceive,
+      };
+    });
+
     const alreadyReceived = parseFloat(totalAlreadyReceived.total) || 0;
-    const toReceive = totalReceived - alreadyReceived;
+    const toReceive = totalToReceive - alreadyReceived;
 
     // Histórico de recebimentos
     const history = await db("super_admin_receivables")
@@ -67,9 +101,10 @@ app.get("/api/super-admin/receivables", async (req, res) => {
       success: true,
       stats: {
         totalToReceive: Math.max(0, toReceive),
-        totalReceived: totalReceived,
+        totalReceived: totalToReceive,
         alreadyReceived: alreadyReceived,
       },
+      orders: detailedOrders,
       history: history.map((h) => ({
         id: h.id,
         amount: parseFloat(h.amount),
@@ -100,19 +135,34 @@ app.post("/api/super-admin/receivables/mark-received", async (req, res) => {
       });
     }
 
-    // Calcula quanto tem a receber agora
-    const totalPaidOrders = await db("orders")
-      .whereIn("paymentStatus", ["paid", "authorized"])
-      .sum("total as total")
-      .first();
+    // Busca todos os pedidos pagos ou autorizados
+    const orders = await db("orders")
+      .whereIn("paymentStatus", ["paid", "authorized"]);
 
+    // Total já recebido anteriormente
     const totalAlreadyReceived = await db("super_admin_receivables")
       .sum("amount as total")
       .first();
 
-    const totalReceived = parseFloat(totalPaidOrders.total) || 0;
+    // Calcula valor à receber por pedido
+    let totalToReceive = 0;
+    orders.forEach((order) => {
+      let items = [];
+      try {
+        items = typeof order.items === "string" ? JSON.parse(order.items) : (order.items || []);
+      } catch (e) {
+        items = [];
+      }
+      items.forEach((item) => {
+        const price = parseFloat(item.price) || 0;
+        const precoBruto = parseFloat(item.precoBruto) || 0;
+        const qty = parseInt(item.quantity) || 1;
+        totalToReceive += (price - precoBruto) * qty;
+      });
+    });
+
     const alreadyReceived = parseFloat(totalAlreadyReceived.total) || 0;
-    const toReceive = totalReceived - alreadyReceived;
+    const toReceive = totalToReceive - alreadyReceived;
 
     if (toReceive <= 0) {
       return res.status(400).json({
