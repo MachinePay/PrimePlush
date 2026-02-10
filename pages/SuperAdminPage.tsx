@@ -207,6 +207,44 @@ const SuperAdminPage: React.FC = () => {
               alreadyReceived={data.stats.alreadyReceived}
               receivedOrderIds={receivedOrderIds}
             />
+            {/* Histórico de repasses */}
+            {data.history && data.history.length > 0 && (
+              <div className="bg-white shadow-xl rounded-2xl p-6 border-2 border-green-200 mt-8">
+                <h2 className="text-xl font-bold text-green-800 mb-4">
+                  Histórico de Repasses ao SuperAdmin
+                </h2>
+                <table className="w-full text-xs mb-2">
+                  <thead>
+                    <tr className="bg-green-100">
+                      <th className="py-1 px-2 text-left">Pedido</th>
+                      <th className="py-1 px-2 text-left">Cliente</th>
+                      <th className="py-1 px-2 text-left">Valor Total</th>
+                      <th className="py-1 px-2 text-left">Data do Pedido</th>
+                      <th className="py-1 px-2 text-left">Data do Repasse</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.history.map((h) => (
+                      <tr key={h.id} className="border-b">
+                        <td className="py-1 px-2">{h.id}</td>
+                        <td className="py-1 px-2">{h.userName || "-"}</td>
+                        <td className="py-1 px-2">
+                          R$ {h.total?.toFixed(2) ?? "0.00"}
+                        </td>
+                        <td className="py-1 px-2">
+                          {h.date ? new Date(h.date).toLocaleString() : "-"}
+                        </td>
+                        <td className="py-1 px-2">
+                          {h.dataRepasseSuperAdmin
+                            ? new Date(h.dataRepasseSuperAdmin).toLocaleString()
+                            : "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </>
         )}
       </div>
