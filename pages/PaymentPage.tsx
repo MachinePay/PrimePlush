@@ -394,7 +394,7 @@ const PaymentPage: React.FC = () => {
             Pagamento Aprovado!
           </h2>
           <p className="text-stone-600 text-lg mb-6">
-            Pedido enviado para a cozinha.
+            Pedido enviado.
             <br />
             <span className="block mt-2 text-green-700 font-semibold">
               Comprovante enviado para seu e-mail!
