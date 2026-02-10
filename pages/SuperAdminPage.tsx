@@ -230,7 +230,7 @@ function SuperAdminPage() {
             </div>
 
             {/* Detalhamento dos pedidos e cálculo */}
-            {data.orders && data.orders.length > 0 && (
+            {data.orders && (
               <SuperAdminReceivablesDetails
                 orders={data.orders}
                 totalToReceive={data.stats.totalToReceive}
