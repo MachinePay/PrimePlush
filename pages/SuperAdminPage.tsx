@@ -338,7 +338,36 @@ function SuperAdminPage() {
             {/* Detalhamento dos pedidos e cálculo */}
             {data.orders && (
               <SuperAdminReceivablesDetails
-                orders={data.orders}
+                orders={data.orders.map((order: any) => {
+                  // Se já está no formato detalhado, retorna direto
+                  if (order.orderValueToReceive !== undefined && order.items && order.items[0]?.valueToReceive !== undefined) {
+                    return order;
+                  }
+                  // Caso contrário, faz o mapeamento mínimo
+                  let orderValueToReceive = 0;
+                  const items = (order.items || []).map((item: any) => {
+                    const price = Number(item.price) || 0;
+                    const precoBruto = Number(item.precoBruto) || 0;
+                    const quantity = Number(item.quantity) || 1;
+                    const valueToReceive = (price - precoBruto) * quantity;
+                    orderValueToReceive += valueToReceive;
+                    return {
+                      name: item.name || '',
+                      price,
+                      precoBruto,
+                      quantity,
+                      valueToReceive
+                    };
+                  });
+                  return {
+                    id: order.id,
+                    timestamp: order.timestamp,
+                    userName: order.userName,
+                    total: order.total,
+                    orderValueToReceive,
+                    items
+                  };
+                })}
                 totalToReceive={data.stats.totalToReceive}
                 totalReceived={data.stats.totalReceived}
                 alreadyReceived={data.stats.alreadyReceived}
