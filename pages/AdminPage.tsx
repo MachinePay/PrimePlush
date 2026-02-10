@@ -492,13 +492,13 @@ const AdminPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-2 sm:p-4 md:p-6">
       {/* Cabeçalho */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-4xl font-bold text-blue-800">
           Painel Administrativo
         </h1>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => navigate("/admin/categories")}
             className="bg-purple-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-purple-700 transition-colors shadow-md"
@@ -543,7 +543,7 @@ const AdminPage: React.FC = () => {
       </div>
 
       {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
           <div className="text-sm text-stone-500 mb-1">Total de Produtos</div>
           <div className="text-3xl font-bold text-blue-600">
@@ -616,114 +616,50 @@ const AdminPage: React.FC = () => {
       </h2>
 
       {/* Tabela que lista os produtos */}
-      <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
-        <table className="min-w-full divide-y divide-stone-200">
+      <div className="bg-white shadow-xl rounded-2xl overflow-x-auto">
+        <table className="min-w-full divide-y divide-stone-200 text-xs sm:text-sm">
           <thead className="bg-stone-50">
             <tr>
-              {/* Cabeçalhos de coluna */}
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider"
-              >
-                Produto
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider"
-              >
-                Categoria
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider"
-              >
-                Preço
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider"
-              >
-                Estoque
-              </th>
-              <th scope="col" className="relative px-6 py-3">
-                <span className="sr-only">Ações</span>
-              </th>
+              <th scope="col" className="px-2 sm:px-4 py-2 text-left font-medium text-stone-500 uppercase tracking-wider">Produto</th>
+              <th scope="col" className="px-2 sm:px-4 py-2 text-left font-medium text-stone-500 uppercase tracking-wider">Categoria</th>
+              <th scope="col" className="px-2 sm:px-4 py-2 text-left font-medium text-stone-500 uppercase tracking-wider">Preço</th>
+              <th scope="col" className="px-2 sm:px-4 py-2 text-left font-medium text-stone-500 uppercase tracking-wider">Estoque</th>
+              <th scope="col" className="relative px-2 sm:px-4 py-2"><span className="sr-only">Ações</span></th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-stone-200">
-            {/* Itera sobre o array de produtos para gerar as linhas */}
             {menu.map((product) => (
-              <tr key={product.id}>
-                {/* Produto (imagem e nome) */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-3">
-                    <img
-                      className="h-10 w-10 rounded-full object-cover border border-stone-200"
-                      src={product.imageUrl}
-                      alt={product.name}
-                    />
+              <tr key={product.id} className="hover:bg-stone-50">
+                <td className="px-2 sm:px-4 py-2 whitespace-nowrap">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <img className="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover border border-stone-200" src={product.imageUrl} alt={product.name} />
                     <div>
-                      <div className="text-sm font-bold text-stone-900">
-                        {product.name}
-                      </div>
+                      <div className="text-xs sm:text-sm font-bold text-stone-900">{product.name}</div>
                     </div>
                   </div>
                 </td>
-                {/* Categoria */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-stone-700">
-                    {product.category}
-                  </span>
+                <td className="px-2 sm:px-4 py-2 whitespace-nowrap">
+                  <span className="text-xs sm:text-sm text-stone-700">{product.category}</span>
                 </td>
-                {/* Preço (venda e bruto) */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-stone-900">
-                    R${product.price?.toFixed(2) ?? "-"}
-                  </div>
-                  <div className="text-xs text-stone-500">
-                    Bruto: R${product.priceRaw?.toFixed(2) ?? "-"}
-                  </div>
+                <td className="px-2 sm:px-4 py-2 whitespace-nowrap">
+                  <div className="text-xs sm:text-sm text-stone-900">R${product.price?.toFixed(2) ?? "-"}</div>
+                  <div className="text-[10px] sm:text-xs text-stone-500">Bruto: R${product.priceRaw?.toFixed(2) ?? "-"}</div>
                 </td>
-                {/* Estoque com badge colorido e alerta de estoque mínimo */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      (product.stock || 0) === 0
-                        ? "bg-blue-100 text-blue-800"
-                        : product.minStock !== undefined &&
-                            product.stock !== undefined &&
-                            product.stock < product.minStock
-                          ? "bg-yellow-100 text-yellow-800 animate-pulse"
-                          : "bg-green-100 text-green-800"
-                    }`}
-                  >
-                    {product.stock || 0} un.
-                  </span>
-                  {product.minStock !== undefined &&
-                    product.stock !== undefined &&
-                    product.stock < product.minStock && (
-                      <span className="ml-2 text-xs text-blue-600 font-bold animate-pulse">
-                        Estoque baixo!
-                      </span>
-                    )}
+                <td className="px-2 sm:px-4 py-2 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    (product.stock || 0) === 0
+                      ? "bg-blue-100 text-blue-800"
+                      : product.minStock !== undefined && product.stock !== undefined && product.stock < product.minStock
+                        ? "bg-yellow-100 text-yellow-800 animate-pulse"
+                        : "bg-green-100 text-green-800"
+                  }`}>{product.stock || 0} un.</span>
+                  {product.minStock !== undefined && product.stock !== undefined && product.stock < product.minStock && (
+                    <span className="ml-1 text-[10px] sm:text-xs text-blue-600 font-bold animate-pulse">Estoque baixo!</span>
+                  )}
                 </td>
-                {/* Ações */}
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => {
-                      setEditingProduct(product);
-                      setIsFormOpen(true);
-                    }}
-                    className="text-blue-600 hover:text-blue-900 mr-4"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => handleDeleteProduct(product.id)}
-                    className="text-blue-700 hover:text-blue-900"
-                  >
-                    Remover
-                  </button>
+                <td className="px-2 sm:px-4 py-2 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
+                  <button onClick={() => { setEditingProduct(product); setIsFormOpen(true); }} className="text-blue-600 hover:text-blue-900 mr-2 sm:mr-4">Editar</button>
+                  <button onClick={() => handleDeleteProduct(product.id)} className="text-blue-700 hover:text-blue-900">Remover</button>
                 </td>
               </tr>
             ))}
