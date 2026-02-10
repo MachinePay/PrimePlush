@@ -38,22 +38,36 @@ interface StatsData {
   orders: OrderDetail[];
 }
 
+
+import logo from "../assets/primeplush-logo.png";
+
 const SuperAdminPage: React.FC = () => {
   const [data, setData] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [password, setPassword] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    if (loggedIn) {
+      fetchData();
+      const interval = setInterval(fetchData, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [loggedIn]);
 
   const fetchData = async () => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/super-admin/receivables`);
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/super-admin/receivables`,
+        {
+          headers: {
+            "x-super-admin-password": password,
+          },
+        }
+      );
       if (!response.ok) throw new Error("Erro ao buscar dados");
       const result = await response.json();
       setData(result);
@@ -62,6 +76,70 @@ const SuperAdminPage: React.FC = () => {
     }
     setLoading(false);
   };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      // Testa senha fazendo uma requisição
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/super-admin/receivables`,
+        {
+          headers: {
+            "x-super-admin-password": password,
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Senha incorreta ou não autorizado");
+      const result = await response.json();
+      setData(result);
+      setLoggedIn(true);
+    } catch (e: any) {
+      setError(e.message || "Erro ao autenticar");
+    }
+    setLoading(false);
+  };
+
+  if (!loggedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
+        <form
+          onSubmit={handleLogin}
+          className="bg-white shadow-2xl rounded-2xl p-10 w-full max-w-md flex flex-col gap-6 border-2 border-purple-200"
+        >
+          <div className="flex flex-col items-center gap-3">
+            <img src={logo} alt="PrimePlush Logo" className="w-24 h-24 mb-2" />
+            <h2 className="text-3xl font-bold text-purple-600">Super Admin</h2>
+            <p className="text-gray-600 text-sm text-center">
+              Controle Financeiro PrimePlush
+            </p>
+          </div>
+          <input
+            type="password"
+            placeholder="Senha Super Admin"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
+            className="border-2 border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+            autoFocus
+          />
+          <button
+            type="submit"
+            disabled={loading || !password}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+          >
+            {loading ? "Entrando..." : "Entrar"}
+          </button>
+          {error && (
+            <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-lg">
+              {error}
+            </div>
+          )}
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-6">
