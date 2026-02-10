@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect } from "react";
 import SuperAdminReceivablesDetails from "../components/SuperAdminReceivablesDetails";
 
@@ -38,7 +35,6 @@ interface StatsData {
   orders: OrderDetail[];
 }
 
-
 import logo from "../assets/primeplush-logo.png";
 
 const SuperAdminPage: React.FC = () => {
@@ -67,7 +63,7 @@ const SuperAdminPage: React.FC = () => {
           headers: {
             "x-super-admin-password": password,
           },
-        }
+        },
       );
       if (!response.ok) throw new Error("Erro ao buscar dados");
       const result = await response.json();
@@ -90,7 +86,7 @@ const SuperAdminPage: React.FC = () => {
           headers: {
             "x-super-admin-password": password,
           },
-        }
+        },
       );
       if (!response.ok) throw new Error("Senha incorreta ou não autorizado");
       const result = await response.json();
@@ -143,8 +139,20 @@ const SuperAdminPage: React.FC = () => {
   }
 
   const handleMarkReceived = async () => {
-    if (!data || data.stats.totalToReceive <= 0) return;
-    if (!window.confirm(`Confirmar recebimento de R$ ${data.stats.totalToReceive.toFixed(2)}?`)) return;
+    if (
+      !data ||
+      !data.orders ||
+      data.orders.length === 0 ||
+      data.stats.totalToReceive <= 0
+    )
+      return;
+    const pendingOrderIds = data.orders.map((order) => order.id);
+    if (
+      !window.confirm(
+        `Confirmar recebimento de R$ ${data.stats.totalToReceive.toFixed(2)} de ${pendingOrderIds.length} pedidos?`,
+      )
+    )
+      return;
     setLoading(true);
     setError("");
     try {
@@ -154,8 +162,10 @@ const SuperAdminPage: React.FC = () => {
           method: "POST",
           headers: {
             "x-super-admin-password": password,
+            "Content-Type": "application/json",
           },
-        }
+          body: JSON.stringify({ orderIds: pendingOrderIds }),
+        },
       );
       if (!response.ok) throw new Error("Erro ao marcar como recebido");
       const result = await response.json();
@@ -170,13 +180,18 @@ const SuperAdminPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-6">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-purple-600 mb-6">Dashboard Super Admin</h1>
+        <h1 className="text-3xl font-bold text-purple-600 mb-6">
+          Dashboard Super Admin
+        </h1>
         {loading && <div className="text-center">Carregando...</div>}
         {error && <div className="text-red-600 text-center mb-4">{error}</div>}
         {data && (
           <>
             <div className="mb-4 flex items-center gap-4">
-              <span className="font-semibold text-purple-700 text-lg">Valor a receber (total): R${data.stats.totalToReceive.toFixed(2)}</span>
+              <span className="font-semibold text-purple-700 text-lg">
+                Valor a receber (total): R$
+                {data.stats.totalToReceive.toFixed(2)}
+              </span>
               <button
                 className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                 onClick={handleMarkReceived}
