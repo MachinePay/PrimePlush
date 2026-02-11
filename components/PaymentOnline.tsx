@@ -79,6 +79,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
           setPaymentStatusMsg('Pedido aprovado!');
           setShowPaymentStatus(true);
           setBoxColor('green');
+          setError(""); // Limpa erro ao aprovar
           clearInterval(intervalId);
           localStorage.removeItem('pendingPaymentId');
         } else {
@@ -200,7 +201,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
             </button>
           </div>
         )}
-        {error && (
+        {error && typeof error === 'string' && !error.includes('Minified React error #321') && (
           <div className="mt-4 bg-red-50 border-2 border-red-200 text-red-600 p-4 rounded-lg text-center text-sm">
             {error}
           </div>
