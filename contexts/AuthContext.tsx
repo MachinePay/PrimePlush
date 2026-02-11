@@ -56,17 +56,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       //   console.log(`✅ ${data.cleared || 0} pagamento(s) limpo(s)`);
       // }
       console.warn("⚠️ Erro ao limpar pagamentos (continua logout):", error);
-    }
-
-    // Limpar token JWT
-    apiLogout();
-
-    // Limpar usuário
-    setCurrentUser(null);
-    try {
-      localStorage.removeItem("currentUser");
-    } catch (e) {
-      // ignore
+    } finally {
+      // Limpar token JWT
+      apiLogout();
+      // Limpar usuário
+      setCurrentUser(null);
+      try {
+        localStorage.removeItem("currentUser");
+      } catch (e) {
+        // ignore
+      }
     }
   };
 
