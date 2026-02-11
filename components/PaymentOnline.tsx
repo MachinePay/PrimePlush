@@ -140,6 +140,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
         localStorage.setItem('pendingOrderId', orderId);
         startOrderStatusPolling(orderId);
       }
+      // (Removido: useEffect não pode ser chamado aqui)
       // Ao montar, verifica se há orderId pendente e inicia polling automático
       useEffect(() => {
         const pendingOrderId = localStorage.getItem('pendingOrderId');
