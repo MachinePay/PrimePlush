@@ -186,12 +186,22 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
             <div
               className={
                 boxColor === 'green'
-                  ? 'bg-green-500 text-white font-bold px-6 py-4 rounded-xl shadow-lg text-center text-lg mb-4'
+                  ? 'bg-green-500 text-white font-bold px-6 py-4 rounded-xl shadow-lg text-center text-lg mb-4 flex flex-col items-center'
                   : 'bg-orange-500 text-white font-bold px-6 py-4 rounded-xl shadow-lg text-center text-lg animate-pulse mb-4'
               }
               style={{ boxShadow: boxColor === 'green' ? '0 4px 16px rgba(34,197,94,0.3)' : '0 4px 16px rgba(255,140,0,0.3)' }}
             >
               {paymentStatusMsg}
+              {boxColor === 'green' && orderId && (
+                <button
+                  className="mt-4 bg-white text-green-700 border border-green-500 font-bold py-2 px-6 rounded-xl shadow-md transition-all hover:bg-green-50"
+                  onClick={() => {
+                    window.open(`${API_URL}/api/orders/${orderId}/pdf`, '_blank');
+                  }}
+                >
+                  Gerar PDF
+                </button>
+              )}
             </div>
             <button
               className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-xl shadow-md transition-all"
