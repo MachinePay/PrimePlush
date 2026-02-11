@@ -234,6 +234,7 @@ const SuperAdminPage: React.FC = () => {
                       <th className="py-1 px-2 text-left">Pedido</th>
                       <th className="py-1 px-2 text-left">Cliente</th>
                       <th className="py-1 px-2 text-left">Valor Total</th>
+                      <th className="py-1 px-2 text-left">Valor Recebido</th>
                       <th className="py-1 px-2 text-left">Data do Pedido</th>
                       <th className="py-1 px-2 text-left">Data do Repasse</th>
                     </tr>
@@ -248,6 +249,14 @@ const SuperAdminPage: React.FC = () => {
                         <td className="py-1 px-2">{h.cliente || "-"}</td>
                         <td className="py-1 px-2">
                           R$ {(Number(h.valorTotal) || 0).toFixed(2)}
+                        </td>
+                        <td className="py-1 px-2">
+                          R${" "}
+                          {(
+                            Number(h.valorRecebido) ||
+                            Number(h.valorTotal) ||
+                            0
+                          ).toFixed(2)}
                         </td>
                         <td className="py-1 px-2">
                           {h.dataPedido && h.dataPedido !== "-"
