@@ -77,34 +77,8 @@ const RoleProtectedRoute: React.FC<{
 
 const App: React.FC = () => {
   // Configurar Point Smart 2 na inicialização do sistema
-  useEffect(() => {
-    const initializePoint = async () => {
-      console.log("🚀 Inicializando Point Smart 2...");
 
-      // 1. Configurar Point em modo PDV (bloqueia menu da maquininha)
-      const configResult = await configurePoint();
-
-      // 2. Verificar status da conexão (opcional, para debug)
-      if (configResult.success) {
-        const statusResult = await checkPointStatus();
-
-        if (statusResult.connected) {
-          console.log("✅ Sistema pronto para receber pagamentos");
-          console.log(
-            `📱 Dispositivo: ${statusResult.model || "Point Smart 2"}`,
-          );
-          console.log(`⚙️ Modo: ${statusResult.operating_mode || "PDV"}`);
-        }
-      } else {
-        console.warn(
-          "⚠️ Point não disponível - pagamentos podem não funcionar",
-        );
-        console.warn("💡 Verifique se a maquininha está ligada e conectada");
-      }
-    };
-
-    initializePoint();
-  }, []);
+  // Integração com maquininha removida
 
   return (
     // 2. Envolvendo a aplicação com os Providers (incluindo StoreProvider para Multi-tenant)
