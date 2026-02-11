@@ -1,7 +1,7 @@
 // ...existing code...
 // ...existing code...
+// ...existing code...
 // Atualizar informações do usuário (incluindo senha)
-
 
 import { sendOrderPdfEmail } from "./services/orderPdfEmail.js";
 import express from "express";
@@ -48,9 +48,13 @@ app.get("/api/super-admin/receivables", async (req, res) => {
       });
     }
 
-    // Buscar todos os pedidos pagos (valor bruto acumulado)
+
+    // Buscar apenas pedidos pagos/autorizados que ainda não foram recebidos (repassadoSuperAdmin != 1)
     const paidOrders = await db("orders")
       .whereIn("paymentStatus", ["paid", "authorized"])
+      .where(function() {
+        this.whereNull("repassadoSuperAdmin").orWhere("repassadoSuperAdmin", 0);
+      })
       .orderBy("timestamp", "desc");
 
     // Total já recebido anteriormente
@@ -64,7 +68,9 @@ app.get("/api/super-admin/receivables", async (req, res) => {
     for (const order of paidOrders) {
       let items = [];
       try {
-        items = Array.isArray(order.items) ? order.items : JSON.parse(order.items);
+        items = Array.isArray(order.items)
+          ? order.items
+          : JSON.parse(order.items);
       } catch {
         items = [];
       }
@@ -72,24 +78,29 @@ app.get("/api/super-admin/receivables", async (req, res) => {
       const detailedItems = [];
       for (const item of items) {
         let precoBruto = 0;
-        if (item.productId) {
-          const prod = await db("products").where({ id: item.productId }).first();
+        // Tenta buscar pelo id do produto
+        const prodId = item.productId || item.id;
+        if (prodId) {
+          const prod = await db("products").where({ id: prodId }).first();
           precoBruto = prod && prod.priceRaw ? parseFloat(prod.priceRaw) : 0;
-        } else if (item.precoBruto) {
+        } else if (item.precoBruto !== undefined) {
           precoBruto = parseFloat(item.precoBruto);
         }
         const price = Number(item.price) || 0;
         const quantity = Number(item.quantity) || 1;
         const valueToReceive = (price - precoBruto) * quantity;
         detailedItems.push({
-          name: item.name || '',
+          name: item.name || "",
           price,
           precoBruto,
           quantity,
-          valueToReceive
+          valueToReceive,
         });
       }
-      const orderValueToReceive = detailedItems.reduce((sum, i) => sum + i.valueToReceive, 0);
+      const orderValueToReceive = detailedItems.reduce(
+        (sum, i) => sum + i.valueToReceive,
+        0,
+      );
       totalBrutoReceber += orderValueToReceive;
       detailedOrders.push({
         id: order.id,
@@ -100,12 +111,12 @@ app.get("/api/super-admin/receivables", async (req, res) => {
         items: detailedItems,
         status: order.status,
         paymentType: order.paymentType,
-        paymentStatus: order.paymentStatus
+        paymentStatus: order.paymentStatus,
       });
     }
 
-    const alreadyReceived = parseFloat(totalAlreadyReceived.total) || 0;
-    const toReceive = totalBrutoReceber - alreadyReceived;
+    // Desconta o valor já recebido, mostra apenas o saldo dos pedidos pagos/autorizados
+    const toReceive = totalBrutoReceber;
 
     // Histórico de recebimentos
     const history = await db("super_admin_receivables")
@@ -116,17 +127,18 @@ app.get("/api/super-admin/receivables", async (req, res) => {
     res.json({
       success: true,
       stats: {
-        totalToReceive: Math.max(0, toReceive),
+        totalToReceive: Math.max(0, toReceive), // Agora mostra o saldo dos pedidos pagos/autorizados
         totalReceived: totalBrutoReceber,
-        alreadyReceived: alreadyReceived,
+        alreadyReceived: parseFloat(totalAlreadyReceived.total) || 0,
       },
       history: history.map((h) => ({
         id: h.id,
         amount: parseFloat(h.amount),
         date: h.received_at,
       })),
-      orders: detailedOrders
+      orders: detailedOrders,
     });
+    
   } catch (error) {
     console.error("❌ Erro no endpoint receivables:", error);
     res.status(500).json({
@@ -151,67 +163,69 @@ app.post("/api/super-admin/receivables/mark-received", async (req, res) => {
       });
     }
 
-    // Buscar todos os pedidos pagos (valor bruto acumulado)
-    const paidOrders = await db("orders")
-      .whereIn("paymentStatus", ["paid", "authorized"])
-      .orderBy("timestamp", "desc");
 
-    // Calcular valor bruto a receber (lucro bruto)
-    let totalBrutoReceber = 0;
-    const receivedOrderIds = [];
-    for (const order of paidOrders) {
-      let items = [];
-      try {
-        items = Array.isArray(order.items) ? order.items : JSON.parse(order.items);
-      } catch {
-        items = [];
-      }
-      let orderValueToReceive = 0;
-      for (const item of items) {
-        let precoBruto = 0;
-        if (item.productId) {
-          const prod = await db("products").where({ id: item.productId }).first();
-          precoBruto = prod && prod.priceRaw ? parseFloat(prod.priceRaw) : 0;
-        } else if (item.precoBruto) {
-          precoBruto = parseFloat(item.precoBruto);
-        }
-        const price = Number(item.price) || 0;
-        const quantity = Number(item.quantity) || 1;
-        const valueToReceive = (price - precoBruto) * quantity;
-        orderValueToReceive += valueToReceive;
-      }
-      if (orderValueToReceive > 0) {
-        totalBrutoReceber += orderValueToReceive;
-        receivedOrderIds.push(order.id);
+    // Buscar todos os order_ids já recebidos
+    const receivablesRows = await db("super_admin_receivables").select("order_ids");
+    let receivedOrderIds = [];
+    for (const row of receivablesRows) {
+      if (row.order_ids) {
+        try {
+          const ids = JSON.parse(row.order_ids);
+          if (Array.isArray(ids)) receivedOrderIds.push(...ids);
+        } catch {}
       }
     }
+    // Buscar apenas pedidos pagos/autorizados que ainda não foram recebidos
+    const paidOrders = await db("orders")
+      .whereIn("paymentStatus", ["paid", "authorized"])
+      .whereNotIn("id", receivedOrderIds)
+      .select("id", "items");
 
-    const totalAlreadyReceived = await db("super_admin_receivables")
-      .sum("amount as total")
-      .first();
-    const alreadyReceived = parseFloat(totalAlreadyReceived.total) || 0;
-    const toReceive = totalBrutoReceber - alreadyReceived;
-
-    if (toReceive <= 0) {
+    if (paidOrders.length === 0) {
       return res.status(400).json({
         error: "Não há valores a receber no momento",
       });
     }
 
-    // Registra o recebimento
+    let totalBrutoReceber = 0;
+    for (const order of paidOrders) {
+      let items = [];
+      try {
+        items = Array.isArray(order.items)
+          ? order.items
+          : JSON.parse(order.items);
+      } catch {
+        items = [];
+      }
+      for (const item of items) {
+        let precoBruto = 0;
+        const prodId = item.productId || item.id;
+        if (prodId) {
+          const prod = await db("products").where({ id: prodId }).first();
+          precoBruto = prod && prod.priceRaw ? parseFloat(prod.priceRaw) : 0;
+        } else if (item.precoBruto !== undefined) {
+          precoBruto = parseFloat(item.precoBruto);
+        }
+        const price = Number(item.price) || 0;
+        const quantity = Number(item.quantity) || 1;
+        const valueToReceive = (price - precoBruto) * quantity;
+        totalBrutoReceber += valueToReceive;
+      }
+    }
+
     await db("super_admin_receivables").insert({
-      amount: toReceive,
+      amount: totalBrutoReceber,
+      order_ids: JSON.stringify(paidOrders.map(o => o.id)),
     });
 
     console.log(
-      `✅ Super Admin marcou R$ ${toReceive.toFixed(2)} como recebido`,
+      `✅ Super Admin marcou R$ ${totalBrutoReceber.toFixed(2)} como recebido`,
     );
 
     res.json({
       success: true,
       message: "Recebimento registrado com sucesso",
-      amount: toReceive,
-      receivedOrderIds
+      amount: totalBrutoReceber,
     });
   } catch (error) {
     console.error("❌ Erro ao marcar como recebido:", error);
@@ -222,6 +236,23 @@ app.post("/api/super-admin/receivables/mark-received", async (req, res) => {
   }
 });
 
+// Endpoint: contagem de pedidos dos últimos 30 dias
+app.get("/api/orders/last30days-count", async (req, res) => {
+  try {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const count = await db("orders")
+      .where("timestamp", ">=", thirtyDaysAgo.toISOString())
+      .count({ total: "id" })
+      .first();
+    res.json({ count: Number(count.total) || 0 });
+  } catch (err) {
+    console.error("Erro ao buscar contagem dos últimos 30 dias:", err);
+    res
+      .status(500)
+      .json({ error: "Erro ao buscar contagem dos últimos 30 dias" });
+  }
+});
 // --- Configurações ---
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -422,9 +453,19 @@ async function initDatabase() {
     await db.schema.createTable("super_admin_receivables", (table) => {
       table.increments("id").primary();
       table.decimal("amount", 10, 2).notNullable();
+      table.text("order_ids");
       table.timestamp("received_at").defaultTo(db.fn.now());
     });
     console.log("✅ Tabela 'super_admin_receivables' criada com sucesso");
+  } else {
+    // Adiciona a coluna order_ids se não existir
+    const hasOrderIds = await db.schema.hasColumn("super_admin_receivables", "order_ids");
+    if (!hasOrderIds) {
+      await db.schema.alterTable("super_admin_receivables", (table) => {
+        table.text("order_ids");
+      });
+      console.log("✅ Coluna 'order_ids' adicionada à tabela 'super_admin_receivables'");
+    }
   }
 
   const hasProducts = await db.schema.hasTable("products");
@@ -1385,20 +1426,12 @@ app.post("/api/orders", async (req, res) => {
         }
       }
 
-      // 3. Garante precoBruto em todos os itens (busca do produto cadastrado)
+      // 3. Garante precoBruto em todos os itens
       const itemsWithPrecoBruto = Array.isArray(items)
-        ? await Promise.all(items.map(async (item) => {
-            let precoBruto = 0;
-            if (item.precoBruto !== undefined) {
-              precoBruto = Number(item.precoBruto);
-            } else if (item.id) {
-              const prod = await trx("products").where({ id: item.id }).first();
-              precoBruto = prod && prod.priceRaw ? parseFloat(prod.priceRaw) : 0;
-            }
-            return {
-              ...item,
-              precoBruto
-            };
+        ? items.map((item) => ({
+            ...item,
+            precoBruto:
+              item.precoBruto !== undefined ? Number(item.precoBruto) : 0,
           }))
         : [];
 
@@ -1682,10 +1715,11 @@ app.get("/api/orders/history", async (req, res) => {
     const { start, end } = req.query;
     let query = db("orders")
       .where(function () {
-        this.whereIn("paymentStatus", ["paid", "authorized"])
-          .orWhere(function () {
+        this.whereIn("paymentStatus", ["paid", "authorized"]).orWhere(
+          function () {
             this.where("paymentType", "presencial");
-          });
+          },
+        );
       })
       .orderBy("timestamp", "desc");
     if (start) query = query.where("timestamp", ">=", start);
@@ -3198,6 +3232,62 @@ app.post("/api/ai/suggestion", async (req, res) => {
   if (!openai) {
     return res.json({ text: "IA indisponível" });
   }
+
+
+
+// --- Endpoint adicional: SuperAdmin marca recebíveis por IDs ---
+app.post(
+  "/api/super-admin/receivables/mark-received-by-ids",
+  async (req, res) => {
+    try {
+      const superAdminPassword = req.headers["x-super-admin-password"];
+      if (!SUPER_ADMIN_PASSWORD) {
+        return res
+          .status(503)
+          .json({ error: "Super Admin não configurado." });
+      }
+      if (superAdminPassword !== SUPER_ADMIN_PASSWORD) {
+        return res
+          .status(401)
+          .json({ error: "Acesso negado. Senha de Super Admin inválida." });
+      }
+
+      let { orderIds } = req.body;
+      if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "orderIds obrigatório (array)" });
+      }
+
+      const now = new Date().toISOString();
+      const updateResult = await db("orders")
+        .whereIn("id", orderIds)
+        .update({ repassadoSuperAdmin: 1, dataRepasseSuperAdmin: now });
+
+      console.log(
+        "[DEBUG] SuperAdmin marcou recebíveis por IDs:",
+        orderIds,
+        "Data:",
+        now,
+        "Resultado:",
+        updateResult,
+      );
+
+      return res.json({
+        success: true,
+        message: "Recebíveis marcados como recebidos",
+        receivedOrderIds: orderIds,
+        dataRepasse: now,
+        updateResult,
+      });
+    } catch (err) {
+      console.log("[DEBUG] Erro interno:", err);
+      return res
+        .status(500)
+        .json({ error: "Erro interno", details: err.message });
+    }
+  },
+);
   try {
     // Busca todos os produtos disponíveis
     const products = await db("products").select(
