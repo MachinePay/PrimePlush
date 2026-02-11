@@ -76,6 +76,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
         setPaymentStatusMsg('pedido pago e enviado!');
         setShowPaymentStatus(true);
         clearInterval(intervalId);
+        localStorage.removeItem('pendingPaymentId');
       } else if (statusResp.status === 'pending') {
         setPaymentStatusMsg('pedido em andamento: realize o pagamento');
         setShowPaymentStatus(true);
@@ -115,8 +116,18 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
 
       // Inicia polling para verificar status de pagamento
       if (data.paymentId) {
+        localStorage.setItem('pendingPaymentId', data.paymentId);
         startPaymentStatusPolling(data.paymentId);
       }
+      // Ao montar, verifica se há paymentId pendente e inicia polling automático
+      useEffect(() => {
+        const pendingId = localStorage.getItem('pendingPaymentId');
+        if (pendingId) {
+          setShowPaymentStatus(true);
+          setPaymentStatusMsg('pedido em andamento: realize o pagamento');
+          startPaymentStatusPolling(pendingId);
+        }
+      }, [startPaymentStatusPolling]);
     } catch (err: any) {
       setError(err.message);
       onError?.(err.message);
