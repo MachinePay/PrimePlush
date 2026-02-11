@@ -4,7 +4,6 @@ import Swal from "sweetalert2";
 import { useQuery } from "@tanstack/react-query";
 import { useCart } from "../contexts/CartContext";
 import { useAuth } from "../contexts/AuthContext";
-import { clearPaymentQueue } from "../services/pointService"; // Verifique se esse caminho está correto no seu projeto
 import {
   createPixPayment,
   createCardPayment,
