@@ -1,6 +1,6 @@
 .site-footer.minimal-footer {
   width: 100%;
-  background: rgba(34,34,34,0.45);
+  background: rgba(10, 24, 60, 0.55); /* dark blue transparent */
   color: #fff;
   padding: 0.2em 0;
   position: fixed;
