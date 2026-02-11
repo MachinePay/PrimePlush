@@ -94,9 +94,8 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
       setPaymentStatusMsg("pedido em andamento: realize o pagamento");
       setShowPaymentStatus(true);
 
-      // Redireciona a aba atual para /payment-pending
-      const pendingUrl = `/payment-pending?payment_id=${data.paymentId || ''}&order_id=${orderId || ''}`;
-      window.location.href = pendingUrl;
+      // Não redireciona mais automaticamente para /payment-pending
+      // O usuário permanece na tela para ver o status do pedido
     } catch (err: any) {
       setError(err.message);
       onError?.(err.message);
