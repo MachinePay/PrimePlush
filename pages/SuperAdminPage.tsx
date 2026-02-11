@@ -147,6 +147,7 @@ const SuperAdminPage: React.FC = () => {
     )
       return;
     const pendingOrderIds = data.orders.map((order) => order.id);
+    console.log("[FRONTEND] orderIds enviados ao backend:", pendingOrderIds);
     if (
       !window.confirm(
         `Confirmar recebimento de R$ ${data.stats.totalToReceive.toFixed(2)} de ${pendingOrderIds.length} pedidos?`,
