@@ -1,3 +1,4 @@
+import { get as apiGet } from '../services/api';
 import React, { useState, useEffect, useCallback } from "react";
 import { checkPaymentStatus } from '../services/paymentService';
 
@@ -67,22 +68,32 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 
-  // Função para polling de status de pagamento
-  const startPaymentStatusPolling = useCallback((paymentId: string) => {
+
+  // Polling do status do pedido pelo orderId
+  const startOrderStatusPolling = useCallback((orderId: string) => {
     let intervalId: any = null;
     intervalId = setInterval(async () => {
-      const statusResp = await checkPaymentStatus(paymentId);
-      if (statusResp.status === 'approved') {
-        setPaymentStatusMsg('pedido pago e enviado!');
-        setShowPaymentStatus(true);
-        clearInterval(intervalId);
-        localStorage.removeItem('pendingPaymentId');
-      } else if (statusResp.status === 'pending') {
-        setPaymentStatusMsg('pedido em andamento: realize o pagamento');
-        setShowPaymentStatus(true);
+      try {
+        const order = await apiGet(`/api/orders/${orderId}`);
+        if (order && order.paymentStatus === 'paid') {
+          setPaymentStatusMsg('Pedido aprovado!');
+          setShowPaymentStatus(true);
+          setBoxColor('green');
+          clearInterval(intervalId);
+          localStorage.removeItem('pendingPaymentId');
+        } else {
+          setPaymentStatusMsg('pedido em andamento: realize o pagamento');
+          setShowPaymentStatus(true);
+          setBoxColor('orange');
+        }
+      } catch (e) {
+        // Se der erro, mantém mensagem anterior
       }
-    }, 3000);
+    }, 5000);
   }, []);
+
+  // Estado para cor da box
+  const [boxColor, setBoxColor] = useState<'orange' | 'green'>('orange');
 
   const handleCheckoutPro = async () => {
     setLoading(true);
@@ -114,20 +125,21 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
       setPaymentStatusMsg("pedido em andamento: realize o pagamento");
       setShowPaymentStatus(true);
 
-      // Inicia polling para verificar status de pagamento
-      if (data.paymentId) {
-        localStorage.setItem('pendingPaymentId', data.paymentId);
-        startPaymentStatusPolling(data.paymentId);
+      // Inicia polling para verificar status do pedido
+      if (orderId) {
+        localStorage.setItem('pendingOrderId', orderId);
+        startOrderStatusPolling(orderId);
       }
-      // Ao montar, verifica se há paymentId pendente e inicia polling automático
+      // Ao montar, verifica se há orderId pendente e inicia polling automático
       useEffect(() => {
-        const pendingId = localStorage.getItem('pendingPaymentId');
-        if (pendingId) {
+        const pendingOrderId = localStorage.getItem('pendingOrderId');
+        if (pendingOrderId) {
           setShowPaymentStatus(true);
           setPaymentStatusMsg('pedido em andamento: realize o pagamento');
-          startPaymentStatusPolling(pendingId);
+          setBoxColor('orange');
+          startOrderStatusPolling(pendingOrderId);
         }
-      }, [startPaymentStatusPolling]);
+      }, [startOrderStatusPolling]);
     } catch (err: any) {
       setError(err.message);
       onError?.(err.message);
@@ -170,7 +182,14 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
         </div>
         {showPaymentStatus && paymentStatusMsg && (
           <div className="mt-6 flex flex-col items-center">
-            <div className="bg-orange-500 text-white font-bold px-6 py-4 rounded-xl shadow-lg text-center text-lg animate-pulse mb-4" style={{boxShadow:'0 4px 16px rgba(255,140,0,0.3)'}}>
+            <div
+              className={
+                boxColor === 'green'
+                  ? 'bg-green-500 text-white font-bold px-6 py-4 rounded-xl shadow-lg text-center text-lg mb-4'
+                  : 'bg-orange-500 text-white font-bold px-6 py-4 rounded-xl shadow-lg text-center text-lg animate-pulse mb-4'
+              }
+              style={{ boxShadow: boxColor === 'green' ? '0 4px 16px rgba(34,197,94,0.3)' : '0 4px 16px rgba(255,140,0,0.3)' }}
+            >
               {paymentStatusMsg}
             </div>
             <button
