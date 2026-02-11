@@ -76,8 +76,11 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
         setPaymentStatusMsg('pedido pago e enviado!');
         setShowPaymentStatus(true);
         clearInterval(intervalId);
+      } else if (statusResp.status === 'pending') {
+        setPaymentStatusMsg('pedido em andamento: realize o pagamento');
+        setShowPaymentStatus(true);
       }
-    }, 3000); // verifica a cada 3 segundos
+    }, 3000);
   }, []);
 
   const handleCheckoutPro = async () => {
@@ -155,10 +158,16 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
           </button>
         </div>
         {showPaymentStatus && paymentStatusMsg && (
-          <div className="mt-6 flex justify-center">
-            <div className="bg-orange-500 text-white font-bold px-6 py-4 rounded-xl shadow-lg text-center text-lg animate-pulse" style={{boxShadow:'0 4px 16px rgba(255,140,0,0.3)'}}>
+          <div className="mt-6 flex flex-col items-center">
+            <div className="bg-orange-500 text-white font-bold px-6 py-4 rounded-xl shadow-lg text-center text-lg animate-pulse mb-4" style={{boxShadow:'0 4px 16px rgba(255,140,0,0.3)'}}>
               {paymentStatusMsg}
             </div>
+            <button
+              className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-xl shadow-md transition-all"
+              onClick={() => window.location.href = '/'}
+            >
+              Voltar para página inicial
+            </button>
           </div>
         )}
         {error && (
