@@ -1,4 +1,5 @@
 import { get as apiGet } from '../services/api';
+import { useCart } from '../contexts/CartContext';
 import React, { useState, useEffect, useCallback } from "react";
 import { checkPaymentStatus } from '../services/paymentService';
 
@@ -28,6 +29,8 @@ interface PaymentOnlineProps {
 type PaymentMethod = "checkout-pro" | "pix" | "card";
 
 export default function PaymentOnline(props: PaymentOnlineProps) {
+
+  const { clearCart } = useCart();
 
   // Chave pública do Mercado Pago fornecida pelo usuário
   const MP_PUBLIC_KEY = "APP_USR-3cf663c4-9d4b-4045-173080ab84e5";
@@ -119,6 +122,12 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
 
       const data = await response.json();
 
+      if (!data.initPoint) {
+        setError('Não foi possível obter o link de pagamento do Mercado Pago. Tente novamente.');
+        setShowPaymentStatus(false);
+        return;
+      }
+
       // Abre a página do MercadoPago em uma nova aba
       window.open(data.initPoint, '_blank', 'noopener,noreferrer');
 
@@ -195,7 +204,10 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
             </div>
             <button
               className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-xl shadow-md transition-all"
-              onClick={() => window.location.href = '/'}
+              onClick={() => {
+                if (boxColor === 'green') clearCart();
+                window.location.href = '/';
+              }}
             >
               Voltar para página inicial
             </button>
