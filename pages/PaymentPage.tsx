@@ -610,6 +610,37 @@ const PaymentPage: React.FC = () => {
                   >
                     PIX
                   </button>
+                  {/* Opções extras para admin */}
+                  {currentUser?.role === "admincustomer" && (
+                    <>
+                      <button
+                        className={`px-6 py-3 rounded font-bold text-lg transition-all ${
+                          paymentMethod === "cheque"
+                            ? "bg-yellow-600 text-white"
+                            : "bg-white text-yellow-700 border border-yellow-600"
+                        }`}
+                        onClick={() => {
+                          setPaymentMethod("cheque");
+                          setPresencialStep("finalize");
+                        }}
+                      >
+                        Cheque
+                      </button>
+                      <button
+                        className={`px-6 py-3 rounded font-bold text-lg transition-all ${
+                          paymentMethod === "boleto"
+                            ? "bg-pink-600 text-white"
+                            : "bg-white text-pink-700 border border-pink-600"
+                        }`}
+                        onClick={() => {
+                          setPaymentMethod("boleto");
+                          setPresencialStep("finalize");
+                        }}
+                      >
+                        Boleto
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : null}
 
