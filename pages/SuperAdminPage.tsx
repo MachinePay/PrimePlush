@@ -247,7 +247,7 @@ const SuperAdminPage: React.FC = () => {
                         <td className="py-1 px-2">{h.pedidoId}</td>
                         <td className="py-1 px-2">{h.cliente || "-"}</td>
                         <td className="py-1 px-2">
-                          R$ {h.valorTotal?.toFixed(2) ?? "0.00"}
+                          R$ {(Number(h.valorTotal) || 0).toFixed(2)}
                         </td>
                         <td className="py-1 px-2">
                           {h.dataPedido && h.dataPedido !== "-"
