@@ -157,6 +157,15 @@ const SuperAdminPage: React.FC = () => {
     setLoading(true);
     setError("");
     try {
+      // Log para depuração
+      console.log(
+        "[FRONTEND] Enviando POST para /api/super-admin/receivables/mark-received-by-ids",
+        {
+          url: `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/super-admin/receivables/mark-received-by-ids`,
+          password,
+          orderIds: pendingOrderIds,
+        },
+      );
       const response = await fetch(
         `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/super-admin/receivables/mark-received-by-ids`,
         {
@@ -168,12 +177,17 @@ const SuperAdminPage: React.FC = () => {
           body: JSON.stringify({ orderIds: pendingOrderIds }),
         },
       );
-      if (!response.ok) throw new Error("Erro ao marcar como recebido");
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[FRONTEND] Erro ao marcar como recebido:", errorText);
+        throw new Error(errorText || "Erro ao marcar como recebido");
+      }
       const result = await response.json();
       setReceivedOrderIds(result.receivedOrderIds || []);
       await fetchData();
     } catch (e: any) {
       setError(e.message || "Erro ao marcar como recebido");
+      console.error("[FRONTEND] Erro catch:", e);
     }
     setLoading(false);
   };
@@ -226,18 +240,23 @@ const SuperAdminPage: React.FC = () => {
                   </thead>
                   <tbody>
                     {data.history.map((h) => (
-                      <tr key={h.id} className="border-b">
-                        <td className="py-1 px-2">{h.id}</td>
-                        <td className="py-1 px-2">{h.userName || "-"}</td>
+                      <tr
+                        key={h.repasseId + "-" + h.pedidoId}
+                        className="border-b"
+                      >
+                        <td className="py-1 px-2">{h.pedidoId}</td>
+                        <td className="py-1 px-2">{h.cliente || "-"}</td>
                         <td className="py-1 px-2">
-                          R$ {h.total?.toFixed(2) ?? "0.00"}
+                          R$ {h.valorTotal?.toFixed(2) ?? "0.00"}
                         </td>
                         <td className="py-1 px-2">
-                          {h.date ? new Date(h.date).toLocaleString() : "-"}
+                          {h.dataPedido && h.dataPedido !== "-"
+                            ? new Date(h.dataPedido).toLocaleString()
+                            : "-"}
                         </td>
                         <td className="py-1 px-2">
-                          {h.dataRepasseSuperAdmin
-                            ? new Date(h.dataRepasseSuperAdmin).toLocaleString()
+                          {h.dataRepasse && h.dataRepasse !== "-"
+                            ? new Date(h.dataRepasse).toLocaleString()
                             : "-"}
                         </td>
                       </tr>

@@ -41,23 +41,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   // Função para realizar logout: limpa pagamentos pendentes e depois deslogar
   const logout = async () => {
     try {
+      // --- INTEGRAÇÃO POINT SMART 2 DESATIVADA ---
       // Limpar qualquer pagamento pendente na fila
-      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-
-      console.log("🧼 Limpando pagamentos pendentes antes de logout...");
-
-      const response = await fetch(`${API_URL}/api/payment/clear-queue`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`✅ ${data.cleared || 0} pagamento(s) limpo(s)`);
-      }
-    } catch (error) {
+      // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+      // console.log("🧼 Limpando pagamentos pendentes antes de logout...");
+      // const response = await fetch(`${API_URL}/api/payment/clear-queue`, {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      // });
+      // if (response.ok) {
+      //   const data = await response.json();
+      //   console.log(`✅ ${data.cleared || 0} pagamento(s) limpo(s)`);
+      // }
       console.warn("⚠️ Erro ao limpar pagamentos (continua logout):", error);
     }
 
