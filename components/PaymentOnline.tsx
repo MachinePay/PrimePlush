@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { checkPaymentStatus } from '../services/paymentService';
 
 /**
  * Componente de Pagamento Online com MercadoPago
@@ -26,6 +27,7 @@ interface PaymentOnlineProps {
 type PaymentMethod = "checkout-pro" | "pix" | "card";
 
 export default function PaymentOnline(props: PaymentOnlineProps) {
+
   // Chave pública do Mercado Pago fornecida pelo usuário
   const MP_PUBLIC_KEY = "APP_USR-3cf663c4-9d4b-4045-173080ab84e5";
   // Estado para status de pagamento cartão
@@ -64,6 +66,20 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
+
+  // Função para polling de status de pagamento
+  const startPaymentStatusPolling = useCallback((paymentId: string) => {
+    let intervalId: any = null;
+    intervalId = setInterval(async () => {
+      const statusResp = await checkPaymentStatus(paymentId);
+      if (statusResp.status === 'approved') {
+        setPaymentStatusMsg('pedido pago e enviado!');
+        setShowPaymentStatus(true);
+        clearInterval(intervalId);
+      }
+    }, 3000); // verifica a cada 3 segundos
+  }, []);
+
   const handleCheckoutPro = async () => {
     setLoading(true);
     setError("");
@@ -94,8 +110,10 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
       setPaymentStatusMsg("pedido em andamento: realize o pagamento");
       setShowPaymentStatus(true);
 
-      // Não redireciona mais automaticamente para /payment-pending
-      // O usuário permanece na tela para ver o status do pedido
+      // Inicia polling para verificar status de pagamento
+      if (data.paymentId) {
+        startPaymentStatusPolling(data.paymentId);
+      }
     } catch (err: any) {
       setError(err.message);
       onError?.(err.message);
@@ -106,22 +124,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
 
 
 
-  // Exibe mensagem de status de pagamento (box laranja)
-  useEffect(() => {
-    // Simula atualização de status após retorno do Mercado Pago
-    // Aqui você pode integrar com o backend ou webhook para atualizar o status real
-    // Exemplo: se o status for "approved", atualiza a mensagem
-    // Para demo, verifica localStorage ou query string
-    const checkPaymentApproved = () => {
-      // Exemplo: verifica se há ?approved=true na URL
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("approved") === "true") {
-        setPaymentStatusMsg("pedido pago e enviado!");
-        setShowPaymentStatus(true);
-      }
-    };
-    checkPaymentApproved();
-  }, []);
+  // Removeu verificação por query string, agora polling é feito após iniciar pagamento
 
   if (loading) {
     return (
