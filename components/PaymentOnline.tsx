@@ -141,16 +141,6 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
         startOrderStatusPolling(orderId);
       }
       // (Removido: useEffect não pode ser chamado aqui)
-      // Ao montar, verifica se há orderId pendente e inicia polling automático
-      useEffect(() => {
-        const pendingOrderId = localStorage.getItem('pendingOrderId');
-        if (pendingOrderId) {
-          setShowPaymentStatus(true);
-          setPaymentStatusMsg('pedido em andamento: realize o pagamento');
-          setBoxColor('orange');
-          startOrderStatusPolling(pendingOrderId);
-        }
-      }, [startOrderStatusPolling]);
     } catch (err: any) {
       setError(err.message);
       onError?.(err.message);
