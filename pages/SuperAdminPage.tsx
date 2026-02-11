@@ -158,7 +158,7 @@ const SuperAdminPage: React.FC = () => {
     setError("");
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/super-admin/receivables/mark-received`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/super-admin/receivables/mark-received-by-ids`,
         {
           method: "POST",
           headers: {
