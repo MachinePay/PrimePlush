@@ -24,7 +24,6 @@ import AdminCategoriesPage from "./pages/AdminCategoriesPage"; // 🆕
 import Header from "./components/Header";
 import Chatbot from "./components/Chatbot";
 // import InactivityGuard from "./components/InactivityGuard";
-import { configurePoint, checkPointStatus } from "./services/pointService";
 import type { UserRole } from "./types";
 
 import OrderDetailPage from "./pages/OrderDetailPage";
@@ -149,14 +148,17 @@ const RouterBody: React.FC = () => {
     <div className="min-h-screen bg-stone-100 text-stone-800">
       {/* <InactivityGuard /> */}
       <Header />
-      <main className="p-4 md:p-8 bg-" style={{ background: '#FFF6E5' }}>
+      <main className="p-4 md:p-8 bg-" style={{ background: "#FFF6E5" }}>
         <Routes>
           <Route path="/superadmin/login" element={<SuperAdminPage />} />
           {/* Rota protegida para detalhamento do superadmin */}
           <Route
             path="/superadmin/detalhes"
             element={
-              <RoleProtectedRoute allowedRoles={["superadmin"]} redirectTo="/superadmin/login">
+              <RoleProtectedRoute
+                allowedRoles={["superadmin"]}
+                redirectTo="/superadmin/login"
+              >
                 <SuperAdminPage />
               </RoleProtectedRoute>
             }
