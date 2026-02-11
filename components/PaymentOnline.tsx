@@ -27,7 +27,7 @@ type PaymentMethod = "checkout-pro" | "pix" | "card";
 
 export default function PaymentOnline(props: PaymentOnlineProps) {
   // Chave pública do Mercado Pago fornecida pelo usuário
-  const MP_PUBLIC_KEY = "APP_USR-3cf663c4-9d4b-4045-9744-173080ab84e5";
+  const MP_PUBLIC_KEY = "APP_USR-3cf663c4-9d4b-4045-173080ab84e5";
   // Estado para status de pagamento cartão
   const [cardStatus, setCardStatus] = useState<string>("");
   // Estado para resposta do backend
@@ -35,7 +35,12 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
   // Estado para dados do cartão (token, etc)
   const [cardTokenData, setCardTokenData] = useState<any>(null);
   // Estado para dados extras do cartão
-    const [cardExtra, setCardExtra] = useState<any>({});
+  const [cardExtra, setCardExtra] = useState<any>({});
+
+  // Estado para mensagem de status do pedido
+  const [paymentStatusMsg, setPaymentStatusMsg] = useState<string>("");
+  // Estado para controle de exibição da mensagem
+  const [showPaymentStatus, setShowPaymentStatus] = useState<boolean>(false);
 
   // ...existing code...
   // Removido React.lazy pois não está mais em uso
@@ -85,6 +90,10 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
       // Abre a página do MercadoPago em uma nova aba
       window.open(data.initPoint, '_blank', 'noopener,noreferrer');
 
+      // Exibe mensagem de pedido em andamento
+      setPaymentStatusMsg("pedido em andamento: realize o pagamento");
+      setShowPaymentStatus(true);
+
       // Redireciona a aba atual para /payment-pending
       const pendingUrl = `/payment-pending?payment_id=${data.paymentId || ''}&order_id=${orderId || ''}`;
       window.location.href = pendingUrl;
@@ -97,6 +106,23 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
   };
 
 
+
+  // Exibe mensagem de status de pagamento (box laranja)
+  useEffect(() => {
+    // Simula atualização de status após retorno do Mercado Pago
+    // Aqui você pode integrar com o backend ou webhook para atualizar o status real
+    // Exemplo: se o status for "approved", atualiza a mensagem
+    // Para demo, verifica localStorage ou query string
+    const checkPaymentApproved = () => {
+      // Exemplo: verifica se há ?approved=true na URL
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("approved") === "true") {
+        setPaymentStatusMsg("pedido pago e enviado!");
+        setShowPaymentStatus(true);
+      }
+    };
+    checkPaymentApproved();
+  }, []);
 
   if (loading) {
     return (
@@ -126,6 +152,13 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
             <span className="text-sm">Parcelado</span>
           </button>
         </div>
+        {showPaymentStatus && paymentStatusMsg && (
+          <div className="mt-6 flex justify-center">
+            <div className="bg-orange-500 text-white font-bold px-6 py-4 rounded-xl shadow-lg text-center text-lg animate-pulse" style={{boxShadow:'0 4px 16px rgba(255,140,0,0.3)'}}>
+              {paymentStatusMsg}
+            </div>
+          </div>
+        )}
         {error && (
           <div className="mt-4 bg-red-50 border-2 border-red-200 text-red-600 p-4 rounded-lg text-center text-sm">
             {error}
