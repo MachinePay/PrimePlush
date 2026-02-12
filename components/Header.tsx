@@ -24,8 +24,8 @@ const Header: React.FC = () => {
     <>
       <header className="bg-gradient-to-r from-white via-blue-800 to-blue-900 border-b border-stone-200 sticky top-0 z-50 h-16">
         <div className="container mx-auto px-4 h-full flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-2">
+          {/* Logo e Chatbot lado a lado no mobile */}
+          <div className="flex items-center gap-2 relative">
             <NavLink
               to={currentUser ? "/menu" : "/"}
               className="flex items-center gap-2 group"
@@ -39,6 +39,10 @@ const Header: React.FC = () => {
                 PrimePlush
               </span>
             </NavLink>
+            {/* Chatbot ao lado do logo no mobile */}
+            <span className="block md:hidden ml-2">
+              <Chatbot />
+            </span>
           </div>
 
           {/* Navegação Central (Desktop) */}
@@ -93,11 +97,11 @@ const Header: React.FC = () => {
           <div className="flex items-center gap-4">
             {currentUser ? (
               <>
-                {/* Chatbot agora mora aqui no Header */}
-                <Chatbot />
-
+                {/* Chatbot só desktop aqui */}
+                <span className="hidden md:block">
+                  <Chatbot />
+                </span>
                 <div className="h-6 w-px bg-stone-200 mx-1"></div>
-
                 <div className="flex items-center gap-3">
                   <div className="hidden sm:block text-right leading-tight">
                     <p className="text-xs text-white font-medium">Olá,</p>

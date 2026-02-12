@@ -127,7 +127,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
   const observationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const containerClass = isMobile
-    ? "fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-[0_-10px_60px_rgba(0,0,0,0.4)] flex flex-col max-h-[90vh] transition-transform duration-300 ease-out transform translate-y-0 border-t border-stone-200"
+    ? "fixed inset-x-0 bottom-0 z-[200] bg-white rounded-t-3xl shadow-[0_-10px_60px_rgba(0,0,0,0.4)] flex flex-col max-h-[90vh] transition-transform duration-300 ease-out transform translate-y-0 border-t border-stone-200"
     : "flex flex-col h-full border-l border-stone-200";
 
   // Lógica para encontrar o produto sugerido
@@ -204,7 +204,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
       </div>
 
       {/* Lista de Itens com Scroll */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-stone-50 min-h-0">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-stone-50 min-h-0" style={isMobile ? { paddingBottom: 60 } : {}}>
         {cartItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-stone-400">
             <span className="text-6xl mb-4">🛍️</span>

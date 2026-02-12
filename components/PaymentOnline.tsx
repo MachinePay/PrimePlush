@@ -128,8 +128,14 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
         return;
       }
 
-      // Abre a página do MercadoPago em uma nova aba
-      window.open(data.initPoint, '_blank', 'noopener,noreferrer');
+      // Abre a página do MercadoPago
+      if (window.innerWidth < 700) {
+        // Mobile: redireciona na mesma aba
+        window.location.href = data.initPoint;
+      } else {
+        // Desktop: abre nova aba
+        window.open(data.initPoint, '_blank', 'noopener,noreferrer');
+      }
 
       // Exibe mensagem de pedido em andamento
       setPaymentStatusMsg("pedido em andamento: realize o pagamento");

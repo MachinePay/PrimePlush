@@ -14,6 +14,7 @@
   transition: transform 0.3s ease, opacity 0.3s;
   opacity: 0.98;
   backdrop-filter: blur(2px);
+  pointer-events: auto;
 }
 .footer-row {
   width: 100%;
