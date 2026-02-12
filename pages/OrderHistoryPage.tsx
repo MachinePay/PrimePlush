@@ -120,7 +120,9 @@ const OrderHistoryPage: React.FC = () => {
             <div
               key={order.id}
               className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-600 cursor-pointer hover:shadow-lg transition"
-              onClick={() => navigate("/historico/detalhes", { state: { order } })}
+              onClick={() =>
+                navigate("/historico/detalhes", { state: { order } })
+              }
             >
               <div className="flex flex-wrap justify-between items-center mb-2">
                 <div className="font-bold text-lg text-stone-800">
@@ -148,7 +150,7 @@ const OrderHistoryPage: React.FC = () => {
                   {order.observation}
                 </div>
               )}
-              <div className="flex flex-wrap justify-between items-end mt-2">
+              <div className="flex flex-wrap justify-between items-end mt-2 gap-2">
                 <div className="text-stone-500 text-xs">
                   Total: R${order.total?.toFixed(2) ?? "-"}
                 </div>
@@ -159,7 +161,8 @@ const OrderHistoryPage: React.FC = () => {
                       <span className="text-blue-600 font-bold">A PAGAR</span>
                       <button
                         className="px-3 py-1 rounded bg-green-600 text-white text-xs font-bold hover:bg-green-700 transition"
-                        onClick={async () => {
+                        onClick={async (e) => {
+                          e.stopPropagation();
                           // Chama endpoint para marcar como pago
                           const resp = await authenticatedFetch(
                             `${BACKEND_URL}/api/orders/${order.id}/mark-paid`,
@@ -176,6 +179,32 @@ const OrderHistoryPage: React.FC = () => {
                       </button>
                     </>
                   )}
+                {/* Botão entregar ao cliente */}
+                <button
+                  className={`px-3 py-1 rounded text-xs font-bold transition ${order.entregueCliente ? "bg-green-500 text-white" : "bg-yellow-400 text-stone-800 hover:bg-yellow-500"}`}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const resp = await authenticatedFetch(
+                      `${BACKEND_URL}/api/orders/${order.id}/mark-delivered`,
+                      { method: "PUT" },
+                    );
+                    if (resp.ok) {
+                      fetchOrders();
+                    } else {
+                      alert("Erro ao marcar como entregue");
+                    }
+                  }}
+                  disabled={order.entregueCliente}
+                  title={
+                    order.entregueCliente
+                      ? "Já entregue ao cliente"
+                      : "Marcar como entregue"
+                  }
+                >
+                  {order.entregueCliente
+                    ? "Entregue ao Cliente ✔"
+                    : "Entregar ao Cliente"}
+                </button>
               </div>
             </div>
           ))}

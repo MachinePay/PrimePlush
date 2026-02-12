@@ -47,6 +47,7 @@ export interface Order {
   installments?: number;
   fee?: number;
   paymentStatus?: "pending" | "paid" | "canceled";
+  entregueCliente?: boolean; // Indica se o pedido foi entregue ao cliente
 }
 
 export type UserRole =
