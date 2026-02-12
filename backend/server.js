@@ -49,12 +49,23 @@ app.get("/api/super-admin/receivables", async (req, res) => {
     }
 
 
-    // Buscar apenas pedidos pagos/autorizados que ainda não foram recebidos (repassadoSuperAdmin != 1)
+    // Buscar todos os pedidos pagos (valor bruto acumulado)
+    // Filtrar para não mostrar pedidos já recebidos
+    // 1. Buscar todos os order_ids já recebidos
+    const receivablesRows = await db("super_admin_receivables").select("order_ids");
+    let receivedOrderIds = [];
+    for (const row of receivablesRows) {
+      if (row.order_ids) {
+        try {
+          const ids = JSON.parse(row.order_ids);
+          if (Array.isArray(ids)) receivedOrderIds.push(...ids);
+        } catch {}
+      }
+    }
+    // 2. Buscar apenas pedidos pagos/autorizados que ainda não foram recebidos
     const paidOrders = await db("orders")
       .whereIn("paymentStatus", ["paid", "authorized"])
-      .where(function() {
-        this.whereNull("repassadoSuperAdmin").orWhere("repassadoSuperAdmin", 0);
-      })
+      .whereNotIn("id", receivedOrderIds)
       .orderBy("timestamp", "desc");
 
     // Total já recebido anteriormente
@@ -127,15 +138,24 @@ app.get("/api/super-admin/receivables", async (req, res) => {
     res.json({
       success: true,
       stats: {
-        totalToReceive: Math.max(0, toReceive), // Agora mostra o saldo dos pedidos pagos/autorizados
+        totalToReceive: Math.max(0, toReceive),
         totalReceived: totalBrutoReceber,
         alreadyReceived: parseFloat(totalAlreadyReceived.total) || 0,
       },
-      history: history.map((h) => ({
-        id: h.id,
-        amount: parseFloat(h.amount),
-        date: h.received_at,
-      })),
+      history: history.map((h) => {
+        let pedidos = [];
+        try {
+          pedidos = h.pedidos ? JSON.parse(h.pedidos) : [];
+        } catch {
+          pedidos = [];
+        }
+        return {
+          id: h.id,
+          amount: parseFloat(h.amount),
+          date: h.received_at,
+          pedidos,
+        };
+      }),
       orders: detailedOrders,
     });
     
@@ -188,6 +208,7 @@ app.post("/api/super-admin/receivables/mark-received", async (req, res) => {
     }
 
     let totalBrutoReceber = 0;
+    const repassePedidos = [];
     for (const order of paidOrders) {
       let items = [];
       try {
@@ -197,6 +218,8 @@ app.post("/api/super-admin/receivables/mark-received", async (req, res) => {
       } catch {
         items = [];
       }
+      let valorTotal = 0;
+      let valorRecebido = 0;
       for (const item of items) {
         let precoBruto = 0;
         const prodId = item.productId || item.id;
@@ -208,14 +231,32 @@ app.post("/api/super-admin/receivables/mark-received", async (req, res) => {
         }
         const price = Number(item.price) || 0;
         const quantity = Number(item.quantity) || 1;
+        valorTotal += price * quantity;
         const valueToReceive = (price - precoBruto) * quantity;
+        valorRecebido += valueToReceive;
         totalBrutoReceber += valueToReceive;
       }
+      repassePedidos.push({
+        pedidoId: order.id,
+        cliente: order.userName || "-",
+        valorTotal,
+        valorRecebido,
+        dataPedido: order.timestamp,
+      });
     }
+
+    // Marca pedidos como recebidos (permanente)
+    const now = new Date().toISOString();
+    const orderIds = paidOrders.map(o => o.id);
+    await db("orders")
+      .whereIn("id", orderIds)
+      .update({ repassadoSuperAdmin: 1, dataRepasseSuperAdmin: now });
 
     await db("super_admin_receivables").insert({
       amount: totalBrutoReceber,
-      order_ids: JSON.stringify(paidOrders.map(o => o.id)),
+      order_ids: JSON.stringify(orderIds),
+      pedidos: JSON.stringify(repassePedidos),
+      received_at: now,
     });
 
     console.log(
@@ -226,6 +267,8 @@ app.post("/api/super-admin/receivables/mark-received", async (req, res) => {
       success: true,
       message: "Recebimento registrado com sucesso",
       amount: totalBrutoReceber,
+      receivedOrderIds: orderIds,
+      dataRepasse: now,
     });
   } catch (error) {
     console.error("❌ Erro ao marcar como recebido:", error);

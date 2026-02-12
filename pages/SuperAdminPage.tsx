@@ -240,34 +240,26 @@ const SuperAdminPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.history.map((h) => (
-                      <tr
-                        key={h.repasseId + "-" + h.pedidoId}
-                        className="border-b"
-                      >
-                        <td className="py-1 px-2">{h.pedidoId}</td>
-                        <td className="py-1 px-2">{h.cliente || "-"}</td>
-                        <td className="py-1 px-2">
-                          R$ {(Number(h.valorTotal) || 0).toFixed(2)}
-                        </td>
-                        <td className="py-1 px-2">
-                          R${" "}
-                          {(
-                            Number(h.ValorRecebido ?? h.valorRecebido) || 0
-                          ).toFixed(2)}
-                        </td>
-                        <td className="py-1 px-2">
-                          {h.dataPedido && h.dataPedido !== "-"
-                            ? new Date(h.dataPedido).toLocaleString()
-                            : "-"}
-                        </td>
-                        <td className="py-1 px-2">
-                          {h.dataRepasse && h.dataRepasse !== "-"
-                            ? new Date(h.dataRepasse).toLocaleString()
-                            : "-"}
-                        </td>
-                      </tr>
-                    ))}
+                    {data.history.map((h) =>
+                      h.pedidos && Array.isArray(h.pedidos) && h.pedidos.length > 0
+                        ? h.pedidos.map((pedido, idx) => (
+                            <tr key={h.id + "-" + pedido.pedidoId + "-" + idx} className="border-b">
+                              <td className="py-1 px-2">{pedido.pedidoId}</td>
+                              <td className="py-1 px-2">{pedido.cliente || "-"}</td>
+                              <td className="py-1 px-2">R$ {(Number(pedido.valorTotal) || 0).toFixed(2)}</td>
+                              <td className="py-1 px-2">R$ {(Number(pedido.valorRecebido) || 0).toFixed(2)}</td>
+                              <td className="py-1 px-2">{pedido.dataPedido ? new Date(pedido.dataPedido).toLocaleString() : "-"}</td>
+                              <td className="py-1 px-2">{h.date ? new Date(h.date).toLocaleString() : "-"}</td>
+                            </tr>
+                          ))
+                        : (
+                            <tr key={h.id + "-empty"} className="border-b">
+                              <td className="py-1 px-2" colSpan={6}>
+                                Nenhum pedido registrado neste repasse.
+                              </td>
+                            </tr>
+                          )
+                    )}
                   </tbody>
                 </table>
               </div>
