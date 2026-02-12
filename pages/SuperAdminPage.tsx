@@ -268,8 +268,16 @@ const SuperAdminPage: React.FC = () => {
                             R$ {(Number(h.valorTotal) || 0).toFixed(2)}
                           </td>
                           <td className="py-1 px-2 text-xs text-gray-500">
-                            {h.quantity && h.precoBruto && h.price
-                              ? `(${h.quantity}x | R$ ${((Number(h.price) - Number(h.precoBruto)) * Number(h.quantity)).toFixed(2)})`
+                            {Array.isArray(h.items) && h.items.length > 0
+                              ? h.items
+                                  .map((item: any, idx: number) =>
+                                    item.quantity &&
+                                    item.precoBruto &&
+                                    item.price
+                                      ? `(${item.quantity}x | R$ ${((Number(item.price) - Number(item.precoBruto)) * Number(item.quantity)).toFixed(2)})`
+                                      : "",
+                                  )
+                                  .join(" ")
                               : ""}
                           </td>
                           <td className="py-1 px-2">
