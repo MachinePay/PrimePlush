@@ -253,8 +253,7 @@ const SuperAdminPage: React.FC = () => {
                         <td className="py-1 px-2">
                           R${" "}
                           {(
-                            Number(h.ValorRecebido) ||
-                            0
+                            Number(h.ValorRecebido ?? h.valorRecebido) || 0
                           ).toFixed(2)}
                         </td>
                         <td className="py-1 px-2">
