@@ -251,7 +251,6 @@ const SuperAdminPage: React.FC = () => {
                         <th className="py-1 px-2 text-left">Pedido</th>
                         <th className="py-1 px-2 text-left">Cliente</th>
                         <th className="py-1 px-2 text-left">Valor Total</th>
-                        <th className="py-1 px-2 text-left">Valor Recebido</th>
                         <th className="py-1 px-2 text-left">Data do Pedido</th>
                         <th className="py-1 px-2 text-left">Data do Repasse</th>
                       </tr>
@@ -266,19 +265,6 @@ const SuperAdminPage: React.FC = () => {
                           <td className="py-1 px-2">{h.cliente || "-"}</td>
                           <td className="py-1 px-2">
                             R$ {(Number(h.valorTotal) || 0).toFixed(2)}
-                          </td>
-                          <td className="py-1 px-2 text-xs text-gray-500">
-                            {Array.isArray(h.items) && h.items.length > 0
-                              ? h.items
-                                  .map((item: any, idx: number) =>
-                                    item.quantity &&
-                                    item.precoBruto &&
-                                    item.price
-                                      ? `(${item.quantity}x | R$ ${((Number(item.price) - Number(item.precoBruto)) * Number(item.quantity)).toFixed(2)})`
-                                      : "",
-                                  )
-                                  .join(" ")
-                              : ""}
                           </td>
                           <td className="py-1 px-2">
                             {h.dataPedido && h.dataPedido !== "-"
