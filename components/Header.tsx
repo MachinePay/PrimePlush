@@ -114,10 +114,15 @@ const Header: React.FC = () => {
                   </div>
                   <button
                     onClick={() => navigate("/register?edit=1")}
-                    className="bg-blue-600 text-white font-bold py-1 px-3 rounded-lg ml-2 hover:bg-blue-700 transition-colors shadow-md text-xs"
+                    className="bg-blue-600 text-white font-bold py-1 px-3 rounded-lg ml-2 hover:bg-blue-700 transition-colors shadow-md text-xs edit-btn"
                     title="Editar meus dados"
                   >
-                    Editar meus dados
+                    <span className="hidden-xs">Editar meus dados</span>
+                    <span className="icon-xs" style={{ display: "none" }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13z" />
+                      </svg>
+                    </span>
                   </button>
                   <button
                     onClick={handleLogout}

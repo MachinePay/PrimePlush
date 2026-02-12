@@ -1,3 +1,18 @@
+/* Hide edit button text and show pencil icon on small screens */
+@media (max-width: 500px) {
+  .edit-btn .hidden-xs {
+    display: none !important;
+  }
+  .edit-btn .icon-xs {
+    display: inline-block !important;
+    vertical-align: middle;
+  }
+}
+@media (max-width: 500px) {
+  .site-footer.minimal-footer {
+    display: none !important;
+  }
+}
 /* Melhorias de responsividade para o Header em telas pequenas */
 @media (max-width: 500px) {
   header {
