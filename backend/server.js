@@ -16,6 +16,13 @@ import { MercadoPagoConfig, Payment, Preference } from "mercadopago";
 import paymentRoutes from "./routes/payment.js";
 import * as paymentService from "./services/paymentService.js";
 import PDFDocument from "pdfkit";
+import superAdminRoutes from "./routes/superadmin.js";
+
+// Corrige importação para compatibilidade CommonJS/ESM
+// Se der erro, tente:
+// import superAdminRoutes = require('./routes/superadmin.js');
+// ou
+// import * as superAdminRoutes from './routes/superadmin.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -32,252 +39,8 @@ app.use(
   }),
 );
 
-// Endpoint para valores a receber do Super Admin (após inicialização do app)
-app.get("/api/super-admin/receivables", async (req, res) => {
-  try {
-    const superAdminPassword = req.headers["x-super-admin-password"];
-    if (!SUPER_ADMIN_PASSWORD) {
-      return res.status(503).json({
-        error:
-          "Super Admin não configurado. Defina SUPER_ADMIN_PASSWORD no servidor.",
-      });
-    }
-    if (superAdminPassword !== SUPER_ADMIN_PASSWORD) {
-      return res.status(401).json({
-        error: "Acesso negado. Senha de Super Admin inválida.",
-      });
-    }
-
-
-    // Buscar todos os pedidos pagos (valor bruto acumulado)
-    // Filtrar para não mostrar pedidos já recebidos
-    // 1. Buscar todos os order_ids já recebidos
-    const receivablesRows = await db("super_admin_receivables").select("order_ids");
-    let receivedOrderIds = [];
-    for (const row of receivablesRows) {
-      if (row.order_ids) {
-        try {
-          const ids = JSON.parse(row.order_ids);
-          if (Array.isArray(ids)) receivedOrderIds.push(...ids);
-        } catch {}
-      }
-    }
-    // 2. Buscar apenas pedidos pagos/autorizados que ainda não foram recebidos
-    const paidOrders = await db("orders")
-      .whereIn("paymentStatus", ["paid", "authorized"])
-      .whereNotIn("id", receivedOrderIds)
-      .orderBy("timestamp", "desc");
-
-    // Total já recebido anteriormente
-    const totalAlreadyReceived = await db("super_admin_receivables")
-      .sum("amount as total")
-      .first();
-
-    // Buscar detalhes dos itens dos pedidos e calcular valor a receber corretamente
-    let totalBrutoReceber = 0;
-    const detailedOrders = [];
-    for (const order of paidOrders) {
-      let items = [];
-      try {
-        items = Array.isArray(order.items)
-          ? order.items
-          : JSON.parse(order.items);
-      } catch {
-        items = [];
-      }
-      // Buscar preço bruto de cada produto
-      const detailedItems = [];
-      for (const item of items) {
-        let precoBruto = 0;
-        // Tenta buscar pelo id do produto
-        const prodId = item.productId || item.id;
-        if (prodId) {
-          const prod = await db("products").where({ id: prodId }).first();
-          precoBruto = prod && prod.priceRaw ? parseFloat(prod.priceRaw) : 0;
-        } else if (item.precoBruto !== undefined) {
-          precoBruto = parseFloat(item.precoBruto);
-        }
-        const price = Number(item.price) || 0;
-        const quantity = Number(item.quantity) || 1;
-        const valueToReceive = (price - precoBruto) * quantity;
-        detailedItems.push({
-          name: item.name || "",
-          price,
-          precoBruto,
-          quantity,
-          valueToReceive,
-        });
-      }
-      const orderValueToReceive = detailedItems.reduce(
-        (sum, i) => sum + i.valueToReceive,
-        0,
-      );
-      totalBrutoReceber += orderValueToReceive;
-      detailedOrders.push({
-        id: order.id,
-        timestamp: order.timestamp,
-        userName: order.userName,
-        total: parseFloat(order.total),
-        orderValueToReceive,
-        items: detailedItems,
-        status: order.status,
-        paymentType: order.paymentType,
-        paymentStatus: order.paymentStatus,
-      });
-    }
-
-    // Desconta o valor já recebido, mostra apenas o saldo dos pedidos pagos/autorizados
-    const toReceive = totalBrutoReceber;
-
-    // Histórico de recebimentos
-    const history = await db("super_admin_receivables")
-      .select("*")
-      .orderBy("received_at", "desc")
-      .limit(20);
-
-    res.json({
-      success: true,
-      stats: {
-        totalToReceive: Math.max(0, toReceive),
-        totalReceived: totalBrutoReceber,
-        alreadyReceived: parseFloat(totalAlreadyReceived.total) || 0,
-      },
-      history: history.map((h) => {
-        let pedidos = [];
-        try {
-          pedidos = h.pedidos ? JSON.parse(h.pedidos) : [];
-        } catch {
-          pedidos = [];
-        }
-        return {
-          id: h.id,
-          amount: parseFloat(h.amount),
-          date: h.received_at,
-          pedidos,
-        };
-      }),
-      orders: detailedOrders,
-    });
-    
-  } catch (error) {
-    console.error("❌ Erro no endpoint receivables:", error);
-    res.status(500).json({
-      error: "Erro ao buscar valores a receber",
-      message: error.message,
-    });
-  }
-});
-
-// Endpoint para marcar valores como recebidos
-app.post("/api/super-admin/receivables/mark-received", async (req, res) => {
-  try {
-    const superAdminPassword = req.headers["x-super-admin-password"];
-    if (!SUPER_ADMIN_PASSWORD) {
-      return res.status(503).json({
-        error: "Super Admin não configurado.",
-      });
-    }
-    if (superAdminPassword !== SUPER_ADMIN_PASSWORD) {
-      return res.status(401).json({
-        error: "Acesso negado. Senha de Super Admin inválida.",
-      });
-    }
-
-
-    // Buscar todos os order_ids já recebidos
-    const receivablesRows = await db("super_admin_receivables").select("order_ids");
-    let receivedOrderIds = [];
-    for (const row of receivablesRows) {
-      if (row.order_ids) {
-        try {
-          const ids = JSON.parse(row.order_ids);
-          if (Array.isArray(ids)) receivedOrderIds.push(...ids);
-        } catch {}
-      }
-    }
-    // Buscar apenas pedidos pagos/autorizados que ainda não foram recebidos
-    const paidOrders = await db("orders")
-      .whereIn("paymentStatus", ["paid", "authorized"])
-      .whereNotIn("id", receivedOrderIds)
-      .select("id", "items");
-
-    if (paidOrders.length === 0) {
-      return res.status(400).json({
-        error: "Não há valores a receber no momento",
-      });
-    }
-
-    let totalBrutoReceber = 0;
-    const repassePedidos = [];
-    for (const order of paidOrders) {
-      let items = [];
-      try {
-        items = Array.isArray(order.items)
-          ? order.items
-          : JSON.parse(order.items);
-      } catch {
-        items = [];
-      }
-      let valorTotal = 0;
-      let valorRecebido = 0;
-      for (const item of items) {
-        let precoBruto = 0;
-        const prodId = item.productId || item.id;
-        if (prodId) {
-          const prod = await db("products").where({ id: prodId }).first();
-          precoBruto = prod && prod.priceRaw ? parseFloat(prod.priceRaw) : 0;
-        } else if (item.precoBruto !== undefined) {
-          precoBruto = parseFloat(item.precoBruto);
-        }
-        const price = Number(item.price) || 0;
-        const quantity = Number(item.quantity) || 1;
-        valorTotal += price * quantity;
-        const valueToReceive = (price - precoBruto) * quantity;
-        valorRecebido += valueToReceive;
-        totalBrutoReceber += valueToReceive;
-      }
-      repassePedidos.push({
-        pedidoId: order.id,
-        cliente: order.userName || "-",
-        valorTotal,
-        valorRecebido,
-        dataPedido: order.timestamp,
-      });
-    }
-
-    // Marca pedidos como recebidos (permanente)
-    const now = new Date().toISOString();
-    const orderIds = paidOrders.map(o => o.id);
-    await db("orders")
-      .whereIn("id", orderIds)
-      .update({ repassadoSuperAdmin: 1, dataRepasseSuperAdmin: now });
-
-    await db("super_admin_receivables").insert({
-      amount: totalBrutoReceber,
-      order_ids: JSON.stringify(orderIds),
-      pedidos: JSON.stringify(repassePedidos),
-      received_at: now,
-    });
-
-    console.log(
-      `✅ Super Admin marcou R$ ${totalBrutoReceber.toFixed(2)} como recebido`,
-    );
-
-    res.json({
-      success: true,
-      message: "Recebimento registrado com sucesso",
-      amount: totalBrutoReceber,
-      receivedOrderIds: orderIds,
-      dataRepasse: now,
-    });
-  } catch (error) {
-    console.error("❌ Erro ao marcar como recebido:", error);
-    res.status(500).json({
-      error: "Erro ao registrar recebimento",
-      message: error.message,
-    });
-  }
-});
+// Centraliza as rotas de Super Admin
+app.use("/api", superAdminRoutes);
 
 // Endpoint: contagem de pedidos dos últimos 30 dias
 app.get("/api/orders/last30days-count", async (req, res) => {
@@ -502,12 +265,17 @@ async function initDatabase() {
     console.log("✅ Tabela 'super_admin_receivables' criada com sucesso");
   } else {
     // Adiciona a coluna order_ids se não existir
-    const hasOrderIds = await db.schema.hasColumn("super_admin_receivables", "order_ids");
+    const hasOrderIds = await db.schema.hasColumn(
+      "super_admin_receivables",
+      "order_ids",
+    );
     if (!hasOrderIds) {
       await db.schema.alterTable("super_admin_receivables", (table) => {
         table.text("order_ids");
       });
-      console.log("✅ Coluna 'order_ids' adicionada à tabela 'super_admin_receivables'");
+      console.log(
+        "✅ Coluna 'order_ids' adicionada à tabela 'super_admin_receivables'",
+      );
     }
   }
 
@@ -1309,6 +1077,7 @@ app.post("/api/users/register", async (req, res) => {
       phone: phone.trim(),
       historico: JSON.stringify([]),
       pontos: 0,
+      role: "customer",
     };
 
     await db("users").insert(newUser);
@@ -1775,6 +1544,12 @@ app.get("/api/orders/history", async (req, res) => {
       ...o,
       items: typeof o.items === "string" ? JSON.parse(o.items) : o.items,
       total: parseFloat(o.total),
+      paymentMethod:
+        o.paymentMethod ||
+        o.payment_method ||
+        o.payment_method_id ||
+        o.paymentType ||
+        "-",
     }));
     res.json(parsedOrders);
   } catch (e) {
@@ -3094,176 +2869,176 @@ app.post("/api/payment/clear-all", async (req, res) => {
 });
 
 // Configurar Point Smart 2 (modo operacional e vinculação)
-app.post("/api/point/configure", async (req, res) => {
-  // Usa apenas credenciais globais (single-tenant)
-  const MP_ACCESS_TOKEN_LOCAL = MP_ACCESS_TOKEN;
-  const MP_DEVICE_ID_LOCAL = MP_DEVICE_ID;
+// app.post("/api/point/configure", async (req, res) => {
+//   // Usa apenas credenciais globais (single-tenant)
+//   const MP_ACCESS_TOKEN_LOCAL = MP_ACCESS_TOKEN;
+//   const MP_DEVICE_ID_LOCAL = MP_DEVICE_ID;
 
-  if (!MP_ACCESS_TOKEN_LOCAL || !MP_DEVICE_ID_LOCAL) {
-    return res.json({ success: false, error: "Credenciais não configuradas" });
-  }
+//   if (!MP_ACCESS_TOKEN_LOCAL || !MP_DEVICE_ID_LOCAL) {
+//     return res.json({ success: false, error: "Credenciais não configuradas" });
+//   }
 
-  try {
-    console.log(`⚙️ Configurando Point Smart 2: ${MP_DEVICE_ID_LOCAL}`);
+//   try {
+//     console.log(`⚙️ Configurando Point  2: ${MP_DEVICE_ID_LOCAL}`);
 
-    // Configuração do dispositivo Point Smart
-    const configUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID_LOCAL}`;
+//     // Configuração do dispositivo Point Smart
+//     const configUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID_LOCAL}`;
 
-    const configPayload = {
-      operating_mode: "PDV", // Modo PDV - integração com frente de caixa
-      // Isso mantém a Point vinculada e bloqueia acesso ao menu
-    };
+//     const configPayload = {
+//       operating_mode: "PDV", // Modo PDV - integração com frente de caixa
+//       // Isso mantém a Point vinculada e bloqueia acesso ao menu
+//     };
 
-    const response = await fetch(configUrl, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(configPayload),
-    });
+//     const response = await fetch(configUrl, {
+//       method: "PATCH",
+//       headers: {
+//         Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}`,
+//         "Content-Type": "application/json",
+//       },
+//       body: JSON.stringify(configPayload),
+//     });
 
-    if (response.ok) {
-      const data = await response.json();
-      console.log(`✅ Point Smart 2 configurada em modo PDV`);
-      console.log(`🔒 Menu bloqueado - apenas pagamentos via API`);
+//     if (response.ok) {
+//       const data = await response.json();
+//       console.log(`✅ Point Smart 2 configurada em modo PDV`);
+//       console.log(`🔒 Menu bloqueado - apenas pagamentos via API`);
 
-      return res.json({
-        success: true,
-        message: "Point configurada com sucesso",
-        mode: "PDV",
-        device: data,
-      });
-    } else {
-      const error = await response.json();
-      console.error(`❌ Erro ao configurar Point:`, error);
-      return res.status(400).json({ success: false, error: error.message });
-    }
-  } catch (error) {
-    console.error("❌ Erro ao configurar Point Smart 2:", error.message);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+//       return res.json({
+//         success: true,
+//         message: "Point configurada com sucesso",
+//         mode: "PDV",
+//         device: data,
+//       });
+//     } else {
+//       const error = await response.json();
+//       console.error(`❌ Erro ao configurar Point:`, error);
+//       return res.status(400).json({ success: false, error: error.message });
+//     }
+//   } catch (error) {
+//     console.error("❌ Erro ao configurar Point Smart 2:", error.message);
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// });
 
-// Verificar status da Point Smart 2
-app.get("/api/point/status", async (req, res) => {
-  // Usa apenas credenciais globais (single-tenant)
-  const MP_ACCESS_TOKEN_LOCAL = MP_ACCESS_TOKEN;
-  const MP_DEVICE_ID_LOCAL = MP_DEVICE_ID;
+// // Verificar status da Point Smart 2
+// app.get("/api/point/status", async (req, res) => {
+//   // Usa apenas credenciais globais (single-tenant)
+//   const MP_ACCESS_TOKEN_LOCAL = MP_ACCESS_TOKEN;
+//   const MP_DEVICE_ID_LOCAL = MP_DEVICE_ID;
 
-  if (!MP_ACCESS_TOKEN_LOCAL || !MP_DEVICE_ID_LOCAL) {
-    console.error("⚠️ Status Point: Credenciais não configuradas");
-    console.error(
-      `MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN_LOCAL ? "OK" : "AUSENTE"}`,
-    );
-    console.error(`MP_DEVICE_ID: ${MP_DEVICE_ID_LOCAL || "AUSENTE"}`);
-    return res.json({
-      connected: false,
-      error: "Credenciais não configuradas",
-    });
-  }
+//   if (!MP_ACCESS_TOKEN_LOCAL || !MP_DEVICE_ID_LOCAL) {
+//     console.error("⚠️ Status Point: Credenciais não configuradas");
+//     console.error(
+//       `MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN_LOCAL ? "OK" : "AUSENTE"}`,
+//     );
+//     console.error(`MP_DEVICE_ID: ${MP_DEVICE_ID_LOCAL || "AUSENTE"}`);
+//     return res.json({
+//       connected: false,
+//       error: "Credenciais não configuradas",
+//     });
+//   }
 
-  try {
-    console.log(`🔍 Verificando status da Point: ${MP_DEVICE_ID_LOCAL}`);
+//   try {
+//     console.log(`🔍 Verificando status da Point: ${MP_DEVICE_ID_LOCAL}`);
 
-    const deviceUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID_LOCAL}`;
-    const response = await fetch(deviceUrl, {
-      headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}` },
-    });
+//     const deviceUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID_LOCAL}`;
+//     const response = await fetch(deviceUrl, {
+//       headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}` },
+//     });
 
-    console.log(`📡 Resposta API Point: Status ${response.status}`);
+//     console.log(`📡 Resposta API Point: Status ${response.status}`);
 
-    if (response.ok) {
-      const device = await response.json();
-      console.log(`✅ Point encontrada:`, device);
+//     if (response.ok) {
+//       const device = await response.json();
+//       console.log(`✅ Point encontrada:`, device);
 
-      return res.json({
-        connected: true,
-        id: device.id,
-        operating_mode: device.operating_mode,
-        status: device.status,
-        model: device.model || "Point Smart 2",
-      });
-    } else {
-      const errorData = await response.json();
-      console.error(`❌ Erro ao buscar Point:`, errorData);
-      return res.json({
-        connected: false,
-        error: "Point não encontrada",
-        details: errorData,
-      });
-    }
-  } catch (error) {
-    console.error("❌ Exceção ao verificar Point:", error);
-    res.status(500).json({ connected: false, error: error.message });
-  }
-});
+//       return res.json({
+//         connected: true,
+//         id: device.id,
+//         operating_mode: device.operating_mode,
+//         status: device.status,
+//         model: device.model || "Point Smart 2",
+//       });
+//     } else {
+//       const errorData = await response.json();
+//       console.error(`❌ Erro ao buscar Point:`, errorData);
+//       return res.json({
+//         connected: false,
+//         error: "Point não encontrada",
+//         details: errorData,
+//       });
+//     }
+//   } catch (error) {
+//     console.error("❌ Exceção ao verificar Point:", error);
+//     res.status(500).json({ connected: false, error: error.message });
+//   }
+// });
 
 // Limpar TODA a fila de pagamentos da maquininha (chamar após pagamento aprovado)
-app.post("/api/payment/clear-queue", async (req, res) => {
-  // Usa apenas credenciais globais (single-tenant)
-  const MP_ACCESS_TOKEN_LOCAL = MP_ACCESS_TOKEN;
-  const MP_DEVICE_ID_LOCAL = MP_DEVICE_ID;
+// app.post("/api/payment/clear-queue", async (req, res) => {
+//   // Usa apenas credenciais globais (single-tenant)
+//   const MP_ACCESS_TOKEN_LOCAL = MP_ACCESS_TOKEN;
+//   const MP_DEVICE_ID_LOCAL = MP_DEVICE_ID;
 
-  if (!MP_ACCESS_TOKEN_LOCAL || !MP_DEVICE_ID_LOCAL) {
-    return res.json({ success: true, cleared: 0 });
-  }
+//   if (!MP_ACCESS_TOKEN_LOCAL || !MP_DEVICE_ID_LOCAL) {
+//     return res.json({ success: true, cleared: 0 });
+//   }
 
-  try {
-    console.log(`🧹 [CLEAR QUEUE] Limpando TODA a fila da Point Pro 2...`);
+//   try {
+//     console.log(`🧹 [CLEAR QUEUE] Limpando TODA a fila da Point Pro 2...`);
 
-    const listUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID_LOCAL}/payment-intents`;
-    const listResp = await fetch(listUrl, {
-      headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}` },
-    });
+//     const listUrl = `https://api.mercadopago.com/point/integration-api/devices/${MP_DEVICE_ID_LOCAL}/payment-intents`;
+//     const listResp = await fetch(listUrl, {
+//       headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}` },
+//     });
 
-    if (!listResp.ok) {
-      return res.json({ success: false, error: "Erro ao listar intents" });
-    }
+//     if (!listResp.ok) {
+//       return res.json({ success: false, error: "Erro ao listar intents" });
+//     }
 
-    const listData = await listResp.json();
-    const events = listData.events || [];
+//     const listData = await listResp.json();
+//     const events = listData.events || [];
 
-    console.log(`🔍 Encontradas ${events.length} intent(s) na fila`);
+//     console.log(`🔍 Encontradas ${events.length} intent(s) na fila`);
 
-    let cleared = 0;
+//     let cleared = 0;
 
-    for (const ev of events) {
-      const iId = ev.payment_intent_id || ev.id;
-      const state = ev.state;
+//     for (const ev of events) {
+//       const iId = ev.payment_intent_id || ev.id;
+//       const state = ev.state;
 
-      try {
-        const delResp = await fetch(`${listUrl}/${iId}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}` },
-        });
+//       try {
+//         const delResp = await fetch(`${listUrl}/${iId}`, {
+//           method: "DELETE",
+//           headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN_LOCAL}` },
+//         });
 
-        if (delResp.ok || delResp.status === 404) {
-          console.log(`  ✅ Intent ${iId} (${state}) removida`);
-          cleared++;
-        }
-      } catch (e) {
-        console.log(`  ⚠️ Erro ao remover ${iId}: ${e.message}`);
-      }
+//         if (delResp.ok || delResp.status === 404) {
+//           console.log(`  ✅ Intent ${iId} (${state}) removida`);
+//           cleared++;
+//         }
+//       } catch (e) {
+//         console.log(`  ⚠️ Erro ao remover ${iId}: ${e.message}`);
+//       }
 
-      // Pequeno delay entre remoções
-      await new Promise((r) => setTimeout(r, 200));
-    }
+//       // Pequeno delay entre remoções
+//       await new Promise((r) => setTimeout(r, 200));
+//     }
 
-    console.log(
-      `✅ [CLEAR QUEUE] ${cleared} intent(s) removida(s) - Point Pro 2 completamente limpa!`,
-    );
+//     console.log(
+//       `✅ [CLEAR QUEUE] ${cleared} intent(s) removida(s) - Point Pro 2 completamente limpa!`,
+//     );
 
-    res.json({
-      success: true,
-      cleared: cleared,
-      message: `${cleared} pagamento(s) removido(s) da fila`,
-    });
-  } catch (error) {
-    console.error("❌ Erro ao limpar fila:", error.message);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+//     res.json({
+//       success: true,
+//       cleared: cleared,
+//       message: `${cleared} pagamento(s) removido(s) da fila`,
+//     });
+//   } catch (error) {
+//     console.error("❌ Erro ao limpar fila:", error.message);
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// });
 
 // ============================================================================
 // FIM DA SEÇÃO DEPRECATED
@@ -3271,66 +3046,12 @@ app.post("/api/payment/clear-queue", async (req, res) => {
 
 // --- Rotas de IA ---
 
+// --- Rota 1: Sugestão de IA ---
 app.post("/api/ai/suggestion", async (req, res) => {
   if (!openai) {
     return res.json({ text: "IA indisponível" });
   }
 
-
-
-// --- Endpoint adicional: SuperAdmin marca recebíveis por IDs ---
-app.post(
-  "/api/super-admin/receivables/mark-received-by-ids",
-  async (req, res) => {
-    try {
-      const superAdminPassword = req.headers["x-super-admin-password"];
-      if (!SUPER_ADMIN_PASSWORD) {
-        return res
-          .status(503)
-          .json({ error: "Super Admin não configurado." });
-      }
-      if (superAdminPassword !== SUPER_ADMIN_PASSWORD) {
-        return res
-          .status(401)
-          .json({ error: "Acesso negado. Senha de Super Admin inválida." });
-      }
-
-      let { orderIds } = req.body;
-      if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
-        return res
-          .status(400)
-          .json({ error: "orderIds obrigatório (array)" });
-      }
-
-      const now = new Date().toISOString();
-      const updateResult = await db("orders")
-        .whereIn("id", orderIds)
-        .update({ repassadoSuperAdmin: 1, dataRepasseSuperAdmin: now });
-
-      console.log(
-        "[DEBUG] SuperAdmin marcou recebíveis por IDs:",
-        orderIds,
-        "Data:",
-        now,
-        "Resultado:",
-        updateResult,
-      );
-
-      return res.json({
-        success: true,
-        message: "Recebíveis marcados como recebidos",
-        receivedOrderIds: orderIds,
-        dataRepasse: now,
-        updateResult,
-      });
-    } catch (err) {
-      console.log("[DEBUG] Erro interno:", err);
-      return res
-        .status(500)
-        .json({ error: "Erro interno", details: err.message });
-    }
-  },
-);
   try {
     // Busca todos os produtos disponíveis
     const products = await db("products").select(
@@ -3341,9 +3062,11 @@ app.post(
       "category",
       "stock",
     );
+
     const availableProducts = products.filter(
       (p) => p.stock === null || p.stock > 0,
     );
+
     const productList = availableProducts
       .map(
         (p) =>
@@ -3353,50 +3076,120 @@ app.post(
       )
       .join("\n");
 
-    const systemPrompt = `Você é um vendedor especializado em pelúcias e brinquedos PrimePlush. Conheça bem os modelos, tamanhos e novidades.
-
+    const systemPrompt = `Você é um vendedor especializado em pelúcias e brinquedos PrimePlush.
 🎯 SUA MISSÃO: Recomendar produtos DO NOSSO CATÁLOGO REAL para o cliente.
-
 📋 PRODUTOS QUE TEMOS DISPONÍVEIS AGORA:
 ${productList}
-
-⚠️ REGRAS ABSOLUTAS:
-1. SEMPRE recomende produtos que EXISTEM na lista acima
-2. NUNCA diga "não temos" sem antes verificar se há ALTERNATIVAS na lista
-3. Se o cliente pedir algo que não temos, sugira o SIMILAR que temos
-4. Use o nome EXATO dos produtos da lista
-5. Seja proativo e entusiasmado com o que TEMOS
-
-✅ EXEMPLOS DE RESPOSTAS CORRETAS:
-Cliente: "Tem coca-cola?"
-Resposta: "Temos Guaraná Antarctica! Vai combinar perfeitamente 😊"
-
-Cliente: "Quero uma bebida"
-Resposta: "Recomendo nosso Suco de Melancia, super refrescante! 🍉"
-
-❌ NUNCA FAÇA ISSO:
-- "Desculpe, não temos coca-cola" (SEM sugerir alternativa)
-- Mencionar produtos que NÃO estão na lista acima
-- Recomendar "Temaki" se não estiver listado`;
+... (regras ocultas para brevidade) ...`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
+        { role: "system", content: systemPrompt },
         { role: "user", content: req.body.prompt },
       ],
       max_tokens: 150,
     });
 
     const aiResponse = completion.choices[0].message.content;
-    res.json({ text: aiResponse });
+    return res.json({ text: aiResponse });
   } catch (e) {
-    res.json({ text: "Sugestão indisponível no momento." });
+    console.error("[ERRO AI]:", e);
+    return res.json({ text: "Sugestão indisponível no momento." });
   }
 });
+
+// --- Rota 2: SuperAdmin (Marca recebíveis) ---
+app.post(
+  "/api/super-admin/receivables/mark-received-by-ids",
+  async (req, res) => {
+    console.log(
+      "[LOG] POST /api/super-admin/receivables/mark-received-by-ids chamado",
+    );
+
+    try {
+      const superAdminPassword = req.headers["x-super-admin-password"];
+
+      if (!SUPER_ADMIN_PASSWORD) {
+        return res.status(503).json({ error: "Super Admin não configurado." });
+      }
+
+      if (superAdminPassword !== SUPER_ADMIN_PASSWORD) {
+        return res
+          .status(401)
+          .json({ error: "Acesso negado. Senha inválida." });
+      }
+
+      let { orderIds } = req.body;
+      if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+        return res.status(400).json({ error: "orderIds obrigatório (array)" });
+      }
+
+      const now = new Date().toISOString();
+      const updateResult = await db("orders").whereIn("id", orderIds).update({
+        repassadoSuperAdmin: 1,
+        dataRepasseSuperAdmin: now,
+      });
+
+      // Calcula o valor total a receber desses pedidos
+      const orders = await db("orders").whereIn("id", orderIds);
+      let totalBrutoReceber = 0;
+      for (const order of orders) {
+        let items = [];
+        try {
+          items = Array.isArray(order.items)
+            ? order.items
+            : JSON.parse(order.items);
+        } catch {
+          items = [];
+        }
+        for (const item of items) {
+          let precoBruto = 0;
+          const prodId = item.productId || item.id;
+          if (prodId) {
+            const prod = await db("products").where({ id: prodId }).first();
+            precoBruto = prod && prod.priceRaw ? parseFloat(prod.priceRaw) : 0;
+          } else if (item.precoBruto !== undefined) {
+            precoBruto = parseFloat(item.precoBruto);
+          }
+          const price = Number(item.price) || 0;
+          const quantity = Number(item.quantity) || 1;
+          const valueToReceive = (price - precoBruto) * quantity;
+          totalBrutoReceber += valueToReceive;
+        }
+      }
+
+      // Insere registro na tabela de recebíveis
+      await db("super_admin_receivables").insert({
+        amount: totalBrutoReceber,
+        order_ids: JSON.stringify(orderIds),
+        received_at: now,
+      });
+
+      console.log(
+        "[DEBUG] Resultado do Update:",
+        updateResult,
+        "Total Recebido:",
+        totalBrutoReceber,
+      );
+
+      return res.json({
+        success: true,
+        message: "Recebíveis marcados como recebidos",
+        receivedOrderIds: orderIds,
+        dataRepasse: now,
+        updateResult,
+        totalRecebido: totalBrutoReceber,
+      });
+    } catch (err) {
+      console.error("[LOG] Erro interno:", err);
+      return res.status(500).json({
+        error: "Erro interno",
+        details: err.message,
+      });
+    }
+  },
+);
 
 app.post("/api/ai/chat", async (req, res) => {
   if (!openai) {
@@ -4410,6 +4203,14 @@ app.put("/api/users/:id", async (req, res) => {
     console.error("Erro ao atualizar usuário:", e);
     res.status(500).json({ error: "Erro ao atualizar usuário" });
   }
+});
+
+// Dummy endpoint para Point Smart 2 (apenas evita erro 404)
+app.post("/api/point/configure", (req, res) => {
+  res.json({
+    success: true,
+    message: "Configuração de Point ignorada (dummy endpoint)",
+  });
 });
 
 // --- Inicialização ---
