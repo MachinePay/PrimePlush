@@ -1,3 +1,60 @@
+/* Melhorias de responsividade para o Header em telas pequenas */
+@media (max-width: 500px) {
+  header {
+    min-height: 56px !important;
+    height: auto !important;
+  }
+  header .container {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 4px 6px !important;
+    gap: 2px !important;
+    height: auto !important;
+  }
+  header .flex.items-center.gap-2.relative {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 2px;
+  }
+  header .text-xl {
+    font-size: 1em !important;
+    max-width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  header nav {
+    flex-wrap: wrap;
+    gap: 4px !important;
+    width: 100%;
+    justify-content: flex-start !important;
+    margin-bottom: 2px;
+  }
+  header .flex.items-center.gap-4 {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px !important;
+    width: 100%;
+    justify-content: flex-start !important;
+    margin-bottom: 2px;
+  }
+  header button, header a {
+    min-width: 36px;
+    font-size: 0.95em !important;
+    padding: 4px 8px !important;
+    margin: 0 2px 2px 0 !important;
+    border-radius: 6px !important;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  header .block.md\:hidden.ml-2 {
+    margin-left: 0 !important;
+  }
+  header .hidden.md\:block {
+    display: none !important;
+  }
+}
 /* Header mobile fixes */
 @media (max-width: 400px) {
   header .container {
