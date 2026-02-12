@@ -268,7 +268,7 @@ const SuperAdminPage: React.FC = () => {
                             R$ {(Number(h.valorTotal) || 0).toFixed(2)}
                           </td>
                           <td className="py-1 px-2 font-bold text-green-700">
-                            R$ {(Number(h.valorRecebido) || 0).toFixed(2)}
+                            R$ {data.stats.totalToReceive.toFixed(2)}
                           </td>
                           <td className="py-1 px-2">
                             {h.dataPedido && h.dataPedido !== "-"
