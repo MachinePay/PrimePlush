@@ -193,65 +193,69 @@ const SuperAdminPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-purple-600 mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-2 sm:p-4 md:p-6">
+      <div className="max-w-6xl mx-auto w-full">
+        <h1 className="text-2xl sm:text-3xl font-bold text-purple-600 mb-4 sm:mb-6 text-center sm:text-left">
           Dashboard Super Admin
         </h1>
         {loading && <div className="text-center">Carregando...</div>}
         {error && <div className="text-red-600 text-center mb-4">{error}</div>}
         {data && (
           <>
-            <div className="mb-4 flex items-center gap-4">
-              <span className="font-semibold text-purple-700 text-lg">
+            <div className="mb-3 sm:mb-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
+              <span className="font-semibold text-purple-700 text-base sm:text-lg">
                 Valor a receber (total): R$
                 {data.stats.totalToReceive.toFixed(2)}
               </span>
               <button
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 sm:px-6 rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg hover:shadow-xl w-full sm:w-auto"
                 onClick={handleMarkReceived}
                 disabled={loading || data.stats.totalToReceive <= 0}
               >
                 Recebido
               </button>
             </div>
-            <SuperAdminReceivablesDetails
-              orders={data.orders}
-              totalToReceive={data.stats.totalToReceive}
-              totalReceived={data.stats.totalReceived}
-              alreadyReceived={data.stats.alreadyReceived}
-              receivedOrderIds={receivedOrderIds}
-            />
+            <div className="overflow-x-auto rounded-xl">
+              <SuperAdminReceivablesDetails
+                orders={data.orders}
+                totalToReceive={data.stats.totalToReceive}
+                totalReceived={data.stats.totalReceived}
+                alreadyReceived={data.stats.alreadyReceived}
+                receivedOrderIds={receivedOrderIds}
+              />
+            </div>
             {/* Histórico de repasses */}
             {data.history && data.history.length > 0 && (
-              <div className="bg-white shadow-xl rounded-2xl p-6 border-2 border-green-200 mt-8">
-                <h2 className="text-xl font-bold text-green-800 mb-4">
+              <div className="bg-white shadow-xl rounded-2xl p-2 sm:p-4 md:p-6 border-2 border-green-200 mt-4 sm:mt-8 overflow-x-auto">
+                <h2 className="text-lg sm:text-xl font-bold text-green-800 mb-2 sm:mb-4">
                   Histórico de Repasses ao SuperAdmin
                 </h2>
-                <table className="w-full text-xs mb-2">
-                  <thead>
-                    <tr className="bg-green-100">
-                      <th className="py-1 px-2 text-left">Pedido</th>
-                      <th className="py-1 px-2 text-left">Cliente</th>
-                      <th className="py-1 px-2 text-left">Valor Total</th>
-                      <th className="py-1 px-2 text-left">Valor Recebido</th>
-                      <th className="py-1 px-2 text-left">Data do Pedido</th>
-                      <th className="py-1 px-2 text-left">Data do Repasse</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.history.map((h, idx) => (
-                      <tr key={h.repasseId + '-' + h.pedidoId + '-' + idx} className="border-b">
-                        <td className="py-1 px-2">{h.pedidoId}</td>
-                        <td className="py-1 px-2">{h.cliente || '-'}</td>
-                        <td className="py-1 px-2">R$ {(Number(h.valorTotal) || 0).toFixed(2)}</td>
-                        <td className="py-1 px-2 font-bold text-green-700">R$ {(Number(h.valorRecebido) || 0).toFixed(2)}</td>
-                        <td className="py-1 px-2">{h.dataPedido && h.dataPedido !== '-' ? new Date(h.dataPedido).toLocaleString() : '-'}</td>
-                        <td className="py-1 px-2">{h.dataRepasse ? new Date(h.dataRepasse).toLocaleString() : '-'}</td>
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full text-xs mb-2 min-w-[600px]">
+                    <thead>
+                      <tr className="bg-green-100">
+                        <th className="py-1 px-2 text-left">Pedido</th>
+                        <th className="py-1 px-2 text-left">Cliente</th>
+                        <th className="py-1 px-2 text-left">Valor Total</th>
+                        <th className="py-1 px-2 text-left">Valor Recebido</th>
+                        <th className="py-1 px-2 text-left">Data do Pedido</th>
+                        <th className="py-1 px-2 text-left">Data do Repasse</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {data.history.map((h, idx) => (
+                        <tr key={h.repasseId + '-' + h.pedidoId + '-' + idx} className="border-b">
+                          <td className="py-1 px-2">{h.pedidoId}</td>
+                          <td className="py-1 px-2">{h.cliente || '-'}</td>
+                          <td className="py-1 px-2">R$ {(Number(h.valorTotal) || 0).toFixed(2)}</td>
+                          <td className="py-1 px-2 font-bold text-green-700">R$ {(Number(h.valorRecebido) || 0).toFixed(2)}</td>
+                          <td className="py-1 px-2">{h.dataPedido && h.dataPedido !== '-' ? new Date(h.dataPedido).toLocaleString() : '-'}</td>
+                          <td className="py-1 px-2">{h.dataRepasse ? new Date(h.dataRepasse).toLocaleString() : '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </>

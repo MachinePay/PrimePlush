@@ -83,11 +83,14 @@ const Header: React.FC = () => {
                 >
                   Relatórios IA
                 </NavLink>
+                {/* SuperAdmin button: text on desktop, crown emoji on mobile */}
                 <NavLink
                   to="/superadmin/login"
-                  className="bg-blue-600 text-white font-bold py-1 px-4 rounded-lg ml-2 hover:bg-blue-700 transition-colors shadow-md"
+                  className="bg-blue-600 text-white font-bold py-1 px-4 rounded-lg ml-2 hover:bg-blue-700 transition-colors shadow-md superadmin-btn"
+                  title="SuperAdmin"
                 >
-                  SuperAdmin
+                  <span className="hidden-xs">SuperAdmin</span>
+                  <span className="icon-xs" style={{ display: "none" }} role="img" aria-label="SuperAdmin">👑</span>
                 </NavLink>
               </>
             )}

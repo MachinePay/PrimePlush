@@ -1,3 +1,15 @@
+/* SuperAdmin button: show only crown emoji on small screens */
+@media (max-width: 500px) {
+  .superadmin-btn .hidden-xs {
+    display: none !important;
+  }
+  .superadmin-btn .icon-xs {
+    display: inline-block !important;
+    font-size: 1.3em;
+    vertical-align: middle;
+    margin-top: -2px;
+  }
+}
 /* Edit button: show only icon and shrink on very small screens */
 @media (max-width: 500px) {
   .edit-btn {
