@@ -1,11 +1,11 @@
 /* SuperAdmin button: show only crown emoji on small screens */
 @media (max-width: 500px) {
-  .superadmin-btn .hidden-xs {
+  .superadmin-btn-label {
     display: none !important;
   }
-  .superadmin-btn .icon-xs {
+  .superadmin-btn-icon {
     display: inline-block !important;
-    font-size: 1.3em;
+    font-size: 1.5em;
     vertical-align: middle;
     margin-top: -2px;
   }

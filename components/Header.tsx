@@ -46,7 +46,7 @@ const Header: React.FC = () => {
           </div>
 
           {/* Navegação Central (Desktop) */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="flex items-center gap-4 md:gap-8">
             {currentUser &&
               (!currentUser.role || currentUser.role === "customer") && (
                 <NavLink
@@ -88,9 +88,10 @@ const Header: React.FC = () => {
                   to="/superadmin/login"
                   className="bg-blue-600 text-white font-bold py-1 px-4 rounded-lg ml-2 hover:bg-blue-700 transition-colors shadow-md superadmin-btn"
                   title="SuperAdmin"
+                  style={{ minWidth: 0, padding: 0, width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <span className="hidden-xs">SuperAdmin</span>
-                  <span className="icon-xs" style={{ display: "none" }} role="img" aria-label="SuperAdmin">👑</span>
+                  <span className="superadmin-btn-label" style={{ display: 'inline-block' }}>SuperAdmin</span>
+                  <span className="superadmin-btn-icon" style={{ display: 'none' }} role="img" aria-label="SuperAdmin">👑</span>
                 </NavLink>
               </>
             )}
