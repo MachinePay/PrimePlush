@@ -268,7 +268,7 @@ const SuperAdminPage: React.FC = () => {
                             R$ {(Number(h.valorTotal) || 0).toFixed(2)}
                           </td>
                           <td className="py-1 px-2 font-bold text-green-700">
-                            R$ {data.stats.totalToReceive.toFixed(2)}
+                            R$ {(Number(h.valorRecebido) || 0).toFixed(2)}
                           </td>
                           <td className="py-1 px-2">
                             {h.dataPedido && h.dataPedido !== "-"
@@ -285,6 +285,22 @@ const SuperAdminPage: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
+                {/* Exibe valorRecebidoDetalhado se disponível */}
+                {data.valorRecebidoDetalhado && (
+                  <div className="mt-4 text-xs text-gray-600">
+                    <b>Valores Recebidos Detalhados:</b>
+                    <ul>
+                      {data.valorRecebidoDetalhado.map(
+                        (v: any, idx: number) => (
+                          <li key={v.orderId + "-" + idx}>
+                            Pedido {v.orderId}: R${" "}
+                            {Number(v.valorRecebido).toFixed(2)}
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </>
