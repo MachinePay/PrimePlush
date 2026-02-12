@@ -184,6 +184,20 @@ const SuperAdminPage: React.FC = () => {
       }
       const result = await response.json();
       setReceivedOrderIds(result.receivedOrderIds || []);
+      // Atualiza os valores recebidos detalhados no frontend
+      if (data && result.valorRecebidoDetalhado) {
+        // Atualiza os pedidos para incluir valorRecebido
+        const ordersAtualizados = data.orders.map((order) => {
+          const detalhado = result.valorRecebidoDetalhado.find(
+            (v: any) => v.orderId === order.id,
+          );
+          return {
+            ...order,
+            valorRecebido: detalhado ? detalhado.valorRecebido : undefined,
+          };
+        });
+        setData({ ...data, orders: ordersAtualizados });
+      }
       await fetchData();
     } catch (e: any) {
       setError(e.message || "Erro ao marcar como recebido");
@@ -244,13 +258,28 @@ const SuperAdminPage: React.FC = () => {
                     </thead>
                     <tbody>
                       {data.history.map((h, idx) => (
-                        <tr key={h.repasseId + '-' + h.pedidoId + '-' + idx} className="border-b">
+                        <tr
+                          key={h.repasseId + "-" + h.pedidoId + "-" + idx}
+                          className="border-b"
+                        >
                           <td className="py-1 px-2">{h.pedidoId}</td>
-                          <td className="py-1 px-2">{h.cliente || '-'}</td>
-                          <td className="py-1 px-2">R$ {(Number(h.valorTotal) || 0).toFixed(2)}</td>
-                          <td className="py-1 px-2 font-bold text-green-700">R$ {(Number(h.valorRecebido) || 0).toFixed(2)}</td>
-                          <td className="py-1 px-2">{h.dataPedido && h.dataPedido !== '-' ? new Date(h.dataPedido).toLocaleString() : '-'}</td>
-                          <td className="py-1 px-2">{h.dataRepasse ? new Date(h.dataRepasse).toLocaleString() : '-'}</td>
+                          <td className="py-1 px-2">{h.cliente || "-"}</td>
+                          <td className="py-1 px-2">
+                            R$ {(Number(h.valorTotal) || 0).toFixed(2)}
+                          </td>
+                          <td className="py-1 px-2 font-bold text-green-700">
+                            R$ {(Number(h.valorRecebido) || 0).toFixed(2)}
+                          </td>
+                          <td className="py-1 px-2">
+                            {h.dataPedido && h.dataPedido !== "-"
+                              ? new Date(h.dataPedido).toLocaleString()
+                              : "-"}
+                          </td>
+                          <td className="py-1 px-2">
+                            {h.dataRepasse
+                              ? new Date(h.dataRepasse).toLocaleString()
+                              : "-"}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
