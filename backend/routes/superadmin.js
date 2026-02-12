@@ -221,7 +221,7 @@ router.get("/super-admin/receivables", superAdminAuth, async (req, res) => {
           valorTotal: parseFloat(h.amount) || 0,
           dataPedido: "-",
           dataRepasse: h.received_at,
-          valorRecebido: parseFloat(h.amount),
+          valorRecebido: parseFloat(h.valorRecebido) || 0,
         });
       }
     }
