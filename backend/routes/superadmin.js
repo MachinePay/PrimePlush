@@ -214,14 +214,17 @@ router.get("/super-admin/receivables", superAdminAuth, async (req, res) => {
           });
         });
       } else {
+        // Para registros genéricos, valorRecebido = valorTotal - totalBruto (totalBruto = 0)
+        const valorTotal = parseFloat(h.amount) || 0;
+        const totalBruto = 0;
         history.push({
           repasseId: h.id,
           pedidoId: "-",
           cliente: "N/A",
-          valorTotal: parseFloat(h.amount) || 0,
+          valorTotal,
           dataPedido: "-",
           dataRepasse: h.received_at,
-          valorRecebido: parseFloat(h.valorRecebido) || 0,
+          valorRecebido: valorTotal - totalBruto,
         });
       }
     }
