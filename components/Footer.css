@@ -1,3 +1,24 @@
+/* Edit button: show only icon and shrink on very small screens */
+@media (max-width: 370px) {
+  .edit-btn {
+    padding: 0 !important;
+    margin: 0 2px 0 0 !important;
+    min-width: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .edit-btn-label {
+    display: none !important;
+  }
+  .edit-btn-icon {
+    display: inline-block !important;
+    vertical-align: middle;
+  }
+}
 /* Hide edit button text and show pencil icon on small screens */
 @media (max-width: 500px) {
   .edit-btn .hidden-xs {
