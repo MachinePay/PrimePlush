@@ -88,10 +88,9 @@ const Header: React.FC = () => {
                   to="/superadmin/login"
                   className="bg-blue-600 text-white font-bold py-1 px-4 rounded-lg ml-2 hover:bg-blue-700 transition-colors shadow-md superadmin-btn"
                   title="SuperAdmin"
-                  style={{ minWidth: 0, padding: 0, width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <span className="superadmin-btn-label" style={{ display: 'inline-block' }}>SuperAdmin</span>
-                  <span className="superadmin-btn-icon" style={{ display: 'none' }} role="img" aria-label="SuperAdmin">👑</span>
+                  <span className="superadmin-btn-label">SuperAdmin</span>
+                  <span className="superadmin-btn-icon" role="img" aria-label="SuperAdmin">👑</span>
                 </NavLink>
               </>
             )}
