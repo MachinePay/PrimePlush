@@ -1,5 +1,5 @@
 /* Edit button: show only icon and shrink on very small screens */
-@media (max-width: 370px) {
+@media (max-width: 500px) {
   .edit-btn {
     padding: 0 !important;
     margin: 0 2px 0 0 !important;
