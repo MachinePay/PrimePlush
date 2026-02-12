@@ -1,3 +1,56 @@
+/* Header mobile fixes */
+@media (max-width: 400px) {
+  header .container {
+    flex-direction: column;
+    align-items: flex-start !important;
+    height: auto !important;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  header .container > div, header nav, header .flex.items-center.gap-4 {
+    width: 100%;
+    justify-content: flex-start !important;
+    margin-bottom: 2px;
+  }
+  header .text-xl {
+    font-size: 1.1em !important;
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  header .block.md\:hidden.ml-2 {
+    margin-left: 0 !important;
+  }
+}
+/* Floating cart button for mobile */
+.floating-cart-btn {
+  display: none;
+  position: fixed;
+  right: 18px;
+  bottom: 60px; /* above footer */
+  z-index: 120;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.2s;
+  font-size: 1.7em;
+}
+.floating-cart-btn:active {
+  background: #1741a6;
+  transform: scale(0.96);
+}
+@media (max-width: 700px) {
+  .floating-cart-btn {
+    display: flex;
+  }
+}
 .site-footer.minimal-footer {
   width: 100%;
   background: rgba(10, 24, 60, 0.55); /* dark blue transparent */
