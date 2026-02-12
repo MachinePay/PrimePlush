@@ -254,7 +254,6 @@ const SuperAdminPage: React.FC = () => {
                           R${" "}
                           {(
                             Number(h.ValorRecebido) ||
-                            Number(h.valorTotal) ||
                             0
                           ).toFixed(2)}
                         </td>
