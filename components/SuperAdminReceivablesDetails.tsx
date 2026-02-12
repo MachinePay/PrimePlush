@@ -56,6 +56,26 @@ const SuperAdminReceivablesDetails: React.FC<
           <div className="mb-2">
             <b>Pedido #{order.id}</b> | Cliente: {order.userName || "-"} | Data:{" "}
             {new Date(order.timestamp).toLocaleString()}
+            {order.paymentMethod && (
+              <>
+                {" | "}
+                <span className="font-semibold">Tipo de Pagamento:</span>{" "}
+                {order.paymentMethod}
+              </>
+            )}
+            <button
+              className="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700 transition"
+              onClick={() => {
+                const backendUrl =
+                  import.meta.env.VITE_API_URL || "http://localhost:3001";
+                window.open(
+                  `${backendUrl}/api/orders/${order.id}/receipt-pdf`,
+                  "_blank",
+                );
+              }}
+            >
+              Gerar PDF
+            </button>
           </div>
           <div className="mb-2">
             Total do pedido: R$ {(Number(order.total) || 0).toFixed(2)} | Valor
