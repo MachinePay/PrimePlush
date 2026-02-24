@@ -22,6 +22,7 @@ export interface Product {
   popular?: boolean;
   stock?: number;
   minStock?: number; // Estoque mínimo
+  active?: boolean; // Produto ativo ou inativo
 }
 
 export interface OrderItem {

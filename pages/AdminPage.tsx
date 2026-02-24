@@ -516,7 +516,6 @@ const AdminPage: React.FC = () => {
             disabled={isLoadingAnalysis}
             className="bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 transition-colors shadow-md disabled:bg-indigo-300 flex items-center gap-2"
           >
-            
             {isLoadingAnalysis ? "⏳ Analisando..." : "🤖 Análise com IA"}
           </button>
           <button
@@ -620,11 +619,33 @@ const AdminPage: React.FC = () => {
         <table className="min-w-full divide-y divide-stone-200 text-xs sm:text-sm">
           <thead className="bg-stone-50">
             <tr>
-              <th scope="col" className="px-2 sm:px-4 py-2 text-left font-medium text-stone-500 uppercase tracking-wider">Produto</th>
-              <th scope="col" className="px-2 sm:px-4 py-2 text-left font-medium text-stone-500 uppercase tracking-wider">Categoria</th>
-              <th scope="col" className="px-2 sm:px-4 py-2 text-left font-medium text-stone-500 uppercase tracking-wider">Preço</th>
-              <th scope="col" className="px-2 sm:px-4 py-2 text-left font-medium text-stone-500 uppercase tracking-wider">Estoque</th>
-              <th scope="col" className="relative px-2 sm:px-4 py-2"><span className="sr-only">Ações</span></th>
+              <th
+                scope="col"
+                className="px-2 sm:px-4 py-2 text-left font-medium text-stone-500 uppercase tracking-wider"
+              >
+                Produto
+              </th>
+              <th
+                scope="col"
+                className="px-2 sm:px-4 py-2 text-left font-medium text-stone-500 uppercase tracking-wider"
+              >
+                Categoria
+              </th>
+              <th
+                scope="col"
+                className="px-2 sm:px-4 py-2 text-left font-medium text-stone-500 uppercase tracking-wider"
+              >
+                Preço
+              </th>
+              <th
+                scope="col"
+                className="px-2 sm:px-4 py-2 text-left font-medium text-stone-500 uppercase tracking-wider"
+              >
+                Estoque
+              </th>
+              <th scope="col" className="relative px-2 sm:px-4 py-2">
+                <span className="sr-only">Ações</span>
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-stone-200">
@@ -632,34 +653,94 @@ const AdminPage: React.FC = () => {
               <tr key={product.id} className="hover:bg-stone-50">
                 <td className="px-2 sm:px-4 py-2 whitespace-nowrap">
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <img className="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover border border-stone-200" src={product.imageUrl} alt={product.name} />
+                    <img
+                      className="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover border border-stone-200"
+                      src={product.imageUrl}
+                      alt={product.name}
+                    />
                     <div>
-                      <div className="text-xs sm:text-sm font-bold text-stone-900">{product.name}</div>
+                      <div className="text-xs sm:text-sm font-bold text-stone-900">
+                        {product.name}
+                      </div>
                     </div>
                   </div>
                 </td>
                 <td className="px-2 sm:px-4 py-2 whitespace-nowrap">
-                  <span className="text-xs sm:text-sm text-stone-700">{product.category}</span>
+                  <span className="text-xs sm:text-sm text-stone-700">
+                    {product.category}
+                  </span>
                 </td>
                 <td className="px-2 sm:px-4 py-2 whitespace-nowrap">
-                  <div className="text-xs sm:text-sm text-stone-900">R${product.price?.toFixed(2) ?? "-"}</div>
-                  <div className="text-[10px] sm:text-xs text-stone-500">Bruto: R${product.priceRaw?.toFixed(2) ?? "-"}</div>
+                  <div className="text-xs sm:text-sm text-stone-900">
+                    R${product.price?.toFixed(2) ?? "-"}
+                  </div>
+                  <div className="text-[10px] sm:text-xs text-stone-500">
+                    Bruto: R${product.priceRaw?.toFixed(2) ?? "-"}
+                  </div>
                 </td>
                 <td className="px-2 sm:px-4 py-2 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    (product.stock || 0) === 0
-                      ? "bg-blue-100 text-blue-800"
-                      : product.minStock !== undefined && product.stock !== undefined && product.stock < product.minStock
-                        ? "bg-yellow-100 text-yellow-800 animate-pulse"
-                        : "bg-green-100 text-green-800"
-                  }`}>{product.stock || 0} un.</span>
-                  {product.minStock !== undefined && product.stock !== undefined && product.stock < product.minStock && (
-                    <span className="ml-1 text-[10px] sm:text-xs text-blue-600 font-bold animate-pulse">Estoque baixo!</span>
-                  )}
+                  <span
+                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      (product.stock || 0) === 0
+                        ? "bg-blue-100 text-blue-800"
+                        : product.minStock !== undefined &&
+                            product.stock !== undefined &&
+                            product.stock < product.minStock
+                          ? "bg-yellow-100 text-yellow-800 animate-pulse"
+                          : "bg-green-100 text-green-800"
+                    }`}
+                  >
+                    {product.stock || 0} un.
+                  </span>
+                  {product.minStock !== undefined &&
+                    product.stock !== undefined &&
+                    product.stock < product.minStock && (
+                      <span className="ml-1 text-[10px] sm:text-xs text-blue-600 font-bold animate-pulse">
+                        Estoque baixo!
+                      </span>
+                    )}
                 </td>
                 <td className="px-2 sm:px-4 py-2 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
-                  <button onClick={() => { setEditingProduct(product); setIsFormOpen(true); }} className="text-blue-600 hover:text-blue-900 mr-2 sm:mr-4">Editar</button>
-                  <button onClick={() => handleDeleteProduct(product.id)} className="text-blue-700 hover:text-blue-900">Remover</button>
+                  <button
+                    onClick={() => {
+                      setEditingProduct(product);
+                      setIsFormOpen(true);
+                    }}
+                    className="text-blue-600 hover:text-blue-900 mr-2 sm:mr-4"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleDeleteProduct(product.id)}
+                    className="text-blue-700 hover:text-blue-900 mr-2 sm:mr-4"
+                  >
+                    Remover
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const API_URL =
+                        import.meta.env.VITE_API_URL || "http://localhost:3001";
+                      const resp = await authenticatedFetch(
+                        `${API_URL}/api/products/${product.id}`,
+                        {
+                          method: "PUT",
+                          body: JSON.stringify({ active: !product.active }),
+                        },
+                      );
+                      if (resp.ok) {
+                        await loadProducts();
+                      } else {
+                        alert("Erro ao atualizar status do produto");
+                      }
+                    }}
+                    className={
+                      product.active
+                        ? "text-yellow-700 hover:text-yellow-900"
+                        : "text-green-700 hover:text-green-900"
+                    }
+                  >
+                    {product.active ? "Desativar" : "Ativar"}
+                  </button>
                 </td>
               </tr>
             ))}
