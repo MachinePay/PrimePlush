@@ -168,7 +168,7 @@ export const getChefMessage = async (
   const prompt = `
 Você é um atendente de loja de pelúcias online.
 
-Catálogo atual do site: ${menu?.map((p) => `${p.name} (R$ ${p.price.toFixed(2)})`).join(", ")}
+Catálogo atual do site: ${menu?.map((p) => `${p.name} (R$ ${Number(p.price).toFixed(2)})`).join(", ")}
 
 Cliente: ${clientName}
 Status: ${
