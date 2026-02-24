@@ -71,6 +71,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
             <span className="text-xl md:text-2xl font-bold text-stone-800">
               R$ {product.price.toFixed(2)}
             </span>
+            {product.quantidadeVenda && product.quantidadeVenda > 1 && (
+              <span
+                className="text-xs text-black mt-1 block"
+                style={{ fontSize: "12px", opacity: 0.7 }}
+              >
+                Mínimo: {product.quantidadeVenda} por compra
+              </span>
+            )}
             <button
               onClick={() => onAddToCart(product)}
               disabled={isOutOfStock}

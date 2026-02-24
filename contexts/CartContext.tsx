@@ -88,27 +88,23 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       alert("Produto esgotado!");
       return;
     }
-
+    const quantidadeVenda = product.quantidadeVenda ?? 1;
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id);
       if (existingItem) {
         // Verifica se a quantidade no carrinho já atingiu o estoque disponível
-        if (
-          product.stock !== undefined &&
-          existingItem.quantity >= product.stock
-        ) {
+        const novaQuantidade = existingItem.quantity + quantidadeVenda;
+        if (product.stock !== undefined && novaQuantidade > product.stock) {
           alert(
-            `Estoque limitado! Máximo de ${product.stock} unidades disponíveis.`
+            `Estoque limitado! Máximo de ${product.stock} unidades disponíveis.`,
           );
           return prevItems;
         }
         return prevItems.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
+          item.id === product.id ? { ...item, quantity: novaQuantidade } : item,
         );
       }
-      return [...prevItems, { ...product, quantity: 1 }];
+      return [...prevItems, { ...product, quantity: quantidadeVenda }];
     });
   };
 
@@ -118,7 +114,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
   */
   const removeFromCart = (productId: string) => {
     setCartItems((prevItems) =>
-      prevItems.filter((item) => item.id !== productId)
+      prevItems.filter((item) => item.id !== productId),
     );
   };
 
@@ -128,15 +124,26 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     - Caso contrário, mapeia os itens e atualiza a quantidade do item correspondente.
   */
   const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-    } else {
-      setCartItems((prevItems) =>
-        prevItems.map((item) =>
-          item.id === productId ? { ...item, quantity } : item
-        )
+    setCartItems((prevItems) => {
+      const item = prevItems.find((i) => i.id === productId);
+      if (!item) return prevItems;
+      const quantidadeVenda = item.quantidadeVenda ?? 1;
+      // Ajusta para múltiplos da quantidadeVenda
+      let novaQuantidade = Math.max(quantity, 0);
+      if (novaQuantidade > 0) {
+        novaQuantidade =
+          Math.round(novaQuantidade / quantidadeVenda) * quantidadeVenda;
+        if (item.stock !== undefined && novaQuantidade > item.stock) {
+          novaQuantidade = item.stock;
+        }
+      }
+      if (novaQuantidade <= 0) {
+        return prevItems.filter((i) => i.id !== productId);
+      }
+      return prevItems.map((i) =>
+        i.id === productId ? { ...i, quantity: novaQuantidade } : i,
       );
-    }
+    });
   };
 
   // Limpa o carrinho, definindo a lista de itens como vazia
@@ -149,7 +156,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
   // Calcula o total do carrinho somando price * quantity de cada item
   const cartTotal = cartItems.reduce(
     (total, item) => total + item.price * item.quantity,
-    0
+    0,
   );
 
   // Fornece o estado e as funções do carrinho para os componentes filhos

@@ -34,6 +34,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     imageUrl: "",
     stock: 0,
     minStock: 0,
+    quantidadeVenda: 1,
   });
 
   // 🆕 Estado para categorias dinâmicas
@@ -83,7 +84,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
   // Quando o prop `product` muda (por ex. abrir para editar), preenche o formulário.
   useEffect(() => {
     if (product) {
-      setFormData(product); // preenche com dados existentes
+      setFormData({
+        ...product,
+        quantidadeVenda: product.quantidadeVenda ?? 1,
+      }); // preenche com dados existentes
     } else {
       // limpa para novo produto
       setFormData({
@@ -94,6 +98,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
         imageUrl: "",
         stock: 0,
         minStock: 0,
+        quantidadeVenda: 1,
       });
     }
   }, [product, categories]);
@@ -111,7 +116,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
       [name]:
         name === "price" || name === "priceRaw"
           ? parseFloat(value)
-          : name === "stock" || name === "minStock"
+          : name === "stock" ||
+              name === "minStock" ||
+              name === "quantidadeVenda"
             ? parseInt(value)
             : value,
     }));
@@ -285,6 +292,28 @@ const ProductForm: React.FC<ProductFormProps> = ({
             />
             <p className="mt-1 text-xs text-stone-500">
               Quantidade disponível em estoque
+            </p>
+          </div>
+          <div>
+            <label
+              htmlFor="quantidadeVenda"
+              className="block text-sm font-medium text-stone-700"
+            >
+              Quantidade de Venda
+            </label>
+            <input
+              type="number"
+              name="quantidadeVenda"
+              id="quantidadeVenda"
+              value={formData.quantidadeVenda || 1}
+              onChange={handleChange}
+              required
+              min="1"
+              className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-blue-600 focus:ring-blue-200"
+            />
+            <p className="mt-1 text-xs text-stone-500">
+              Exemplo: venda de 30 em 30, 15 em 15, etc. O cliente só pode
+              comprar múltiplos dessa quantidade.
             </p>
           </div>
           <div className="flex justify-end gap-4 pt-4">
