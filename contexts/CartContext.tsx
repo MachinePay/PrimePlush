@@ -88,12 +88,13 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       alert("Produto esgotado!");
       return;
     }
-    const quantidadeVenda = product.quantidadeVenda ?? 1;
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id);
+      const isAdminCustomer = currentUser?.role === "admincustomer";
+      const quantidadeVenda = product.quantidadeVenda ?? 1;
+      const addQuantidade = isAdminCustomer ? 1 : quantidadeVenda;
       if (existingItem) {
-        // Verifica se a quantidade no carrinho já atingiu o estoque disponível
-        const novaQuantidade = existingItem.quantity + quantidadeVenda;
+        const novaQuantidade = existingItem.quantity + addQuantidade;
         if (product.stock !== undefined && novaQuantidade > product.stock) {
           alert(
             `Estoque limitado! Máximo de ${product.stock} unidades disponíveis.`,
@@ -104,7 +105,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
           item.id === product.id ? { ...item, quantity: novaQuantidade } : item,
         );
       }
-      return [...prevItems, { ...product, quantity: quantidadeVenda }];
+      return [...prevItems, { ...product, quantity: addQuantidade }];
     });
   };
 
@@ -127,15 +128,21 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     setCartItems((prevItems) => {
       const item = prevItems.find((i) => i.id === productId);
       if (!item) return prevItems;
+      const isAdminCustomer = currentUser?.role === "admincustomer";
       const quantidadeVenda = item.quantidadeVenda ?? 1;
-      // Ajusta para múltiplos da quantidadeVenda
       let novaQuantidade = Math.max(quantity, 0);
-      if (novaQuantidade > 0) {
+      if (!isAdminCustomer && novaQuantidade > 0) {
         novaQuantidade =
           Math.round(novaQuantidade / quantidadeVenda) * quantidadeVenda;
         if (item.stock !== undefined && novaQuantidade > item.stock) {
           novaQuantidade = item.stock;
         }
+      } else if (
+        isAdminCustomer &&
+        item.stock !== undefined &&
+        novaQuantidade > item.stock
+      ) {
+        novaQuantidade = item.stock;
       }
       if (novaQuantidade <= 0) {
         return prevItems.filter((i) => i.id !== productId);
