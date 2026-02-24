@@ -107,6 +107,7 @@ interface CartSidebarProps {
   onAddToCart: (product: Product) => void;
   observation: string; // <--- Recebe a observação
   setObservation: (obs: string) => void; // <--- Recebe a função para alterar
+  currentUser?: any; // <--- Recebe o usuário atual
 }
 
 const CartSidebar: React.FC<CartSidebarProps> = ({
@@ -122,6 +123,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
   onAddToCart,
   observation,
   setObservation,
+  currentUser,
 }) => {
   const [showObservationSaved, setShowObservationSaved] = useState(false);
   const observationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -175,7 +177,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
   return (
     <div
       className={containerClass}
-      style={isMobile ? undefined : { background: '#e8c88c' }}
+      style={isMobile ? undefined : { background: "#e8c88c" }}
     >
       {/* Header do Carrinho */}
       <div
@@ -204,14 +206,17 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
       </div>
 
       {/* Lista de Itens com Scroll */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-stone-50 min-h-0" style={isMobile ? { paddingBottom: 60 } : {}}>
+      <div
+        className="flex-1 overflow-y-auto p-4 space-y-6 bg-stone-50 min-h-0"
+        style={isMobile ? { paddingBottom: 60 } : {}}
+      >
         {cartItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-stone-400">
             <span className="text-6xl mb-4">🛍️</span>
             <p className="text-xl">Seu carrinho está vazio.</p>
           </div>
-        ) :
-          (<>
+        ) : (
+          <>
             {/* ITENS DO CARRINHO (BOTÕES GRANDES) */}
             {cartItems.map((item) => (
               <div
@@ -235,9 +240,23 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                   >
                     -
                   </button>
-                  <span className="w-10 md:w-12 h-full flex items-center justify-center text-xl font-bold bg-white border-x border-stone-200">
-                    {item.quantity}
-                  </span>
+                  {currentUser?.role === "admincustomer" ? (
+                    <input
+                      type="number"
+                      min={1}
+                      max={item.stock ?? 99}
+                      value={item.quantity}
+                      onChange={(e) => {
+                        const q = parseInt(e.target.value);
+                        if (!isNaN(q) && q > 0) updateQuantity(item.id, q);
+                      }}
+                      className="w-16 md:w-20 h-full text-xl font-bold text-center bg-white border-x border-stone-200"
+                    />
+                  ) : (
+                    <span className="w-10 md:w-12 h-full flex items-center justify-center text-xl font-bold bg-white border-x border-stone-200">
+                      {item.quantity}
+                    </span>
+                  )}
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
                     className="w-12 md:w-14 h-full flex items-center justify-center bg-blue-600 text-white font-bold text-2xl hover:bg-blue-700 transition-colors active:bg-blue-800"
@@ -573,7 +592,10 @@ const MenuPage: React.FC = () => {
   }, [dynamicCategories, categorizedMenu]);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden font-sans" style={{ background: '#FFF6E5' }}>
+    <div
+      className="flex h-screen w-full overflow-hidden font-sans"
+      style={{ background: "#FFF6E5" }}
+    >
       {/* 1. SIDEBAR ESQUERDA */}
       <CategorySidebar
         categories={displayCategories} // 🆕 Usa categorias dinâmicas ordenadas
@@ -686,6 +708,7 @@ const MenuPage: React.FC = () => {
           onAddToCart={addToCart}
           observation={observation}
           setObservation={setObservation}
+          currentUser={currentUser}
         />
       </div>
 
@@ -710,6 +733,7 @@ const MenuPage: React.FC = () => {
             onAddToCart={addToCart}
             observation={observation}
             setObservation={setObservation}
+            currentUser={currentUser}
           />
         </>
       )}
