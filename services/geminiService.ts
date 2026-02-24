@@ -43,7 +43,7 @@ export const getMenuSuggestion = async (
   const prompt = `
 Você é um atendente de loja de pelúcias online. Fale diretamente com ${clientName} de forma calorosa, simpática e profissional.
 
-Catálogo atual do site: ${menu.map((p) => `${p.name} (R$ ${p.price.toFixed(2)})`).join(", ")}
+Catálogo atual do site: ${menu.map((p) => `${p.name} (R$ ${Number(p.price).toFixed(2)})`).join(", ")}
 
 Carrinho atual: ${cartDetails || "vazio"}
 
@@ -125,7 +125,7 @@ export const getDynamicCartSuggestion = async (
   const prompt = `
 Você é um atendente de loja de pelúcias online falando com ${clientName}.
 
-Catálogo atual do site: ${menu.map((p) => `${p.name} (R$ ${p.price.toFixed(2)})`).join(", ")}
+Catálogo atual do site: ${menu.map((p) => `${p.name} (R$ ${Number(p.price).toFixed(2)})`).join(", ")}
 
 Carrinho: ${cartNames}
 
