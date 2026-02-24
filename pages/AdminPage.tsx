@@ -650,7 +650,10 @@ const AdminPage: React.FC = () => {
           </thead>
           <tbody className="bg-white divide-y divide-stone-200">
             {menu.map((product) => (
-              <tr key={product.id} className="hover:bg-stone-50">
+              <tr
+                key={product.id}
+                className={`hover:bg-stone-50 ${product.active === false ? "opacity-60" : ""}`}
+              >
                 <td className="px-2 sm:px-4 py-2 whitespace-nowrap">
                   <div className="flex items-center gap-2 sm:gap-3">
                     <img
@@ -661,6 +664,11 @@ const AdminPage: React.FC = () => {
                     <div>
                       <div className="text-xs sm:text-sm font-bold text-stone-900">
                         {product.name}
+                        {product.active === false && (
+                          <span className="ml-2 text-xs text-yellow-700 font-bold">
+                            (Inativo)
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
