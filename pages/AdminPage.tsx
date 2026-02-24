@@ -356,16 +356,10 @@ const AdminPage: React.FC = () => {
   const loadProducts = async () => {
     try {
       const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-      const res = await fetch(`${API_URL}/api/menu`, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
+      const res = await authenticatedFetch(`${API_URL}/api/products`);
       if (!res.ok) {
         throw new Error(`Erro ao carregar produtos: ${res.status}`);
       }
-
       const data = await res.json();
       setMenu(data);
 
