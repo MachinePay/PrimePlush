@@ -1,3 +1,4 @@
+import { useAuth } from "../contexts/AuthContext";
 import React, {
   createContext,
   useState,
@@ -82,6 +83,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     - Caso contrário, adiciona o produto com quantity = 1.
     Usa a função de atualização baseada no estado anterior para evitar condições de corrida.
   */
+  const { currentUser } = useAuth();
   const addToCart = (product: Product) => {
     // Validação de estoque
     if ((product.stock ?? 0) === 0) {
