@@ -152,7 +152,7 @@ const OrderHistoryPage: React.FC = () => {
               )}
               <div className="flex flex-wrap justify-between items-end mt-2 gap-2">
                 <div className="text-stone-500 text-xs">
-                  Total: R${order.total?.toFixed(2) ?? "-"}
+                  Total: R${Number(order.total)?.toFixed(2) ?? "-"}
                 </div>
                 {/* Exibe status do pagamento */}
                 {order.paymentType === "presencial" &&
