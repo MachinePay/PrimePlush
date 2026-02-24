@@ -1,7 +1,7 @@
-import { get as apiGet } from '../services/api';
-import { useCart } from '../contexts/CartContext';
+import { get as apiGet } from "../services/api";
+import { useCart } from "../contexts/CartContext";
 import React, { useState, useEffect, useCallback } from "react";
-import { checkPaymentStatus } from '../services/paymentService';
+import { checkPaymentStatus } from "../services/paymentService";
 
 /**
  * Componente de Pagamento Online com MercadoPago
@@ -29,7 +29,6 @@ interface PaymentOnlineProps {
 type PaymentMethod = "checkout-pro" | "pix" | "card";
 
 export default function PaymentOnline(props: PaymentOnlineProps) {
-
   const { clearCart } = useCart();
 
   // Chave pública do Mercado Pago fornecida pelo usuário
@@ -59,8 +58,10 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
     onSuccess,
     onError,
   } = props;
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
-  const [cardStep, setCardStep] = useState<'form' | 'confirm'>("form");
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(
+    null,
+  );
+  const [cardStep, setCardStep] = useState<"form" | "confirm">("form");
   const [cardData, setCardData] = useState<any>(null);
   const [installmentsOptions, setInstallmentsOptions] = useState<any[]>([]);
   const [selectedInstallments, setSelectedInstallments] = useState<number>(1);
@@ -70,25 +71,23 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-
-
   // Polling do status do pedido pelo orderId
   const startOrderStatusPolling = useCallback((orderId: string) => {
     let intervalId: any = null;
     intervalId = setInterval(async () => {
       try {
         const order = await apiGet(`/api/orders/${orderId}`);
-        if (order && order.paymentStatus === 'paid') {
-          setPaymentStatusMsg('Pedido aprovado!');
+        if (order && order.paymentStatus === "paid") {
+          setPaymentStatusMsg("Pedido aprovado!");
           setShowPaymentStatus(true);
-          setBoxColor('green');
+          setBoxColor("green");
           setError(""); // Limpa erro ao aprovar
           clearInterval(intervalId);
-          localStorage.removeItem('pendingPaymentId');
+          localStorage.removeItem("pendingPaymentId");
         } else {
-          setPaymentStatusMsg('pedido em andamento: realize o pagamento');
+          setPaymentStatusMsg("pedido em andamento: realize o pagamento");
           setShowPaymentStatus(true);
-          setBoxColor('orange');
+          setBoxColor("orange");
         }
       } catch (e) {
         // Se der erro, mantém mensagem anterior
@@ -97,7 +96,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
   }, []);
 
   // Estado para cor da box
-  const [boxColor, setBoxColor] = useState<'orange' | 'green'>('orange');
+  const [boxColor, setBoxColor] = useState<"orange" | "green">("orange");
 
   const handleCheckoutPro = async () => {
     setLoading(true);
@@ -123,7 +122,9 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
       const data = await response.json();
 
       if (!data.initPoint) {
-        setError('Não foi possível obter o link de pagamento do Mercado Pago. Tente novamente.');
+        setError(
+          "Não foi possível obter o link de pagamento do Mercado Pago. Tente novamente.",
+        );
         setShowPaymentStatus(false);
         return;
       }
@@ -134,7 +135,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
         window.location.href = data.initPoint;
       } else {
         // Desktop: abre nova aba
-        window.open(data.initPoint, '_blank', 'noopener,noreferrer');
+        window.open(data.initPoint, "_blank", "noopener,noreferrer");
       }
 
       // Exibe mensagem de pedido em andamento
@@ -143,7 +144,7 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
 
       // Inicia polling para verificar status do pedido
       if (orderId) {
-        localStorage.setItem('pendingOrderId', orderId);
+        localStorage.setItem("pendingOrderId", orderId);
         startOrderStatusPolling(orderId);
       }
       // (Removido: useEffect não pode ser chamado aqui)
@@ -154,8 +155,6 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
       setLoading(false);
     }
   };
-
-
 
   // Removeu verificação por query string, agora polling é feito após iniciar pagamento
 
@@ -169,8 +168,6 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
       </div>
     );
   }
-
-
 
   if (!selectedMethod) {
     return (
@@ -191,18 +188,26 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
           <div className="mt-6 flex flex-col items-center">
             <div
               className={
-                boxColor === 'green'
-                  ? 'bg-green-500 text-white font-bold px-6 py-4 rounded-xl shadow-lg text-center text-lg mb-4 flex flex-col items-center'
-                  : 'bg-orange-500 text-white font-bold px-6 py-4 rounded-xl shadow-lg text-center text-lg animate-pulse mb-4'
+                boxColor === "green"
+                  ? "bg-green-500 text-white font-bold px-6 py-4 rounded-xl shadow-lg text-center text-lg mb-4 flex flex-col items-center"
+                  : "bg-orange-500 text-white font-bold px-6 py-4 rounded-xl shadow-lg text-center text-lg animate-pulse mb-4"
               }
-              style={{ boxShadow: boxColor === 'green' ? '0 4px 16px rgba(34,197,94,0.3)' : '0 4px 16px rgba(255,140,0,0.3)' }}
+              style={{
+                boxShadow:
+                  boxColor === "green"
+                    ? "0 4px 16px rgba(34,197,94,0.3)"
+                    : "0 4px 16px rgba(255,140,0,0.3)",
+              }}
             >
               {paymentStatusMsg}
-              {boxColor === 'green' && orderId && (
+              {boxColor === "green" && orderId && (
                 <button
                   className="mt-4 bg-white text-green-700 border border-green-500 font-bold py-2 px-6 rounded-xl shadow-md transition-all hover:bg-green-50"
                   onClick={() => {
-                    window.open(`${API_URL}/api/orders/${orderId}/receipt-pdf`, '_blank');
+                    window.open(
+                      `${API_URL}/api/orders/${orderId}/receipt-pdf`,
+                      "_blank",
+                    );
                   }}
                 >
                   Gerar PDF
@@ -212,22 +217,24 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
             <button
               className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-xl shadow-md transition-all"
               onClick={() => {
-                if (boxColor === 'green') clearCart();
-                window.location.href = '/';
+                if (boxColor === "green") clearCart();
+                window.location.href = "/";
               }}
             >
               Voltar para página inicial
             </button>
           </div>
         )}
-        {error && typeof error === 'string' && !error.includes('Minified React error #321') && (
-          <div className="mt-4 bg-red-50 border-2 border-red-200 text-red-600 p-4 rounded-lg text-center text-sm">
-            {error}
-          </div>
-        )}
+        {error &&
+          typeof error === "string" &&
+          !error.includes("Minified React error #321") && (
+            <div className="mt-4 bg-red-50 border-2 border-red-200 text-red-600 p-4 rounded-lg text-center text-sm">
+              {error}
+            </div>
+          )}
         <div className="mt-6 text-center">
           <p className="text-2xl font-bold text-purple-600">
-            Total: R$ {total.toFixed(2)}
+            Total: R$ {Number(total).toFixed(2)}
           </p>
           {orderId && (
             <p className="text-sm text-gray-500 mt-2">
@@ -238,8 +245,6 @@ export default function PaymentOnline(props: PaymentOnlineProps) {
       </div>
     );
   }
-
-
 
   // Removeu o fluxo customizado de cartão de crédito. Agora só usa Checkout Pro.
 }

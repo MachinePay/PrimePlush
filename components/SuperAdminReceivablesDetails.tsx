@@ -42,10 +42,10 @@ const SuperAdminReceivablesDetails: React.FC<
       </h2>
       <div className="mb-4">
         <span className="font-semibold">Total já recebido:</span> R$
-        {(Number(alreadyReceived) || 0).toFixed(2)}
+        {Number(alreadyReceived).toFixed(2)}
         <br />
         <span className="font-semibold">Total recebido (histórico):</span> R$
-        {(Number(totalReceived) || 0).toFixed(2)}
+        {Number(totalReceived).toFixed(2)}
       </div>
       {safeOrders.length === 0 && <div>Nenhum pedido encontrado.</div>}
       {safeOrders.map((order) => (
@@ -80,7 +80,7 @@ const SuperAdminReceivablesDetails: React.FC<
           <div className="mb-2">
             Total do pedido: R$ {(Number(order.total) || 0).toFixed(2)} | Valor
             a receber deste pedido:{" "}
-            <b>R$ {(Number(order.orderValueToReceive) || 0).toFixed(2)}</b>
+            <b>R$ {Number(order.orderValueToReceive).toFixed(2)}</b>
           </div>
           <table className="w-full text-xs mb-2">
             <thead>
@@ -97,14 +97,14 @@ const SuperAdminReceivablesDetails: React.FC<
                 <tr key={idx} className="border-b">
                   <td className="py-1 px-2">{item.name}</td>
                   <td className="py-1 px-2">
-                    R$ {(Number(item.price) || 0).toFixed(2)}
+                    R$ {Number(item.price).toFixed(2)}
                   </td>
                   <td className="py-1 px-2">
-                    R$ {(Number(item.precoBruto) || 0).toFixed(2)}
+                    R$ {Number(item.precoBruto).toFixed(2)}
                   </td>
                   <td className="py-1 px-2">{item.quantity}</td>
                   <td className="py-1 px-2">
-                    R$ {(Number(item.valueToReceive) || 0).toFixed(2)}
+                    R$ {Number(item.valueToReceive).toFixed(2)}
                   </td>
                 </tr>
               ))}

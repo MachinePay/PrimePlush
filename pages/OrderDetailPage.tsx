@@ -77,7 +77,7 @@ const OrderDetailPage: React.FC = () => {
         </div>
         <div className="mb-2 text-stone-700">
           <span className="font-semibold">Total:</span> R$
-          {order.total?.toFixed(2) ?? "-"}
+          {Number(order.total).toFixed(2) ?? "-"}
         </div>
         <div className="mb-2 text-stone-700">
           <span className="font-semibold">Itens:</span>

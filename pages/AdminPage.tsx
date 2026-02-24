@@ -674,10 +674,10 @@ const AdminPage: React.FC = () => {
                 </td>
                 <td className="px-2 sm:px-4 py-2 whitespace-nowrap">
                   <div className="text-xs sm:text-sm text-stone-900">
-                    R${product.price?.toFixed(2) ?? "-"}
+                    R${Number(product.price)?.toFixed(2) ?? "-"}
                   </div>
                   <div className="text-[10px] sm:text-xs text-stone-500">
-                    Bruto: R${product.priceRaw?.toFixed(2) ?? "-"}
+                    Bruto: R${Number(product.priceRaw)?.toFixed(2) ?? "-"}
                   </div>
                 </td>
                 <td className="px-2 sm:px-4 py-2 whitespace-nowrap">

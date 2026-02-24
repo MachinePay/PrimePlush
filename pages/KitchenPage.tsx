@@ -154,7 +154,7 @@ const OrderHistoryPage: React.FC = () => {
                 </div>
               )}
               <div className="text-right text-stone-500 text-xs">
-                Total: R${order.total?.toFixed(2) ?? "-"}
+                Total: R${Number(order.total)?.toFixed(2) ?? "-"}
               </div>
             </div>
           ))}
