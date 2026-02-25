@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "../assets/animated-gradient.css";
 import { useNavigate } from "react-router-dom";
-import Swal from "sweetalert2";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 
@@ -95,14 +94,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   );
 };
 
-// --- Componente Login por CPF ---
+// --- Componente Login por Documento (CPF/CNPJ) ---
 interface CPFLoginProps {
   onBack: () => void;
   onLoginSuccess: (user: User) => void;
 }
 
 const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
-  const [cpf, setCpf] = useState("");
+  const [documentInput, setDocumentInput] = useState("");
+  const [cleanedDoc, setCleanedDoc] = useState("");
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
@@ -111,67 +111,68 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [requiresRegistration, setRequiresRegistration] = useState(false);
-  const [cleanedCPF, setCleanedCPF] = useState("");
 
-  const formatCPF = (value: string) => {
+  // Formata dinamicamente entre CPF e CNPJ
+  const formatDocument = (value: string) => {
     const cleaned = value.replace(/\D/g, "");
-    const limited = cleaned.slice(0, 11);
-    return limited
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    if (cleaned.length <= 11) {
+      return cleaned
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    } else {
+      return cleaned
+        .slice(0, 14)
+        .replace(/^(\d{2})(\d)/, "$1.$2")
+        .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+        .replace(/\.(\d{3})(\d)/, ".$1/$2")
+        .replace(/(\d{4})(\d)/, "$1-$2");
+    }
   };
 
-  const handleCPFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCpf(formatCPF(e.target.value));
+  const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatDocument(e.target.value);
+    setDocumentInput(formatted);
     setError("");
     setRequiresRegistration(false);
-    setName("");
   };
 
-  // PASSO 1: Verificar se CPF existe
-  const checkCPF = async (e: React.FormEvent) => {
+  // PASSO 1: Verificar se Documento existe
+  const checkDocument = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanCPF = cpf.replace(/\D/g, "");
+    const clean = documentInput.replace(/\D/g, "");
 
-    if (!cleanCPF || cleanCPF.length !== 11) {
-      setError("CPF inválido. Digite 11 dígitos.");
+    if (clean.length !== 11 && clean.length !== 14) {
+      setError("Documento inválido. Digite 11 dígitos (CPF) ou 14 (CNPJ).");
       return;
     }
 
     setIsLoading(true);
     setError("");
-    setCleanedCPF(cleanCPF);
+    setCleanedDoc(clean);
 
     try {
       const response = await fetch(
         `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/users/check-cpf`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ cpf: cleanCPF }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cpf: clean }), // Mantendo a chave 'cpf' para compatibilidade com seu backend atual
         },
       );
 
-      if (!response.ok) throw new Error("Erro ao verificar CPF");
+      if (!response.ok) throw new Error("Erro ao verificar documento");
 
       const data = await response.json();
 
       if (data.exists && data.user) {
-        // Se o seu backend exige senha para usuários existentes:
         setUserFound(data.user);
         setShowPassword(true);
-
-        // OPCIONAL: Se quiser login direto sem senha para clientes:
-        // await Swal.fire({ title: "Bem-vindo!", icon: "success", timer: 2000 });
-        // onLoginSuccess(data.user);
       } else if (data.requiresRegistration) {
-        navigate(`/register?cpf=${cleanCPF}`);
+        setRequiresRegistration(true);
       }
     } catch (err) {
-      setError("Erro ao verificar CPF. Tente novamente.");
+      setError("Erro ao verificar documento. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
@@ -194,16 +195,14 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
         `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/users/register`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ cpf: cleanedCPF, name: name.trim() }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cpf: cleanedDoc, name: name.trim() }),
         },
       );
 
       if (!response.ok) {
         if (response.status === 409) {
-          setError("CPF já cadastrado.");
+          setError("Documento já cadastrado.");
           setRequiresRegistration(false);
           return;
         }
@@ -232,7 +231,7 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cpf: cleanedCPF, password }),
+          body: JSON.stringify({ cpf: cleanedDoc, password }),
         },
       );
 
@@ -265,22 +264,22 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
               ? "Complete seu cadastro para continuar"
               : showPassword
                 ? `Olá, ${userFound?.name}!`
-                : "Digite seu CPF para começar"}
+                : "Digite seu CPF ou CNPJ para começar"}
           </p>
         </div>
 
-        {/* FLUXO CPF */}
+        {/* FLUXO CPF/CNPJ */}
         {!requiresRegistration && !showPassword && (
-          <form onSubmit={checkCPF} className="space-y-6">
+          <form onSubmit={checkDocument} className="space-y-6">
             <div>
               <label className="block text-sm font-semibold text-stone-700 mb-2">
-                CPF
+                CPF ou CNPJ
               </label>
               <input
                 type="text"
-                value={cpf}
-                onChange={handleCPFChange}
-                placeholder="000.000.000-00"
+                value={documentInput}
+                onChange={handleDocChange}
+                placeholder="000.000.000-00 ou 00.000.000/0000-00"
                 className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-blue-600 transition-colors text-lg"
                 autoFocus
               />
@@ -288,7 +287,7 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
             </div>
             <button
               type="submit"
-              disabled={isLoading || cpf.replace(/\D/g, "").length !== 11}
+              disabled={isLoading || (documentInput.replace(/\D/g, "").length !== 11 && documentInput.replace(/\D/g, "").length !== 14)}
               className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300"
             >
               {isLoading ? "Verificando..." : "Continuar"}
@@ -315,14 +314,18 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
             </div>
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg"
+              disabled={isLoading}
+              className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Entrar
+              {isLoading ? "Entrando..." : "Entrar"}
             </button>
             <button
               type="button"
-              onClick={() => setShowPassword(false)}
-              className="w-full text-sm text-stone-500"
+              onClick={() => {
+                setShowPassword(false);
+                setError("");
+              }}
+              className="w-full text-sm text-stone-500 hover:text-stone-700"
             >
               ← Voltar
             </button>
@@ -348,14 +351,18 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
             </div>
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg"
+              disabled={isLoading}
+              className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Cadastrar e Iniciar
+              {isLoading ? "Cadastrando..." : "Cadastrar e Iniciar"}
             </button>
             <button
               type="button"
-              onClick={() => setRequiresRegistration(false)}
-              className="w-full text-sm text-stone-500"
+              onClick={() => {
+                setRequiresRegistration(false);
+                setError("");
+              }}
+              className="w-full text-sm text-stone-500 hover:text-stone-700"
             >
               ← Voltar
             </button>
