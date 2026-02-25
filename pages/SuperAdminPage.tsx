@@ -44,6 +44,7 @@ const SuperAdminPage: React.FC = () => {
   const [error, setError] = useState("");
   const [password, setPassword] = useState("");
   const [loggedIn, setLoggedIn] = useState(false);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (loggedIn) {
@@ -98,6 +99,14 @@ const SuperAdminPage: React.FC = () => {
     setLoading(false);
   };
 
+  const handleToggleOrder = (orderId: string) => {
+    setSelectedOrderIds((prev) =>
+      prev.includes(orderId)
+        ? prev.filter((id) => id !== orderId)
+        : [...prev, orderId],
+    );
+  };
+
   if (!loggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
@@ -139,14 +148,8 @@ const SuperAdminPage: React.FC = () => {
   }
 
   const handleMarkReceived = async () => {
-    if (
-      !data ||
-      !data.orders ||
-      data.orders.length === 0 ||
-      data.stats.totalToReceive <= 0
-    )
-      return;
-    const pendingOrderIds = data.orders.map((order) => order.id);
+    if (!data || !data.orders || selectedOrderIds.length === 0) return;
+    const pendingOrderIds = selectedOrderIds;
     console.log("[FRONTEND] orderIds enviados ao backend:", pendingOrderIds);
     if (
       !window.confirm(
@@ -224,9 +227,9 @@ const SuperAdminPage: React.FC = () => {
               <button
                 className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 sm:px-6 rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg hover:shadow-xl w-full sm:w-auto"
                 onClick={handleMarkReceived}
-                disabled={loading || data.stats.totalToReceive <= 0}
+                disabled={loading || selectedOrderIds.length === 0}
               >
-                Recebido
+                Receber selecionados
               </button>
             </div>
             <div className="overflow-x-auto rounded-xl">
@@ -236,6 +239,8 @@ const SuperAdminPage: React.FC = () => {
                 totalReceived={data.stats.totalReceived}
                 alreadyReceived={data.stats.alreadyReceived}
                 receivedOrderIds={receivedOrderIds}
+                selectedOrderIds={selectedOrderIds}
+                onToggleOrder={handleToggleOrder}
               />
             </div>
             {/* Histórico de repasses */}

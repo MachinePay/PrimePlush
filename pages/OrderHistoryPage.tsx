@@ -205,6 +205,36 @@ const OrderHistoryPage: React.FC = () => {
                     ? "Entregue ao Cliente ✔"
                     : "Entregar ao Cliente"}
                 </button>
+                {/* Botão de deletar com dupla confirmação */}
+                {order.paymentStatus === "pending" && (
+                  <button
+                    className="px-3 py-1 rounded bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition ml-2"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (
+                        window.confirm(
+                          "Tem certeza que deseja deletar este pedido? Esta ação não pode ser desfeita.",
+                        ) &&
+                        window.confirm(
+                          "Confirme novamente: deseja realmente deletar este pedido?",
+                        )
+                      ) {
+                        const resp = await authenticatedFetch(
+                          `${BACKEND_URL}/api/orders/${order.id}`,
+                          { method: "DELETE" },
+                        );
+                        if (resp.ok) {
+                          fetchOrders();
+                        } else {
+                          alert("Erro ao deletar pedido");
+                        }
+                      }
+                    }}
+                    title="Deletar pedido (apenas se não pago)"
+                  >
+                    Deletar
+                  </button>
+                )}
               </div>
             </div>
           ))}

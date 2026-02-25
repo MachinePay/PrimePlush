@@ -28,6 +28,7 @@ import FloatingCartButton from "./components/FloatingCartButton"; // New import
 import type { UserRole } from "./types";
 
 import OrderDetailPage from "./pages/OrderDetailPage";
+import CustomerOrdersPage from "./pages/CustomerOrdersPage";
 
 // 1. Configuração do Cliente React Query
 const queryClient = new QueryClient({
@@ -190,6 +191,16 @@ const RouterBody: React.FC = () => {
               >
                 <OrderDetailPage />
               </RoleProtectedRoute>
+            }
+          />
+
+          {/* Rota protegida para '/meus-pedidos' */}
+          <Route
+            path="/meus-pedidos"
+            element={
+              <ProtectedRoute>
+                <CustomerOrdersPage />
+              </ProtectedRoute>
             }
           />
 

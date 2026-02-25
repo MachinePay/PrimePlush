@@ -90,7 +90,13 @@ const Header: React.FC = () => {
                   title="SuperAdmin"
                 >
                   <span className="superadmin-btn-label">SuperAdmin</span>
-                  <span className="superadmin-btn-icon" role="img" aria-label="SuperAdmin">👑</span>
+                  <span
+                    className="superadmin-btn-icon"
+                    role="img"
+                    aria-label="SuperAdmin"
+                  >
+                    👑
+                  </span>
                 </NavLink>
               </>
             )}
@@ -122,11 +128,31 @@ const Header: React.FC = () => {
                   >
                     <span className="edit-btn-label">Editar meus dados</span>
                     <span className="edit-btn-icon" style={{ display: "none" }}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13z" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="18"
+                        height="18"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13z"
+                        />
                       </svg>
                     </span>
                   </button>
+                  <NavLink
+                    to="/meus-pedidos"
+                    className="bg-blue-100 text-blue-700 font-bold py-1 px-3 rounded-lg ml-2 hover:bg-blue-200 transition-colors shadow-md text-xs flex items-center gap-2"
+                    title="Meus Pedidos"
+                  >
+                    <span>📦</span>
+                    <span>Meus Pedidos</span>
+                  </NavLink>
                   <button
                     onClick={handleLogout}
                     className="text-white hover:text-blue-600 hover:bg-blue-100 p-2 rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"

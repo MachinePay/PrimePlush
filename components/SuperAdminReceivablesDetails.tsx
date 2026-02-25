@@ -23,6 +23,8 @@ interface SuperAdminReceivablesDetailsProps {
   totalReceived: number;
   alreadyReceived: number;
   receivedOrderIds?: string[];
+  selectedOrderIds?: string[];
+  onToggleOrder?: (orderId: string) => void;
 }
 
 const SuperAdminReceivablesDetails: React.FC<
@@ -33,6 +35,8 @@ const SuperAdminReceivablesDetails: React.FC<
   totalReceived,
   alreadyReceived,
   receivedOrderIds = [],
+  selectedOrderIds = [],
+  onToggleOrder = () => {},
 }) => {
   const safeOrders = Array.isArray(orders) ? orders : [];
   return (
@@ -40,12 +44,40 @@ const SuperAdminReceivablesDetails: React.FC<
       <h2 className="text-2xl font-bold text-purple-800 mb-4">
         Pedidos detalhados para cálculo do valor a receber
       </h2>
-      <div className="mb-4">
+      <div className="mb-4 flex items-center gap-4">
         <span className="font-semibold">Total já recebido:</span> R$
         {Number(alreadyReceived).toFixed(2)}
         <br />
         <span className="font-semibold">Total recebido (histórico):</span> R$
         {Number(totalReceived).toFixed(2)}
+        {safeOrders.length > 0 && (
+          <button
+            className="ml-4 px-3 py-2 bg-purple-600 text-white rounded font-bold text-xs hover:bg-purple-700 transition"
+            onClick={() => {
+              if (selectedOrderIds.length === safeOrders.length) {
+                onToggleOrder &&
+                  safeOrders.forEach((order) => {
+                    if (selectedOrderIds.includes(order.id))
+                      onToggleOrder(order.id);
+                  });
+              } else {
+                onToggleOrder &&
+                  safeOrders.forEach((order) => {
+                    if (
+                      !selectedOrderIds.includes(order.id) &&
+                      !receivedOrderIds.includes(order.id)
+                    )
+                      onToggleOrder(order.id);
+                  });
+              }
+            }}
+            type="button"
+          >
+            {selectedOrderIds.length === safeOrders.length
+              ? "Desmarcar todos"
+              : "Selecionar todos"}
+          </button>
+        )}
       </div>
       {safeOrders.length === 0 && <div>Nenhum pedido encontrado.</div>}
       {safeOrders.map((order) => (
@@ -53,7 +85,14 @@ const SuperAdminReceivablesDetails: React.FC<
           key={order.id}
           className={`order-card border rounded-lg p-4 mb-6 ${receivedOrderIds.includes(order.id) ? "bg-green-100 border-green-400" : "bg-purple-50"}`}
         >
-          <div className="mb-2">
+          <div className="mb-2 flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={selectedOrderIds?.includes(order.id) || false}
+              onChange={() => onToggleOrder && onToggleOrder(order.id)}
+              disabled={receivedOrderIds.includes(order.id)}
+              className="accent-purple-600 w-5 h-5"
+            />
             <b>Pedido #{order.id}</b> | Cliente: {order.userName || "-"} | Data:{" "}
             {new Date(order.timestamp).toLocaleString()}
             {order.paymentMethod && (
