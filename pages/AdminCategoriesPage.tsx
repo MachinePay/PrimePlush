@@ -275,5 +275,5 @@ const AdminCategoriesPage: React.FC = () => {
     </div>
   );
 };
-
+//atualizando
 export default AdminCategoriesPage;
