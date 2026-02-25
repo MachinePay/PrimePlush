@@ -243,7 +243,10 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                 {/* CONTROLES DE QUANTIDADE GRANDES */}
                 <div className="flex items-center bg-stone-100 rounded-xl border border-stone-300 overflow-hidden h-12 md:h-14 shadow-inner">
                   <button
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    onClick={() => {
+                      const step = item.quantidadeVenda ?? 1;
+                      updateQuantity(item.id, item.quantity - step);
+                    }}
                     className="w-12 md:w-14 h-full flex items-center justify-center text-stone-600 font-bold text-2xl hover:bg-blue-100 hover:text-blue-700 transition-colors active:bg-blue-200"
                   >
                     -
@@ -266,7 +269,10 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                     </span>
                   )}
                   <button
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    onClick={() => {
+                      const step = item.quantidadeVenda ?? 1;
+                      updateQuantity(item.id, item.quantity + step);
+                    }}
                     className="w-12 md:w-14 h-full flex items-center justify-center bg-blue-600 text-white font-bold text-2xl hover:bg-blue-700 transition-colors active:bg-blue-800"
                   >
                     +
