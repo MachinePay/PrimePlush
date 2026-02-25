@@ -36,6 +36,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     minStock: 0,
     quantidadeVenda: 1,
   });
+  const [imageUrls, setImageUrls] = useState<string[]>([""]);
 
   // 🆕 Estado para categorias dinâmicas
   const [categories, setCategories] = useState<Array<{ name: string }>>([]);
@@ -84,10 +85,17 @@ const ProductForm: React.FC<ProductFormProps> = ({
   // Quando o prop `product` muda (por ex. abrir para editar), preenche o formulário.
   useEffect(() => {
     if (product) {
+      const existingImages =
+        Array.isArray(product.images) && product.images.length > 0
+          ? product.images
+          : product.imageUrl
+            ? [product.imageUrl]
+            : [""];
       setFormData({
         ...product,
         quantidadeVenda: product.quantidadeVenda ?? 1,
       }); // preenche com dados existentes
+      setImageUrls(existingImages);
     } else {
       // limpa para novo produto
       setFormData({
@@ -100,6 +108,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
         minStock: 0,
         quantidadeVenda: 1,
       });
+      setImageUrls([""]);
     }
   }, [product, categories]);
 
@@ -127,12 +136,36 @@ const ProductForm: React.FC<ProductFormProps> = ({
   // Ao submeter, cria um objeto Product final e chama onSave.
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const normalizedImages = imageUrls
+      .map((url) => url.trim())
+      .filter((url) => url.length > 0);
+    const primaryImage =
+      normalizedImages[0] ||
+      formData.imageUrl ||
+      "https://picsum.photos/400/300";
+
     const finalProduct: Product = {
       ...formData,
       id: formData.id || "",
-      imageUrl: formData.imageUrl || "https://picsum.photos/400/300",
+      imageUrl: primaryImage,
+      images: normalizedImages.length > 0 ? normalizedImages : [primaryImage],
     };
     onSave(finalProduct); // informa o componente pai sobre o produto salvo
+  };
+
+  const updateImageAt = (index: number, value: string) => {
+    setImageUrls((prev) => prev.map((url, i) => (i === index ? value : url)));
+  };
+
+  const addImageField = () => {
+    setImageUrls((prev) => [...prev, ""]);
+  };
+
+  const removeImageField = (index: number) => {
+    setImageUrls((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length > 0 ? next : [""];
+    });
   };
 
   return (
@@ -255,22 +288,43 @@ const ProductForm: React.FC<ProductFormProps> = ({
           </div>
           <div>
             <label
-              htmlFor="imageUrl"
+              htmlFor="imageUrl-0"
               className="block text-sm font-medium text-stone-700"
             >
-              URL da Imagem
+              URLs das Imagens
             </label>
-            <input
-              type="url"
-              name="imageUrl"
-              id="imageUrl"
-              value={formData.imageUrl || ""}
-              onChange={handleChange}
-              placeholder="https://exemplo.com/imagem.jpg"
-              className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-            />
+            <div className="mt-1 space-y-2">
+              {imageUrls.map((url, index) => (
+                <div key={`image-${index}`} className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    id={`imageUrl-${index}`}
+                    value={url}
+                    onChange={(e) => updateImageAt(index, e.target.value)}
+                    placeholder="https://exemplo.com/imagem.jpg"
+                    className="block w-full rounded-md border-stone-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                  />
+                  {imageUrls.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeImageField(index)}
+                      className="px-3 py-2 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-semibold"
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addImageField}
+              className="mt-2 text-sm font-semibold text-blue-700 hover:text-blue-800"
+            >
+              + Adicionar outra imagem
+            </button>
             <p className="mt-1 text-xs text-stone-500">
-              URL da imagem do produto (obrigatório)
+              A primeira URL será a imagem principal do produto.
             </p>
           </div>
           <div>
@@ -681,7 +735,7 @@ const AdminPage: React.FC = () => {
                   <div className="flex items-center gap-2 sm:gap-3">
                     <img
                       className="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover border border-stone-200"
-                      src={product.imageUrl}
+                      src={product.images?.[0] || product.imageUrl}
                       alt={product.name}
                     />
                     <div>

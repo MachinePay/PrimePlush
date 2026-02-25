@@ -20,15 +20,18 @@ interface ProductCardProps {
   product: Product;
   onAddToCart: (product: Product) => void;
   quantityInCart?: number;
+  onOpenImage: (product: Product) => void;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onAddToCart,
   quantityInCart = 0,
+  onOpenImage,
 }) => {
   // Lógica ajustada: Se for null é ilimitado. Se for 0 é esgotado.
   const isOutOfStock = product.stock === 0;
+  const primaryImage = product.images?.[0] || product.imageUrl;
 
   return (
     <div
@@ -45,12 +48,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* Mídia (Imagem ou Vídeo) */}
       <div className="relative h-40 md:h-52 bg-gray-100">
-        {product.imageUrl ? (
+        {primaryImage ? (
           <img
-            src={product.imageUrl}
+            src={primaryImage}
             alt={product.name}
-            className="w-full h-full object-cover hover:scale-105 transition-transform"
+            className="w-full h-full object-cover hover:scale-105 transition-transform cursor-zoom-in"
             loading="lazy"
+            onClick={() => onOpenImage(product)}
           />
         ) : null}
       </div>
@@ -451,6 +455,17 @@ const MenuPage: React.FC = () => {
   const [isSuggestionLoading, setIsSuggestionLoading] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  const [imageViewer, setImageViewer] = useState<{
+    isOpen: boolean;
+    images: string[];
+    currentIndex: number;
+    productName: string;
+  }>({
+    isOpen: false,
+    images: [],
+    currentIndex: 0,
+    productName: "",
+  });
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   // 🆕 Estado para categorias dinâmicas
@@ -470,8 +485,92 @@ const MenuPage: React.FC = () => {
     observation,
     setObservation,
   } = useCart();
+  const touchStartXRef = useRef<number | null>(null);
+  const didSwipeRef = useRef(false);
+  const [isImageZoomed, setIsImageZoomed] = useState(false);
 
   const navigate = useNavigate();
+
+  const getProductImages = (product: Product): string[] => {
+    if (Array.isArray(product.images) && product.images.length > 0) {
+      return product.images.filter((url) => typeof url === "string" && url);
+    }
+    if (product.imageUrl) {
+      return [product.imageUrl];
+    }
+    return [];
+  };
+
+  const openImageViewer = (product: Product) => {
+    const images = getProductImages(product);
+    if (images.length === 0) return;
+    setIsImageZoomed(false);
+    setImageViewer({
+      isOpen: true,
+      images,
+      currentIndex: 0,
+      productName: product.name,
+    });
+  };
+
+  const closeImageViewer = () => {
+    setIsImageZoomed(false);
+    setImageViewer((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const showNextImage = () => {
+    setIsImageZoomed(false);
+    setImageViewer((prev) => {
+      if (prev.images.length <= 1) return prev;
+      return {
+        ...prev,
+        currentIndex: (prev.currentIndex + 1) % prev.images.length,
+      };
+    });
+  };
+
+  const showPreviousImage = () => {
+    setIsImageZoomed(false);
+    setImageViewer((prev) => {
+      if (prev.images.length <= 1) return prev;
+      return {
+        ...prev,
+        currentIndex:
+          (prev.currentIndex - 1 + prev.images.length) % prev.images.length,
+      };
+    });
+  };
+
+  const handleImageTouchStart = (e: React.TouchEvent<HTMLImageElement>) => {
+    touchStartXRef.current = e.touches[0]?.clientX ?? null;
+    didSwipeRef.current = false;
+  };
+
+  const handleImageTouchEnd = (e: React.TouchEvent<HTMLImageElement>) => {
+    if (touchStartXRef.current === null) return;
+
+    const touchEndX = e.changedTouches[0]?.clientX ?? touchStartXRef.current;
+    const deltaX = touchEndX - touchStartXRef.current;
+    const swipeThreshold = 40;
+
+    if (deltaX <= -swipeThreshold) {
+      didSwipeRef.current = true;
+      showNextImage();
+    } else if (deltaX >= swipeThreshold) {
+      didSwipeRef.current = true;
+      showPreviousImage();
+    }
+
+    touchStartXRef.current = null;
+  };
+
+  const handleExpandedImageClick = () => {
+    if (didSwipeRef.current) {
+      didSwipeRef.current = false;
+      return;
+    }
+    setIsImageZoomed((prev) => !prev);
+  };
 
   const fetchMenuData = async () => {
     try {
@@ -652,6 +751,7 @@ const MenuPage: React.FC = () => {
                         key={product.id}
                         product={product}
                         onAddToCart={addToCart}
+                        onOpenImage={openImageViewer}
                         quantityInCart={
                           cartItems.find((i) => i.id === product.id)
                             ?.quantity || 0
@@ -672,6 +772,7 @@ const MenuPage: React.FC = () => {
                       key={product.id}
                       product={product}
                       onAddToCart={addToCart}
+                      onOpenImage={openImageViewer}
                       quantityInCart={
                         cartItems.find((i) => i.id === product.id)?.quantity ||
                         0
@@ -750,6 +851,56 @@ const MenuPage: React.FC = () => {
             currentUser={currentUser}
           />
         </>
+      )}
+
+      {imageViewer.isOpen && (
+        <div
+          className="fixed inset-0 z-[300] bg-black/75 flex items-center justify-center p-4"
+          onClick={closeImageViewer}
+        >
+          <div
+            className="max-w-4xl max-h-[90vh] w-full flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={imageViewer.images[imageViewer.currentIndex]}
+              alt={`${imageViewer.productName} - imagem ${imageViewer.currentIndex + 1}`}
+              className={`max-h-[78vh] w-auto max-w-full object-contain rounded-xl shadow-2xl cursor-pointer transition-transform duration-200 ${
+                isImageZoomed ? "scale-150" : "scale-100"
+              }`}
+              onClick={handleExpandedImageClick}
+              onTouchStart={handleImageTouchStart}
+              onTouchEnd={handleImageTouchEnd}
+            />
+            <p className="mt-3 text-white text-sm md:text-base font-medium">
+              Toque para dar zoom ou arraste para os lados (
+              {imageViewer.currentIndex + 1}/{imageViewer.images.length})
+            </p>
+            {imageViewer.images.length > 1 && (
+              <div className="mt-3 flex items-center gap-2">
+                {imageViewer.images.map((_, index) => (
+                  <button
+                    key={`viewer-dot-${index}`}
+                    type="button"
+                    onClick={() => {
+                      setIsImageZoomed(false);
+                      setImageViewer((prev) => ({
+                        ...prev,
+                        currentIndex: index,
+                      }));
+                    }}
+                    aria-label={`Ver imagem ${index + 1}`}
+                    className={`h-2.5 w-2.5 rounded-full transition-opacity ${
+                      index === imageViewer.currentIndex
+                        ? "bg-white opacity-100"
+                        : "bg-white opacity-40"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

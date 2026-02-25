@@ -8,7 +8,8 @@
  * @property {string} description - Uma descrição detalhada do produto.
  * @property {number} price - O preço do produto em moeda local.
  * @property {'Pastel' | 'Bebida' | 'Doce'} category - A categoria do produto, que pode ser um pastel, uma bebida ou um doce.
- * @property {string} imageUrl - A URL da imagem do produto.
+ * @property {string} imageUrl - A URL principal da imagem do produto.
+ * @property {string[]} images - Lista de URLs de imagens do produto.
  * @property {string} videoUrl - A URL do vídeo do produto.
  */
 export interface Product {
@@ -18,6 +19,7 @@ export interface Product {
   priceRaw: number; // Preço bruto
   category: "Pastel" | "Bebida" | "Doce";
   imageUrl?: string;
+  images?: string[];
   videoUrl: string;
   popular?: boolean;
   stock?: number;
