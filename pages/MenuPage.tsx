@@ -843,9 +843,30 @@ const MenuPage: React.FC = () => {
           onClick={closeImageViewer}
         >
           <div
-            className="max-w-4xl max-h-[90vh] w-full flex flex-col items-center"
+            className="max-w-4xl max-h-[90vh] w-full flex flex-col items-center relative"
             onClick={(e) => e.stopPropagation()}
           >
+            {imageViewer.images.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={showPreviousImage}
+                  aria-label="Imagem anterior"
+                  className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-10 h-10 w-10 md:h-12 md:w-12 rounded-full bg-black/60 text-white text-2xl font-bold hover:bg-black/80 transition"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={showNextImage}
+                  aria-label="Próxima imagem"
+                  className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-10 h-10 w-10 md:h-12 md:w-12 rounded-full bg-black/60 text-white text-2xl font-bold hover:bg-black/80 transition"
+                >
+                  ›
+                </button>
+              </>
+            )}
+
             <img
               src={imageViewer.images[imageViewer.currentIndex]}
               alt={`${imageViewer.productName} - imagem ${imageViewer.currentIndex + 1}`}
@@ -857,7 +878,7 @@ const MenuPage: React.FC = () => {
               onTouchEnd={handleImageTouchEnd}
             />
             <p className="mt-3 text-white text-sm md:text-base font-medium">
-              Toque para dar zoom ou arraste para os lados (
+              Toque para dar zoom (
               {imageViewer.currentIndex + 1}/{imageViewer.images.length})
             </p>
             {imageViewer.images.length > 1 && (
