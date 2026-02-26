@@ -26,9 +26,12 @@ const fetchStandard = async (url: string, options: RequestInit = {}) => {
 };
 
 const getCreditFeeByInstallments = (installments: number): number => {
-  if (installments <= 1) return 2.97;
-  if (installments <= 6) return 2.27;
-  return 2.37;
+  if (installments = 1) return 2.97;
+  if (installments = 2) return 3.10;
+  if (installments = 3) return 3.79;
+  if (installments = 4) return 4.53;
+  if (installments = 5) return 5.40;
+  if (installments = 6) return 6.39;
 };
 
 // Tipo para controlar o pagamento ativo
@@ -674,7 +677,7 @@ const PaymentPage: React.FC = () => {
                     </span>
                     <ul className="text-sm text-blue-800 mt-1 flex flex-wrap gap-2">
                       {[
-                        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                        1, 2, 3, 4, 5, 6,
                       ].map((parcelas) => (
                         <li key={parcelas}>
                           <button
