@@ -24,7 +24,6 @@ import AdminCategoriesPage from "./pages/AdminCategoriesPage"; // 🆕
 import Header from "./components/Header";
 import Chatbot from "./components/Chatbot";
 // import InactivityGuard from "./components/InactivityGuard";
-import FloatingCartButton from "./components/FloatingCartButton"; // New import
 import type { UserRole } from "./types";
 
 import OrderDetailPage from "./pages/OrderDetailPage";
@@ -90,7 +89,6 @@ const App: React.FC = () => {
           <CartProvider>
             <HashRouter>
               <RouterBody />
-              <FloatingCartButton /> {/* Render FloatingCartButton */}
               <Footer />
             </HashRouter>
           </CartProvider>
