@@ -776,17 +776,17 @@ const MenuPage: React.FC = () => {
         {cartItems.length > 0 && !isMobileCartOpen && (
           <div className="xl:hidden fixed bottom-0 right-0 z-50 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.2)] min-[900px]:left-0 min-[900px]:right-0 min-[900px]:w-full">
             <div
-              className="bg-stone-900 text-white px-3 py-3 flex justify-between items-center rounded-tl-2xl min-[900px]:rounded-t-none cursor-pointer active:bg-stone-800 transition-colors"
+              className="bg-stone-900 text-white min-[900px]:px-8 min-[900px]:py-8 px-3 py-3 flex justify-between items-center rounded-tl-2xl min-[900px]:rounded-t-none cursor-pointer active:bg-stone-800 transition-colors"
               onClick={() => setIsMobileCartOpen(true)}
             >
-              <span className="font-bold uppercase tracking-wider flex items-center gap-3">
-                <span className="">🛒</span> Minha Cesta
+              <span className="font-bold uppercase tracking-wider flex items-center gap-3 min-[900px]:text-2xl">
+                <span className="min-[900px]:text-2xl">🛒</span> Minha Cesta
                 <p>{cartItems.reduce((acc, i) => acc + i.quantity, 0)}</p>
-                <span className="text-sm bg-blue-500 text-white px-2 py-1 rounded-full m-2 animate-pulse">
+                <span className="text-sm bg-blue-500 text-white  px-2 py-1 rounded-full m-2 animate-pulse">
                   ▲ Ver
                 </span>
               </span>
-              <span className=" font-bold text-blue-400">
+              <span className=" font-bold text-blue-400 min-[900px]:text-2xl">
                 R$ {cartTotal.toFixed(2)}
               </span>
             </div>
