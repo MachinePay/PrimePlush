@@ -35,7 +35,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <div
-      className={`bg-white rounded-2xl shadow-md overflow-hidden flex flex-col relative h-full transition-transform hover:shadow-xl ${
+      className={`bg-white w-60 rounded-2xl shadow-md overflow-hidden flex flex-col relative h-full transition-transform hover:shadow-xl ${
         isOutOfStock ? "opacity-60 grayscale" : ""
       }`}
     >
@@ -200,7 +200,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
         }`}
       >
         <h2
-          className={`text-2xl md:text-3xl font-bold flex items-center gap-3 ${
+          className={`text-xl md:text-2xl font-bold flex items-center gap-2 ${
             isMobile ? "text-white" : "text-gray-800"
           }`}
         >
@@ -219,7 +219,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
 
       {/* Lista de Itens com Scroll */}
       <div
-        className="flex-1 overflow-y-auto p-4 space-y-6 bg-stone-50 min-h-0"
+        className="flex-1 overflow-y-auto p-3 space-y-4 bg-stone-50 min-h-0"
         style={isMobile ? { paddingBottom: 60 } : {}}
       >
         {cartItems.length === 0 ? (
@@ -233,25 +233,25 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
             {cartItems.map((item) => (
               <div
                 key={item.id}
-                className="flex bg-white p-4 rounded-xl shadow-sm border border-stone-200 items-center justify-between"
+                className="flex bg-white p-3 rounded-lg shadow-sm border border-stone-200 items-center justify-between"
               >
-                <div className="flex-1 pr-4">
-                  <p className="font-bold text-stone-800 text-lg md:text-xl leading-tight mb-1">
+                <div className="flex-1 pr-3">
+                  <p className="font-bold text-stone-800 text-base md:text-lg leading-tight mb-1">
                     {item.name}
                   </p>
-                  <p className="text-base font-semibold text-stone-500">
+                  <p className="text-sm md:text-base font-semibold text-stone-500">
                     R$ {item.price.toFixed(2)}
                   </p>
                 </div>
 
                 {/* CONTROLES DE QUANTIDADE GRANDES */}
-                <div className="flex items-center bg-stone-100 rounded-xl border border-stone-300 overflow-hidden h-12 md:h-14 shadow-inner">
+                <div className="flex items-center bg-stone-100 rounded-lg border border-stone-300 overflow-hidden h-10 md:h-11 shadow-inner">
                   <button
                     onClick={() => {
                       const step = item.quantidadeVenda ?? 1;
                       updateQuantity(item.id, item.quantity - step);
                     }}
-                    className="w-12 md:w-14 h-full flex items-center justify-center text-stone-600 font-bold text-2xl hover:bg-blue-100 hover:text-blue-700 transition-colors active:bg-blue-200"
+                    className="w-9 md:w-10 h-full flex items-center justify-center text-stone-600 font-bold text-xl hover:bg-blue-100 hover:text-blue-700 transition-colors active:bg-blue-200"
                   >
                     -
                   </button>
@@ -265,10 +265,10 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                         const q = parseInt(e.target.value);
                         if (!isNaN(q) && q > 0) updateQuantity(item.id, q);
                       }}
-                      className="w-16 md:w-20 h-full text-xl font-bold text-center bg-white border-x border-stone-200"
+                      className="w-12 md:w-14 h-full text-base md:text-lg font-bold text-center bg-white border-x border-stone-200"
                     />
                   ) : (
-                    <span className="w-10 md:w-12 h-full flex items-center justify-center text-xl font-bold bg-white border-x border-stone-200">
+                    <span className="w-9 md:w-10 h-full flex items-center justify-center text-base md:text-lg font-bold bg-white border-x border-stone-200">
                       {item.quantity}
                     </span>
                   )}
@@ -277,7 +277,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                       const step = item.quantidadeVenda ?? 1;
                       updateQuantity(item.id, item.quantity + step);
                     }}
-                    className="w-12 md:w-14 h-full flex items-center justify-center bg-blue-600 text-white font-bold text-2xl hover:bg-blue-700 transition-colors active:bg-blue-800"
+                    className="w-9 md:w-10 h-full flex items-center justify-center bg-blue-600 text-white font-bold text-xl hover:bg-blue-700 transition-colors active:bg-blue-800"
                   >
                     +
                   </button>
@@ -290,12 +290,12 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
 
       {/* Footer / Checkout */}
       {cartItems.length > 0 && (
-        <div className="p-6 bg-white border-t border-stone-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+        <div className="p-4 bg-white border-t border-stone-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
           {/* CAMPO DE OBSERVAÇÃO - AGORA CONECTADO AO CONTEXTO */}
           <div className="mb-4">
             <label
               htmlFor="observation"
-              className="block text-lg font-bold text-stone-700 mb-2"
+              className="block text-base font-bold text-stone-700 mb-2"
             >
               📝 Alguma observação?
             </label>
@@ -304,7 +304,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
               value={observation}
               onChange={handleObservationChange}
               placeholder="Ex: Em caixa, em sacos..."
-              className="w-full p-3 border-2 border-stone-300 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all text-lg"
+              className="w-full p-2 border-2 border-stone-300 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all text-sm"
               rows={2}
             />
             {showObservationSaved && observation && (
@@ -315,15 +315,15 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
           </div>
 
           <div className="flex justify-between items-center mb-4">
-            <span className="text-stone-500 font-bold text-xl">Total</span>
-            <span className="text-3xl md:text-4xl font-bold text-stone-800">
+            <span className="text-stone-500 font-bold text-lg">Total</span>
+            <span className="text-2xl md:text-3xl font-bold text-stone-800">
               R$ {cartTotal.toFixed(2)}
             </span>
           </div>
           <button
             onClick={onCheckout}
             disabled={isPlacingOrder}
-            className="w-full bg-green-600 text-white font-bold py-4 md:py-5 text-xl md:text-2xl rounded-2xl hover:bg-green-700 transition-colors disabled:bg-stone-300 shadow-lg active:scale-[0.98] flex justify-center items-center gap-3"
+            className="w-full bg-green-600 text-white font-bold py-3 md:py-4 text-lg md:text-xl rounded-2xl hover:bg-green-700 transition-colors disabled:bg-stone-300 shadow-lg active:scale-[0.98] flex justify-center items-center gap-2"
           >
             {isPlacingOrder ? (
               "Processando..."
@@ -377,11 +377,10 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
   };
 
   return (
-    <aside className="w-[100px] md:w-72 bg-white z-40 flex flex-col h-full border-r border-stone-200 shadow-xl overflow-hidden shrink-0">
+    <aside className="w-[100px] md:w-60 bg-white z-40 flex flex-col h-full border-r border-stone-200 shadow-xl overflow-hidden shrink-0">
       {/* Logo Area */}
-      <div className="h-20 md:h-28 flex items-center justify-center border-b border-stone-100 bg-blue-700">
-        <span className="md:hidden text-4xl">🥟</span>
-        <h1 className="hidden md:block text-3xl font-extrabold text-white tracking-wide">
+      <div className="h-20 md:h-28 flex items-center justify-center border-b border-stone-100 bg-blue-700 hidden md:flex">
+        <h1 className="text-3xl font-extrabold text-white tracking-wide">
           MENU
         </h1>
       </div>
@@ -401,7 +400,7 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
               selectedCategory === null ? "scale-110" : "grayscale opacity-70"
             }`}
           >
-            🔥
+            🧸
           </span>
           <span className="text-xs md:text-xl font-bold uppercase">Todos</span>
         </button>
@@ -719,16 +718,6 @@ const MenuPage: React.FC = () => {
 
       {/* 2. ÁREA CENTRAL */}
       <main className="flex-1 flex flex-col h-full relative overflow-hidden">
-        {/* Header Mobile */}
-        <header className="md:hidden bg-white/90 backdrop-blur-md p-4 sticky top-0 z-20 border-b border-stone-200 shadow-sm flex justify-between items-center">
-          <h2 className="font-bold text-xl">
-            {selectedCategory || "Cardápio"}
-          </h2>
-          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm border border-blue-200">
-            {currentUser?.name?.charAt(0) || "C"}
-          </div>
-        </header>
-
         {/* Scroll Container */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-48 md:pb-8 scroll-smooth">
           {/* Mensagens IA */}
@@ -784,34 +773,10 @@ const MenuPage: React.FC = () => {
             )}
           </div>
         </div>
-
-        {/* 3. MOBILE BOTTOM CART (FIXO - BARRA) */}
-        {cartItems.length > 0 && !isMobileCartOpen && (
-          <div
-            className="xl:hidden fixed bottom-0 right-0 z-50 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.2)]"
-            style={{ width: "calc(100% - 100px)", height: "90px" }}
-          >
-            <div
-              className="bg-stone-900 text-white px-10 py-10 flex justify-between items-center rounded-tl-2xl cursor-pointer active:bg-stone-800 transition-colors"
-              onClick={() => setIsMobileCartOpen(true)}
-            >
-              <span className="text-lg font-bold uppercase tracking-wider flex items-center gap-3">
-                <span className="text-2xl">🛒</span> Minha Cesta (
-                {cartItems.reduce((acc, i) => acc + i.quantity, 0)})
-                <span className="text-sm bg-blue-500 text-white px-2 py-1 rounded-full ml-1 animate-pulse">
-                  ▲ Ver
-                </span>
-              </span>
-              <span className="text-2xl font-bold text-blue-400">
-                R$ {cartTotal.toFixed(2)}
-              </span>
-            </div>
-          </div>
-        )}
       </main>
 
       {/* 4. COLUNA DIREITA (Carrinho Desktop) */}
-      <div className="hidden xl:block w-[450px] h-full shadow-2xl z-20">
+      <div className="hidden xl:block w-[380px] h-full shadow-2xl z-20">
         <CartSidebar
           cartItems={cartItems}
           cartTotal={cartTotal}
