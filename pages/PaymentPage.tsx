@@ -9,12 +9,12 @@ import {
   createCardPayment,
   checkPaymentStatus,
   cancelPayment,
+  clearPaymentQueue,
 } from "../services/paymentService";
 import type { Order, CartItem } from "../types";
 import PaymentOnline from "../components/PaymentOnline";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-const BASE_INSTALLMENT_RATE = 2.44;
 
 // Helper para requisições padrão (single-tenant)
 const fetchStandard = async (url: string, options: RequestInit = {}) => {
@@ -25,10 +25,10 @@ const fetchStandard = async (url: string, options: RequestInit = {}) => {
   return fetch(url, { ...options, headers });
 };
 
-const calculateCompoundFee = (installments: number): number => {
-  const rate = BASE_INSTALLMENT_RATE / 100;
-  const compoundFee = (Math.pow(1 + rate, installments) - 1) * 100;
-  return Number(compoundFee.toFixed(2));
+const getCreditFeeByInstallments = (installments: number): number => {
+  if (installments <= 1) return 2.97;
+  if (installments <= 6) return 2.27;
+  return 2.37;
 };
 
 // Tipo para controlar o pagamento ativo
@@ -69,7 +69,7 @@ const PaymentPage: React.FC = () => {
 
   useEffect(() => {
     if (paymentType === "presencial" && paymentMethod === "credit") {
-      setTaxaSelecionada(calculateCompoundFee(selectedInstallments));
+      setTaxaSelecionada(getCreditFeeByInstallments(selectedInstallments));
       return;
     }
     setTaxaSelecionada(0);
@@ -462,8 +462,7 @@ const PaymentPage: React.FC = () => {
           </div>
           {paymentType === "presencial" && paymentMethod === "credit" && (
             <div className="mt-2 text-sm text-blue-700 text-right">
-              Taxa composta: {taxaSelecionada.toFixed(2)}% (
-              {selectedInstallments}
+              Taxa: {taxaSelecionada.toFixed(2)}% ({selectedInstallments}
               x)
             </div>
           )}
@@ -674,26 +673,26 @@ const PaymentPage: React.FC = () => {
                       Parcelamento disponível:
                     </span>
                     <ul className="text-sm text-blue-800 mt-1 flex flex-wrap gap-2">
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(
-                        (parcelas) => (
-                          <li key={parcelas}>
-                            <button
-                              className={`px-2 py-1 rounded ${
-                                selectedInstallments === parcelas
-                                  ? "bg-blue-600 text-white"
-                                  : "bg-white text-blue-700 border border-blue-600"
-                              }`}
-                              onClick={() => {
-                                setSelectedInstallments(parcelas);
-                                setPresencialStep("finalize");
-                              }}
-                            >
-                              {parcelas}x (
-                              {calculateCompoundFee(parcelas).toFixed(2)}%)
-                            </button>
-                          </li>
-                        ),
-                      )}
+                      {[
+                        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                      ].map((parcelas) => (
+                        <li key={parcelas}>
+                          <button
+                            className={`px-2 py-1 rounded ${
+                              selectedInstallments === parcelas
+                                ? "bg-blue-600 text-white"
+                                : "bg-white text-blue-700 border border-blue-600"
+                            }`}
+                            onClick={() => {
+                              setSelectedInstallments(parcelas);
+                              setPresencialStep("finalize");
+                            }}
+                          >
+                            {parcelas}x (
+                            {getCreditFeeByInstallments(parcelas).toFixed(2)}% )
+                          </button>
+                        </li>
+                      ))}
                     </ul>
                   </div>
                 )}
