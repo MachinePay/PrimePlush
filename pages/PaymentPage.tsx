@@ -14,6 +14,7 @@ import type { Order, CartItem } from "../types";
 import PaymentOnline from "../components/PaymentOnline";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const BASE_INSTALLMENT_RATE = 2.44;
 
 // Helper para requisições padrão (single-tenant)
 const fetchStandard = async (url: string, options: RequestInit = {}) => {
@@ -22,6 +23,12 @@ const fetchStandard = async (url: string, options: RequestInit = {}) => {
     ...(options.headers || {}),
   };
   return fetch(url, { ...options, headers });
+};
+
+const calculateCompoundFee = (installments: number): number => {
+  const rate = BASE_INSTALLMENT_RATE / 100;
+  const compoundFee = (Math.pow(1 + rate, installments) - 1) * 100;
+  return Number(compoundFee.toFixed(2));
 };
 
 // Tipo para controlar o pagamento ativo
@@ -59,6 +66,18 @@ const PaymentPage: React.FC = () => {
   // Estados para taxa e parcelas (usados em ambos os fluxos)
   const [selectedInstallments, setSelectedInstallments] = useState<number>(1);
   const [taxaSelecionada, setTaxaSelecionada] = useState<number>(0); // Corrigido valor inicial para 0 se não tiver taxa padrão
+
+  useEffect(() => {
+    if (paymentType === "presencial" && paymentMethod === "credit") {
+      setTaxaSelecionada(calculateCompoundFee(selectedInstallments));
+      return;
+    }
+    setTaxaSelecionada(0);
+  }, [paymentType, paymentMethod, selectedInstallments]);
+
+  const totalComTaxa = Number(
+    (cartTotal * (1 + (taxaSelecionada || 0) / 100)).toFixed(2),
+  );
 
   // Estados para PIX
   const [qrCodeBase64, setQrCodeBase64] = useState<string | null>(null);
@@ -273,9 +292,7 @@ const PaymentPage: React.FC = () => {
           paymentType === "presencial" &&
           paymentMethod === "credit" &&
           taxaSelecionada
-            ? Number(
-                (cartTotal * (1 + (taxaSelecionada || 0) / 100)).toFixed(2),
-              )
+            ? totalComTaxa
             : cartTotal,
         paymentId: null,
         observation: observation,
@@ -337,10 +354,7 @@ const PaymentPage: React.FC = () => {
     try {
       const orderId = await createOrder();
 
-      const valorFinal =
-        paymentMethod === "credit"
-          ? Number((cartTotal * (1 + (taxaSelecionada || 0) / 100)).toFixed(2))
-          : cartTotal;
+      const valorFinal = paymentMethod === "credit" ? totalComTaxa : cartTotal;
 
       console.log("[Pagamento] Parcelas selecionadas:", selectedInstallments);
 
@@ -442,10 +456,17 @@ const PaymentPage: React.FC = () => {
               {(paymentType === "presencial" || paymentType === "online") &&
               paymentMethod === "credit" &&
               taxaSelecionada
-                ? `R$ ${(cartTotal * (1 + taxaSelecionada / 100)).toFixed(2)}`
+                ? `R$ ${totalComTaxa.toFixed(2)}`
                 : `R$ ${cartTotal.toFixed(2)}`}
             </span>
           </div>
+          {paymentType === "presencial" && paymentMethod === "credit" && (
+            <div className="mt-2 text-sm text-blue-700 text-right">
+              Taxa composta: {taxaSelecionada.toFixed(2)}% (
+              {selectedInstallments}
+              x)
+            </div>
+          )}
         </div>
 
         {/* COLUNA DIREITA - AÇÕES */}
@@ -579,6 +600,7 @@ const PaymentPage: React.FC = () => {
                     }`}
                     onClick={() => {
                       setPaymentMethod("credit");
+                      setSelectedInstallments(1);
                       setPresencialStep("select-installments");
                     }}
                   >
@@ -666,7 +688,8 @@ const PaymentPage: React.FC = () => {
                                 setPresencialStep("finalize");
                               }}
                             >
-                              {parcelas}x
+                              {parcelas}x (
+                              {calculateCompoundFee(parcelas).toFixed(2)}%)
                             </button>
                           </li>
                         ),
@@ -696,13 +719,18 @@ const PaymentPage: React.FC = () => {
                               quantity: i.quantity,
                               price: i.price,
                             })),
-                            total: cartTotal,
                             paymentType: "presencial",
                             paymentMethod,
                             installments:
                               paymentMethod === "credit"
                                 ? selectedInstallments
                                 : 1,
+                            fee:
+                              paymentMethod === "credit" ? taxaSelecionada : 0,
+                            total:
+                              paymentMethod === "credit"
+                                ? totalComTaxa
+                                : cartTotal,
                             paymentStatus: "pending",
                             observation,
                           }),

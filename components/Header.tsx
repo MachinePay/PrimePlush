@@ -69,6 +69,15 @@ const Header: React.FC = () => {
               </NavLink>
             )}
 
+            {currentUser?.role === "admincustomer" && (
+              <NavLink
+                to="/admin/login"
+                className="text-white hover:text-blue-700 transition-colors font-medium"
+              >
+                Ir para Admin
+              </NavLink>
+            )}
+
             {currentUser?.role === "admin" && (
               <>
                 <NavLink
