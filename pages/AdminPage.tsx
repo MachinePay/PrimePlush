@@ -170,8 +170,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
   return (
     // Modal em tela cheia com fundo escuro semitransparente
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-start sm:items-center z-50 overflow-y-auto p-2 sm:p-4">
+      <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Título muda conforme edição ou criação */}
         <h2 className="text-2xl font-bold mb-6 text-blue-800">
           {product ? "Editar Produto" : "Adicionar Produto"}
