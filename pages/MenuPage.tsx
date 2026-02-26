@@ -703,6 +703,13 @@ const MenuPage: React.FC = () => {
     return Object.keys(categorizedMenu).sort();
   }, [dynamicCategories, categorizedMenu]);
 
+  const totalViewerImages = imageViewer.images.length;
+  const normalizedViewerIndex =
+    totalViewerImages > 0
+      ? ((imageViewer.currentIndex % totalViewerImages) + totalViewerImages) %
+        totalViewerImages
+      : 0;
+
   return (
     <div
       className="flex h-screen w-full overflow-hidden font-sans"
@@ -850,7 +857,14 @@ const MenuPage: React.FC = () => {
               <>
                 <button
                   type="button"
-                  onClick={showPreviousImage}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showPreviousImage();
+                  }}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation();
+                    showPreviousImage();
+                  }}
                   aria-label="Imagem anterior"
                   className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-10 h-10 w-10 md:h-12 md:w-12 rounded-full bg-black/60 text-white text-2xl font-bold hover:bg-black/80 transition"
                 >
@@ -858,7 +872,14 @@ const MenuPage: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={showNextImage}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showNextImage();
+                  }}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation();
+                    showNextImage();
+                  }}
                   aria-label="Próxima imagem"
                   className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-10 h-10 w-10 md:h-12 md:w-12 rounded-full bg-black/60 text-white text-2xl font-bold hover:bg-black/80 transition"
                 >
@@ -868,8 +889,8 @@ const MenuPage: React.FC = () => {
             )}
 
             <img
-              src={imageViewer.images[imageViewer.currentIndex]}
-              alt={`${imageViewer.productName} - imagem ${imageViewer.currentIndex + 1}`}
+              src={imageViewer.images[normalizedViewerIndex]}
+              alt={`${imageViewer.productName} - imagem ${normalizedViewerIndex + 1}`}
               className={`max-h-[78vh] w-auto max-w-full object-contain rounded-xl shadow-2xl cursor-pointer transition-transform duration-200 ${
                 isImageZoomed ? "scale-150" : "scale-100"
               }`}
@@ -878,8 +899,8 @@ const MenuPage: React.FC = () => {
               onTouchEnd={handleImageTouchEnd}
             />
             <p className="mt-3 text-white text-sm md:text-base font-medium">
-              Toque para dar zoom (
-              {imageViewer.currentIndex + 1}/{imageViewer.images.length})
+              Toque para dar zoom ({normalizedViewerIndex + 1}/
+              {totalViewerImages})
             </p>
             {imageViewer.images.length > 1 && (
               <div className="mt-3 flex items-center gap-2">
@@ -896,7 +917,7 @@ const MenuPage: React.FC = () => {
                     }}
                     aria-label={`Ver imagem ${index + 1}`}
                     className={`h-2.5 w-2.5 rounded-full transition-opacity ${
-                      index === imageViewer.currentIndex
+                      index === normalizedViewerIndex
                         ? "bg-white opacity-100"
                         : "bg-white opacity-40"
                     }`}
