@@ -784,7 +784,7 @@ const MenuPage: React.FC = () => {
             >
               <span className="font-bold uppercase tracking-wider flex items-center gap-3">
                 <span className="">🛒</span> Minha Cesta 
-                <p>({cartItems.reduce((acc, i) => acc + i.quantity, 0)})</p>
+                <p>{cartItems.reduce((acc, i) => acc + i.quantity, 0)}</p>
                 <span className="text-sm bg-blue-500 text-white px-2 py-1 rounded-full m-2 animate-pulse">
                   ▲ Ver
                 </span>
