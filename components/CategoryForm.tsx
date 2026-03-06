@@ -7,7 +7,7 @@ interface CategoryFormProps {
   onSave: (categoryData: { name: string; icon: string; order: number }) => void;
   onCancel: () => void;
 }
-
+//atualizando deploy
 const CategoryForm: React.FC<CategoryFormProps> = ({
   category,
   onSave,
