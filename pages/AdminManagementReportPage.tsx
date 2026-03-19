@@ -30,11 +30,13 @@ interface ManagementReportResponse {
 }
 
 type FilterMode = "general" | "custom";
+type FilterPreset = "today" | "last7days" | "currentMonth";
 
 interface AppliedFilter {
   mode: FilterMode;
   startDate: string;
   endDate: string;
+  label: string;
 }
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
@@ -54,7 +56,15 @@ const createGeneralFilter = (): AppliedFilter => ({
   mode: "general",
   startDate: "",
   endDate: "",
+  label: "Data geral",
 });
+
+const formatDateInput = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const toIsoBoundary = (date: string, type: "start" | "end") => {
   const time = type === "start" ? "T00:00:00.000" : "T23:59:59.999";
@@ -64,6 +74,44 @@ const toIsoBoundary = (date: string, type: "start" | "end") => {
 const formatFilterDate = (date: string) => {
   if (!date) return "";
   return new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR");
+};
+
+const buildCustomFilterLabel = (startDate: string, endDate: string) =>
+  `${formatFilterDate(startDate)} ate ${formatFilterDate(endDate)}`;
+
+const createPresetFilter = (preset: FilterPreset): AppliedFilter => {
+  const today = new Date();
+  const endDate = formatDateInput(today);
+
+  if (preset === "today") {
+    return {
+      mode: "custom",
+      startDate: endDate,
+      endDate,
+      label: "Hoje",
+    };
+  }
+
+  if (preset === "last7days") {
+    const start = new Date(today);
+    start.setDate(start.getDate() - 6);
+
+    return {
+      mode: "custom",
+      startDate: formatDateInput(start),
+      endDate,
+      label: "Ultimos 7 dias",
+    };
+  }
+
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  return {
+    mode: "custom",
+    startDate: formatDateInput(firstDayOfMonth),
+    endDate,
+    label: "Mes atual",
+  };
 };
 
 const AdminManagementReportPage: React.FC = () => {
@@ -131,13 +179,7 @@ const AdminManagementReportPage: React.FC = () => {
 
   const products = useMemo(() => report?.products || [], [report]);
   const activeFilterLabel = useMemo(() => {
-    if (appliedFilter.mode === "general") {
-      return "Data geral";
-    }
-
-    return `${formatFilterDate(appliedFilter.startDate)} ate ${formatFilterDate(
-      appliedFilter.endDate,
-    )}`;
+    return appliedFilter.label;
   }, [appliedFilter]);
 
   const handleApplyFilter = () => {
@@ -150,6 +192,7 @@ const AdminManagementReportPage: React.FC = () => {
       mode: "custom",
       startDate,
       endDate,
+      label: buildCustomFilterLabel(startDate, endDate),
     });
   };
 
@@ -158,6 +201,14 @@ const AdminManagementReportPage: React.FC = () => {
     setStartDate("");
     setEndDate("");
     setAppliedFilter(createGeneralFilter());
+  };
+
+  const handleApplyPreset = (preset: FilterPreset) => {
+    const presetFilter = createPresetFilter(preset);
+    setFilterMode("custom");
+    setStartDate(presetFilter.startDate);
+    setEndDate(presetFilter.endDate);
+    setAppliedFilter(presetFilter);
   };
 
   const handleRefresh = () => {
@@ -220,6 +271,47 @@ const AdminManagementReportPage: React.FC = () => {
             <span className="font-semibold text-slate-800">
               {activeFilterLabel}
             </span>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-sm font-semibold text-slate-700 mb-2">
+            Atalhos rapidos
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => handleApplyPreset("today")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                appliedFilter.label === "Hoje"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+              }`}
+            >
+              Hoje
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyPreset("last7days")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                appliedFilter.label === "Ultimos 7 dias"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+              }`}
+            >
+              Ultimos 7 dias
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyPreset("currentMonth")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                appliedFilter.label === "Mes atual"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+              }`}
+            >
+              Mes atual
+            </button>
           </div>
         </div>
 
