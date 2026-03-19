@@ -2,9 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
   Legend,
+  Line,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -34,9 +38,53 @@ interface ManagementReportSummary {
 interface ProductManagementReport {
   productId: string;
   name: string;
+  category?: string;
+  stock?: number | null;
+  minStock?: number;
   quantitySold: number;
   revenue: number;
   giraKidsValue: number;
+}
+
+interface ProductVolumeAnalyticsItem {
+  productId: string;
+  name: string;
+  category: string;
+  quantitySold: number;
+  revenue: number;
+}
+
+interface AbcAnalyticsItem {
+  productId: string;
+  name: string;
+  category: string;
+  quantitySold: number;
+  revenue: number;
+  revenueShare: number;
+  cumulativeShare: number;
+  classification: "A" | "B" | "C";
+}
+
+interface CategoryPerformanceItem {
+  category: string;
+  quantitySold: number;
+  revenue: number;
+  revenueShare: number;
+}
+
+interface StockAlertItem {
+  productId: string;
+  name: string;
+  category: string;
+  stock: number;
+  minStock: number;
+  safetyStock: number;
+  quantitySold: number;
+  revenue: number;
+  averageDailySales: number;
+  daysToStockout: number | null;
+  suggestedPurchase: number;
+  severity: "critical" | "warning";
 }
 
 interface ManagementReportResponse {
@@ -56,6 +104,13 @@ interface ManagementReportResponse {
       orders: number;
       revenue: number;
     }>;
+  };
+  analytics: {
+    periodDays: number;
+    topProductsByVolume: ProductVolumeAnalyticsItem[];
+    abcCurve: AbcAnalyticsItem[];
+    categoryPerformance: CategoryPerformanceItem[];
+    stockAlerts: StockAlertItem[];
   };
   filters?: {
     startAt: string | null;
@@ -86,6 +141,11 @@ const percentFormatter = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 1,
 });
 const CHART_COLORS = ["#10b981", "#2563eb", "#f59e0b", "#ef4444"];
+const ABC_CLASS_COLORS = {
+  A: "#ef4444",
+  B: "#f59e0b",
+  C: "#2563eb",
+};
 
 const formatCurrency = (value: number) =>
   currencyFormatter.format(Number.isFinite(value) ? value : 0);
@@ -101,6 +161,13 @@ const formatAxisCurrency = (value: number) => {
     return `R$ ${(value / 1000).toFixed(1)}k`;
   }
   return `R$ ${Math.round(value)}`;
+};
+
+const truncateLabel = (value: string, maxLength = 24) => {
+  if (!value) return "-";
+  return value.length > maxLength
+    ? `${value.slice(0, maxLength - 3)}...`
+    : value;
 };
 
 const createGeneralFilter = (): AppliedFilter => ({
@@ -237,6 +304,22 @@ const AdminManagementReportPage: React.FC = () => {
   );
   const paymentDistributionData = useMemo(
     () => report?.charts.paymentDistribution || [],
+    [report],
+  );
+  const topProductsByVolumeData = useMemo(
+    () => report?.analytics.topProductsByVolume || [],
+    [report],
+  );
+  const abcCurveData = useMemo(
+    () => report?.analytics.abcCurve || [],
+    [report],
+  );
+  const categoryPerformanceData = useMemo(
+    () => report?.analytics.categoryPerformance || [],
+    [report],
+  );
+  const stockAlertsData = useMemo(
+    () => report?.analytics.stockAlerts || [],
     [report],
   );
   const activeFilterLabel = useMemo(() => {
@@ -717,6 +800,412 @@ const AdminManagementReportPage: React.FC = () => {
                 </>
               )}
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-2 bg-white rounded-xl shadow p-4 md:p-6">
+              <div className="mb-6">
+                <h2 className="text-xl md:text-2xl font-bold text-slate-900">
+                  Top Produtos Mais Vendidos
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Ranking dos itens com maior volume de saida no periodo
+                </p>
+              </div>
+
+              {topProductsByVolumeData.length === 0 ? (
+                <div className="h-[320px] flex items-center justify-center text-slate-500 bg-slate-50 rounded-lg">
+                  Sem vendas suficientes para montar o ranking.
+                </div>
+              ) : (
+                <ResponsiveContainer
+                  width="100%"
+                  height={Math.max(300, topProductsByVolumeData.length * 38)}
+                >
+                  <BarChart
+                    data={topProductsByVolumeData}
+                    layout="vertical"
+                    margin={{ top: 8, right: 24, left: 28, bottom: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis type="number" stroke="#64748b" />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={190}
+                      stroke="#64748b"
+                      tickFormatter={(value) =>
+                        truncateLabel(String(value), 28)
+                      }
+                    />
+                    <Tooltip
+                      formatter={(
+                        value: number,
+                        _name: string,
+                        payload: any,
+                      ) => [
+                        `${formatInteger(value)} unidades`,
+                        `${payload?.payload?.name} · ${formatCurrency(
+                          payload?.payload?.revenue || 0,
+                        )}`,
+                      ]}
+                      contentStyle={{
+                        borderRadius: "12px",
+                        border: "1px solid #e2e8f0",
+                      }}
+                    />
+                    <Bar
+                      dataKey="quantitySold"
+                      fill="#2563eb"
+                      radius={[0, 8, 8, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            <div className="bg-white rounded-xl shadow p-4 md:p-6">
+              <div className="mb-6">
+                <h2 className="text-xl md:text-2xl font-bold text-slate-900">
+                  Desempenho por Categoria
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Categorias que mais geram receita
+                </p>
+              </div>
+
+              {categoryPerformanceData.length === 0 ? (
+                <div className="h-[320px] flex items-center justify-center text-slate-500 bg-slate-50 rounded-lg">
+                  Nenhuma categoria com faturamento no periodo.
+                </div>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={categoryPerformanceData}
+                        dataKey="revenue"
+                        nameKey="category"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={66}
+                        outerRadius={104}
+                        paddingAngle={2}
+                      >
+                        {categoryPerformanceData.map((entry, index) => (
+                          <Cell
+                            key={`${entry.category}-${index}`}
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(
+                          value: number,
+                          _name: string,
+                          item: any,
+                        ) => [
+                          formatCurrency(value),
+                          `${item?.payload?.category} · ${formatPercent(
+                            item?.payload?.revenueShare || 0,
+                          )}`,
+                        ]}
+                        contentStyle={{
+                          borderRadius: "12px",
+                          border: "1px solid #e2e8f0",
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+
+                  <div className="space-y-3 mt-4">
+                    {categoryPerformanceData.map((category, index) => (
+                      <div
+                        key={category.category}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{
+                              backgroundColor:
+                                CHART_COLORS[index % CHART_COLORS.length],
+                            }}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-800 truncate">
+                              {category.category}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {formatPercent(category.revenueShare)} do
+                              faturamento
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="text-sm font-semibold text-slate-700 whitespace-nowrap">
+                          {formatCurrency(category.revenue)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow p-4 md:p-6">
+            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-6">
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-slate-900">
+                  Curva ABC de Produtos (Pareto)
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Classe A concentra ate 80% da receita, B ate 95% e C os demais
+                </p>
+              </div>
+              <div className="text-sm text-slate-500">
+                Produtos analisados: {formatInteger(abcCurveData.length)}
+              </div>
+            </div>
+
+            {abcCurveData.length === 0 ? (
+              <div className="h-[320px] flex items-center justify-center text-slate-500 bg-slate-50 rounded-lg">
+                Nenhum dado de faturamento para Curva ABC.
+              </div>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={340}>
+                  <ComposedChart
+                    data={abcCurveData}
+                    margin={{ top: 8, right: 28, left: 8, bottom: 80 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis
+                      dataKey="name"
+                      angle={-24}
+                      textAnchor="end"
+                      height={82}
+                      interval={0}
+                      tickFormatter={(value) =>
+                        truncateLabel(String(value), 14)
+                      }
+                    />
+                    <YAxis
+                      yAxisId="left"
+                      stroke="#64748b"
+                      tickFormatter={(value) =>
+                        formatAxisCurrency(Number(value))
+                      }
+                    />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      domain={[0, 100]}
+                      stroke="#64748b"
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip
+                      formatter={(value: number, name: string) => {
+                        if (name === "revenue") {
+                          return [formatCurrency(value), "Faturamento"];
+                        }
+                        return [formatPercent(value), "Acumulado"];
+                      }}
+                      contentStyle={{
+                        borderRadius: "12px",
+                        border: "1px solid #e2e8f0",
+                      }}
+                    />
+                    <Legend
+                      formatter={(value) =>
+                        value === "revenue" ? "Faturamento" : "% Acumulado"
+                      }
+                    />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="revenue"
+                      fill="#2563eb"
+                      radius={[6, 6, 0, 0]}
+                    />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="cumulativeShare"
+                      stroke="#ef4444"
+                      strokeWidth={3}
+                      dot={{ r: 3 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+
+                <div className="overflow-x-auto mt-5">
+                  <table className="w-full min-w-[860px] text-sm">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-700">
+                        <th className="text-left p-3 font-semibold">#</th>
+                        <th className="text-left p-3 font-semibold">Produto</th>
+                        <th className="text-left p-3 font-semibold">
+                          Categoria
+                        </th>
+                        <th className="text-right p-3 font-semibold">Qtd.</th>
+                        <th className="text-right p-3 font-semibold">
+                          Faturamento
+                        </th>
+                        <th className="text-right p-3 font-semibold">
+                          % Receita
+                        </th>
+                        <th className="text-right p-3 font-semibold">
+                          % Acumulado
+                        </th>
+                        <th className="text-center p-3 font-semibold">
+                          Classe
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {abcCurveData.map((item, index) => (
+                        <tr
+                          key={item.productId}
+                          className="border-b border-slate-100 hover:bg-slate-50"
+                        >
+                          <td className="p-3 text-slate-500">{index + 1}</td>
+                          <td className="p-3 font-medium text-slate-800">
+                            {item.name}
+                          </td>
+                          <td className="p-3 text-slate-600">
+                            {item.category}
+                          </td>
+                          <td className="p-3 text-right text-slate-700">
+                            {formatInteger(item.quantitySold)}
+                          </td>
+                          <td className="p-3 text-right font-semibold text-slate-800">
+                            {formatCurrency(item.revenue)}
+                          </td>
+                          <td className="p-3 text-right text-slate-700">
+                            {formatPercent(item.revenueShare)}
+                          </td>
+                          <td className="p-3 text-right text-slate-700">
+                            {formatPercent(item.cumulativeShare)}
+                          </td>
+                          <td className="p-3 text-center">
+                            <span
+                              className="inline-flex items-center justify-center min-w-[32px] h-7 px-3 rounded-full text-xs font-bold text-white"
+                              style={{
+                                backgroundColor:
+                                  ABC_CLASS_COLORS[item.classification],
+                              }}
+                            >
+                              {item.classification}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl shadow p-4 md:p-6">
+            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-5">
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-slate-900">
+                  Painel de Alerta de Estoque
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Produtos em risco considerando estoque minimo e velocidade
+                  media de saida
+                </p>
+              </div>
+              <div className="text-sm text-slate-500">
+                Base de calculo: {formatInteger(report.analytics.periodDays)}{" "}
+                dias
+              </div>
+            </div>
+
+            {stockAlertsData.length === 0 ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-4 text-emerald-800">
+                Nenhum produto em risco de ruptura no periodo selecionado.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[980px] text-sm">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-700">
+                      <th className="text-left p-3 font-semibold">Produto</th>
+                      <th className="text-left p-3 font-semibold">Categoria</th>
+                      <th className="text-right p-3 font-semibold">Estoque</th>
+                      <th className="text-right p-3 font-semibold">Minimo</th>
+                      <th className="text-right p-3 font-semibold">
+                        Seguranca
+                      </th>
+                      <th className="text-right p-3 font-semibold">
+                        Venda media/dia
+                      </th>
+                      <th className="text-right p-3 font-semibold">
+                        Dias p/ ruptura
+                      </th>
+                      <th className="text-right p-3 font-semibold">
+                        Sugestao compra
+                      </th>
+                      <th className="text-center p-3 font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stockAlertsData.map((item) => (
+                      <tr
+                        key={item.productId}
+                        className={`border-b border-slate-100 ${
+                          item.severity === "critical"
+                            ? "bg-red-50/70"
+                            : "bg-amber-50/70"
+                        }`}
+                      >
+                        <td className="p-3 font-medium text-slate-800">
+                          {item.name}
+                        </td>
+                        <td className="p-3 text-slate-600">{item.category}</td>
+                        <td className="p-3 text-right font-semibold text-slate-800">
+                          {formatInteger(item.stock)}
+                        </td>
+                        <td className="p-3 text-right text-slate-700">
+                          {formatInteger(item.minStock)}
+                        </td>
+                        <td className="p-3 text-right text-slate-700">
+                          {formatInteger(item.safetyStock)}
+                        </td>
+                        <td className="p-3 text-right text-slate-700">
+                          {item.averageDailySales.toFixed(2)}
+                        </td>
+                        <td className="p-3 text-right text-slate-700">
+                          {item.daysToStockout === null
+                            ? "Sem ruptura"
+                            : `${item.daysToStockout.toFixed(1)} dias`}
+                        </td>
+                        <td className="p-3 text-right font-semibold text-slate-800">
+                          {formatInteger(item.suggestedPurchase)}
+                        </td>
+                        <td className="p-3 text-center">
+                          <span
+                            className={`inline-flex items-center justify-center h-7 px-3 rounded-full text-xs font-semibold ${
+                              item.severity === "critical"
+                                ? "bg-red-600 text-white"
+                                : "bg-amber-500 text-white"
+                            }`}
+                          >
+                            {item.severity === "critical"
+                              ? "Critico"
+                              : "Atencao"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           <div className="bg-white rounded-xl shadow p-4 md:p-6">
