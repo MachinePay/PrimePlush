@@ -1,10 +1,31 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { authenticatedFetch } from "../services/apiService";
 
 interface ManagementReportSummary {
   totalOrders: number;
+  totalOrderAttempts: number;
+  successfulOrders: number;
+  canceledOrders: number;
+  pendingOrders: number;
   totalItemsSold: number;
   totalRevenue: number;
+  averageTicket: number;
+  successRate: number;
+  cancellationRate: number;
+  pendingRate: number;
   totalToPayGiraKids: number;
   totalPaidToGiraKids: number;
   totalGiraKidsAccrued: number;
@@ -22,6 +43,20 @@ interface ManagementReportResponse {
   success: boolean;
   summary: ManagementReportSummary;
   products: ProductManagementReport[];
+  charts: {
+    revenueEvolution: {
+      daily: Array<{ label: string; revenue: number; orders: number }>;
+      weekly: Array<{ label: string; revenue: number; orders: number }>;
+      monthly: Array<{ label: string; revenue: number; orders: number }>;
+    };
+    paymentDistribution: Array<{
+      method: string;
+      name: string;
+      value: number;
+      orders: number;
+      revenue: number;
+    }>;
+  };
   filters?: {
     startAt: string | null;
     endAt: string | null;
@@ -31,6 +66,7 @@ interface ManagementReportResponse {
 
 type FilterMode = "general" | "custom";
 type FilterPreset = "today" | "last7days" | "currentMonth";
+type RevenueGranularity = "daily" | "weekly" | "monthly";
 
 interface AppliedFilter {
   mode: FilterMode;
@@ -45,12 +81,27 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 });
 
 const integerFormatter = new Intl.NumberFormat("pt-BR");
+const percentFormatter = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+const CHART_COLORS = ["#10b981", "#2563eb", "#f59e0b", "#ef4444"];
 
 const formatCurrency = (value: number) =>
   currencyFormatter.format(Number.isFinite(value) ? value : 0);
 
 const formatInteger = (value: number) =>
   integerFormatter.format(Number.isFinite(value) ? value : 0);
+
+const formatPercent = (value: number) => `${percentFormatter.format(value)}%`;
+
+const formatAxisCurrency = (value: number) => {
+  if (!Number.isFinite(value)) return "R$ 0";
+  if (Math.abs(value) >= 1000) {
+    return `R$ ${(value / 1000).toFixed(1)}k`;
+  }
+  return `R$ ${Math.round(value)}`;
+};
 
 const createGeneralFilter = (): AppliedFilter => ({
   mode: "general",
@@ -121,6 +172,8 @@ const AdminManagementReportPage: React.FC = () => {
   const [filterMode, setFilterMode] = useState<FilterMode>("general");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [revenueGranularity, setRevenueGranularity] =
+    useState<RevenueGranularity>("daily");
   const [appliedFilter, setAppliedFilter] =
     useState<AppliedFilter>(createGeneralFilter);
 
@@ -178,6 +231,14 @@ const AdminManagementReportPage: React.FC = () => {
   }, [appliedFilter, fetchReport]);
 
   const products = useMemo(() => report?.products || [], [report]);
+  const revenueData = useMemo(
+    () => report?.charts.revenueEvolution[revenueGranularity] || [],
+    [report, revenueGranularity],
+  );
+  const paymentDistributionData = useMemo(
+    () => report?.charts.paymentDistribution || [],
+    [report],
+  );
   const activeFilterLabel = useMemo(() => {
     return appliedFilter.label;
   }, [appliedFilter]);
@@ -369,7 +430,61 @@ const AdminManagementReportPage: React.FC = () => {
 
       {report && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl shadow border-l-4 border-emerald-600 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Faturamento Bruto
+              </p>
+              <p className="text-2xl font-bold text-emerald-700 mt-2">
+                {formatCurrency(report.summary.totalRevenue)}
+              </p>
+              <p className="text-sm text-slate-500 mt-1">
+                Total vendido no periodo
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow border-l-4 border-blue-600 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Ticket Medio
+              </p>
+              <p className="text-2xl font-bold text-blue-700 mt-2">
+                {formatCurrency(report.summary.averageTicket)}
+              </p>
+              <p className="text-sm text-slate-500 mt-1">
+                Media por pedido pago
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow border-l-4 border-violet-600 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Sucesso de Pagamentos
+              </p>
+              <p className="text-2xl font-bold text-violet-700 mt-2">
+                {formatPercent(report.summary.successRate)}
+              </p>
+              <p className="text-sm text-slate-500 mt-1">
+                {formatInteger(report.summary.successfulOrders)} de{" "}
+                {formatInteger(report.summary.totalOrderAttempts)} pedidos
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow border-l-4 border-rose-500 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Cancelados e Pendentes
+              </p>
+              <p className="text-2xl font-bold text-rose-600 mt-2">
+                {formatPercent(
+                  report.summary.cancellationRate + report.summary.pendingRate,
+                )}
+              </p>
+              <p className="text-sm text-slate-500 mt-1">
+                Cancelados: {formatPercent(report.summary.cancellationRate)} |
+                Pendentes: {formatPercent(report.summary.pendingRate)}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl shadow border-l-4 border-blue-600 p-4">
               <p className="text-xs uppercase tracking-wide text-slate-500">
                 Quantidade de vendas
@@ -392,16 +507,6 @@ const AdminManagementReportPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-white rounded-xl shadow border-l-4 border-emerald-600 p-4">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                Dinheiro que entrou
-              </p>
-              <p className="text-2xl font-bold text-emerald-700 mt-2">
-                {formatCurrency(report.summary.totalRevenue)}
-              </p>
-              <p className="text-sm text-slate-500 mt-1">Total faturado</p>
-            </div>
-
             <div className="bg-white rounded-xl shadow border-l-4 border-amber-500 p-4">
               <p className="text-xs uppercase tracking-wide text-slate-500">
                 Falta pagar GiraKids
@@ -420,6 +525,197 @@ const AdminManagementReportPage: React.FC = () => {
                 {formatCurrency(report.summary.totalPaidToGiraKids)}
               </p>
               <p className="text-sm text-slate-500 mt-1">Historico acumulado</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-2 bg-white rounded-xl shadow p-4 md:p-6">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl md:text-2xl font-bold text-slate-900">
+                    Evolucao do Faturamento
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Acompanhe os picos de venda no periodo selecionado
+                  </p>
+                </div>
+
+                <div className="inline-flex rounded-lg bg-slate-100 p-1 gap-1">
+                  {[
+                    { value: "daily", label: "Diario" },
+                    { value: "weekly", label: "Semanal" },
+                    { value: "monthly", label: "Mensal" },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() =>
+                        setRevenueGranularity(
+                          option.value as RevenueGranularity,
+                        )
+                      }
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        revenueGranularity === option.value
+                          ? "bg-blue-700 text-white"
+                          : "text-slate-600 hover:text-slate-800"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {revenueData.length === 0 ? (
+                <div className="h-[320px] flex items-center justify-center text-slate-500 bg-slate-50 rounded-lg">
+                  Nao ha faturamento no periodo para exibir no grafico.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={320}>
+                  <AreaChart data={revenueData}>
+                    <defs>
+                      <linearGradient
+                        id="revenueFill"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="#2563eb"
+                          stopOpacity={0.35}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#2563eb"
+                          stopOpacity={0.02}
+                        />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="label" stroke="#64748b" />
+                    <YAxis
+                      stroke="#64748b"
+                      tickFormatter={(value) =>
+                        formatAxisCurrency(Number(value))
+                      }
+                    />
+                    <Tooltip
+                      formatter={(value: number, name: string, item: any) => {
+                        if (name === "revenue") {
+                          return [formatCurrency(value), "Faturamento"];
+                        }
+
+                        return [value, item?.payload?.orders || 0];
+                      }}
+                      labelFormatter={(label) => `Periodo: ${label}`}
+                      contentStyle={{
+                        borderRadius: "12px",
+                        border: "1px solid #e2e8f0",
+                      }}
+                    />
+                    <Legend formatter={() => "Faturamento"} />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#2563eb"
+                      strokeWidth={3}
+                      fill="url(#revenueFill)"
+                      dot={{ r: 3, fill: "#2563eb" }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            <div className="bg-white rounded-xl shadow p-4 md:p-6">
+              <div className="mb-6">
+                <h2 className="text-xl md:text-2xl font-bold text-slate-900">
+                  Distribuicao de Pagamentos
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Metodos com maior conversao no periodo
+                </p>
+              </div>
+
+              {paymentDistributionData.length === 0 ? (
+                <div className="h-[320px] flex items-center justify-center text-slate-500 bg-slate-50 rounded-lg">
+                  Nenhum pagamento aprovado para distribuir.
+                </div>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={paymentDistributionData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={68}
+                        outerRadius={105}
+                        paddingAngle={3}
+                      >
+                        {paymentDistributionData.map((entry, index) => (
+                          <Cell
+                            key={`${entry.method}-${index}`}
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(
+                          value: number,
+                          _name: string,
+                          item: any,
+                        ) => [
+                          `${formatInteger(value)} pedidos`,
+                          `${item?.payload?.name} · ${formatCurrency(
+                            item?.payload?.revenue || 0,
+                          )}`,
+                        ]}
+                        contentStyle={{
+                          borderRadius: "12px",
+                          border: "1px solid #e2e8f0",
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+
+                  <div className="space-y-3 mt-4">
+                    {paymentDistributionData.map((item, index) => (
+                      <div
+                        key={item.method}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{
+                              backgroundColor:
+                                CHART_COLORS[index % CHART_COLORS.length],
+                            }}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-800 truncate">
+                              {item.name}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {formatInteger(item.orders)} pedidos
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="text-sm font-semibold text-slate-700 whitespace-nowrap">
+                          {formatCurrency(item.revenue)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
