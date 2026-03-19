@@ -94,6 +94,12 @@ const Header: React.FC = () => {
                   Produtos
                 </NavLink>
                 <NavLink
+                  to="/admin/management-report"
+                  className="text-emerald-300 hover:text-emerald-200 transition-colors font-medium"
+                >
+                  Relatorio Gestao
+                </NavLink>
+                <NavLink
                   to="/admin/reports"
                   className="text-[#FFA500] hover:text-blue-700 transition-colors font-medium"
                 >
@@ -264,6 +270,12 @@ const Header: React.FC = () => {
                   className="text-stone-700 hover:text-blue-700 font-medium"
                 >
                   Produtos
+                </NavLink>
+                <NavLink
+                  to="/admin/management-report"
+                  className="text-emerald-700 hover:text-emerald-900 font-medium"
+                >
+                  Relatorio Gestao
                 </NavLink>
                 <NavLink
                   to="/admin/reports"
