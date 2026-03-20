@@ -4,6 +4,131 @@
 // Comentários em português explicam cada parte do código.
 
 import React, { useState, useEffect } from "react";
+import {
+  getStockMovements,
+  addStockMovement,
+  filterStockMovementsByDate,
+  type StockMovement,
+  STOCK_MOVEMENTS_KEY,
+} from "../utils/stockMovements";
+
+// Modal de movimentação de estoque para múltiplos produtos
+const StockMovementModal: React.FC<{
+  products: Product[];
+  onClose: () => void;
+  onMovement: (movements: { productId: string; quantity: number }[]) => void;
+}> = ({ products, onClose, onMovement }) => {
+  const [rows, setRows] = useState([
+    { productId: products[0]?.id || "", quantity: 1 },
+  ]);
+
+  const handleRowChange = (
+    idx: number,
+    field: "productId" | "quantity",
+    value: string | number,
+  ) => {
+    setRows((prev) =>
+      prev.map((row, i) =>
+        i === idx
+          ? { ...row, [field]: field === "quantity" ? Number(value) : value }
+          : row,
+      ),
+    );
+  };
+
+  const addRow = () =>
+    setRows((prev) => [
+      ...prev,
+      { productId: products[0]?.id || "", quantity: 1 },
+    ]);
+  const removeRow = (idx: number) =>
+    setRows((prev) =>
+      prev.length === 1 ? prev : prev.filter((_, i) => i !== idx),
+    );
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+      <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-md">
+        <h2 className="text-xl font-bold mb-4 text-blue-800">
+          Movimentação de Estoque
+        </h2>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onMovement(rows.filter((r) => r.productId && r.quantity > 0));
+          }}
+        >
+          <div className="space-y-4 mb-6 max-h-60 overflow-y-auto">
+            {rows.map((row, idx) => (
+              <div key={idx} className="flex gap-2 items-end border-b pb-2">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">
+                    Produto
+                  </label>
+                  <select
+                    className="w-full border rounded-lg px-3 py-2"
+                    value={row.productId}
+                    onChange={(e) =>
+                      handleRowChange(idx, "productId", e.target.value)
+                    }
+                  >
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-24">
+                  <label className="block text-sm font-medium mb-1">Qtd</label>
+                  <input
+                    type="number"
+                    className="w-full border rounded-lg px-3 py-2"
+                    value={row.quantity}
+                    min={1}
+                    onChange={(e) =>
+                      handleRowChange(idx, "quantity", e.target.value)
+                    }
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="px-3 py-2 rounded bg-red-100 text-red-600 font-bold"
+                  onClick={() => removeRow(idx)}
+                  disabled={rows.length === 1}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="w-full mb-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold"
+            onClick={addRow}
+          >
+            + Adicionar Produto
+          </button>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="bg-stone-200 px-4 py-2 rounded-lg"
+              onClick={onClose}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
+            >
+              Adicionar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 import { useNavigate } from "react-router-dom";
 import type { Product } from "../types";
 import { authenticatedFetch } from "../services/apiService";
@@ -400,6 +525,58 @@ const AdminPage: React.FC = () => {
 
   // Estado que contém a lista de produtos exibida na tabela
   const [menu, setMenu] = useState<Product[]>([]);
+  // Modal de movimentação de estoque
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  // Histórico de movimentações
+  const [stockMovements, setStockMovements] =
+    useState<StockMovement[]>(getStockMovements());
+  // Filtro de datas para histórico
+  const [filterStart, setFilterStart] = useState("");
+  const [filterEnd, setFilterEnd] = useState("");
+  // Atualiza histórico ao abrir página ou movimentar
+  useEffect(() => {
+    setStockMovements(getStockMovements());
+  }, [isStockModalOpen]);
+  // Lida com movimentação de estoque
+  const handleStockMovement = async (
+    movements: { productId: string; quantity: number }[],
+  ) => {
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+    try {
+      // Para simplificar, vamos fazer um loop das requests.
+      // Em produção, seria melhor um endpoint que aceitasse o array.
+      for (const move of movements) {
+        const product = menu.find((p) => p.id === move.productId);
+        if (!product) continue;
+
+        const response = await authenticatedFetch(
+          `${API_URL}/api/products/${move.productId}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              stock: (product.stock || 0) + move.quantity,
+            }),
+          },
+        );
+
+        if (response.ok) {
+          addStockMovement({
+            id: `${move.productId}-${Date.now()}-${Math.random()}`,
+            productId: move.productId,
+            productName: product.name,
+            quantity: move.quantity,
+            date: new Date().toISOString(),
+          });
+        }
+      }
+      await loadProducts();
+      setStockMovements(getStockMovements());
+      setIsStockModalOpen(false);
+    } catch (err) {
+      alert("Erro ao processar movimentações");
+    }
+  };
   // Controla se o modal de formulário está aberto
   const [isFormOpen, setIsFormOpen] = useState(false);
   // Produto atual sendo editado (ou null para criar novo)
@@ -568,6 +745,33 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  // Deleta movimentação e reverte estoque
+  const handleDeleteMovement = async (movement: StockMovement) => {
+    if (!window.confirm("Deseja remover esta movimentação?")) return;
+    const product = menu.find((p) => p.id === movement.productId);
+    if (!product) return alert("Produto não encontrado.");
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+    // Atualiza estoque no backend (subtrai a quantidade da movimentação)
+    const response = await authenticatedFetch(
+      `${API_URL}/api/products/${movement.productId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          stock: (product.stock || 0) - movement.quantity,
+        }),
+      },
+    );
+    if (response.ok) {
+      // Remove movimentação do localStorage
+      const list = getStockMovements().filter((m) => m.id !== movement.id);
+      localStorage.setItem(STOCK_MOVEMENTS_KEY, JSON.stringify(list));
+      setStockMovements(list);
+      await loadProducts();
+    } else {
+      alert("Erro ao atualizar estoque");
+    }
+  };
+
   return (
     <div className="container mx-auto p-2 sm:p-4 md:p-6">
       {/* Cabeçalho */}
@@ -576,6 +780,22 @@ const AdminPage: React.FC = () => {
           Painel Administrativo
         </h1>
         <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => setIsStockModalOpen(true)}
+            className="bg-amber-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-amber-600 transition-colors shadow-md"
+          >
+            Movimentação Estoque
+          </button>
+          {/* Modal de movimentação de estoque */}
+          {isStockModalOpen && (
+            <StockMovementModal
+              products={menu}
+              onClose={() => setIsStockModalOpen(false)}
+              onMovement={handleStockMovement}
+            />
+          )}
+          {/* Histórico de movimentações de estoque */}
+          <div className="mt-12"></div>
           <button
             onClick={() => navigate("/admin/categories")}
             className="bg-purple-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-purple-700 transition-colors shadow-md"
@@ -831,6 +1051,102 @@ const AdminPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-16 bg-white rounded-2xl shadow-lg px-6 py-8 mb-8">
+        <h2 className="text-2xl font-bold text-stone-800 mb-6">
+          Histórico de Movimentações de Estoque
+        </h2>
+        <div className="flex flex-wrap gap-4 mb-6 items-end">
+          <div>
+            <label className="block text-xs font-medium mb-1">De</label>
+            <input
+              type="date"
+              value={filterStart}
+              onChange={(e) => setFilterStart(e.target.value)}
+              className="border rounded px-3 py-2 min-w-[140px]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">Até</label>
+            <input
+              type="date"
+              value={filterEnd}
+              onChange={(e) => setFilterEnd(e.target.value)}
+              className="border rounded px-3 py-2 min-w-[140px]"
+            />
+          </div>
+          <button
+            className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 font-semibold"
+            onClick={() => {
+              if (filterStart && filterEnd) {
+                setStockMovements(
+                  filterStockMovementsByDate(filterStart, filterEnd),
+                );
+              } else {
+                setStockMovements(getStockMovements());
+              }
+            }}
+          >
+            Filtrar
+          </button>
+          <button
+            className="bg-stone-200 px-5 py-2 rounded-lg font-semibold"
+            onClick={() => {
+              setFilterStart("");
+              setFilterEnd("");
+              setStockMovements(getStockMovements());
+            }}
+          >
+            Limpar Filtro
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-[480px] w-full bg-white rounded-xl shadow divide-y">
+            <thead>
+              <tr className="bg-stone-100">
+                <th className="p-3 text-left text-xs font-bold">Data/Hora</th>
+                <th className="p-3 text-left text-xs font-bold">Produto</th>
+                <th className="p-3 text-right text-xs font-bold">Quantidade</th>
+                <th className="p-3 text-right text-xs font-bold">Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stockMovements.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="p-6 text-center text-stone-500 text-base"
+                  >
+                    Nenhuma movimentação registrada.
+                  </td>
+                </tr>
+              ) : (
+                stockMovements
+                  .slice()
+                  .reverse()
+                  .map((m) => (
+                    <tr key={m.id}>
+                      <td className="p-3 text-xs">
+                        {new Date(m.date).toLocaleString("pt-BR")}
+                      </td>
+                      <td className="p-3 text-xs">{m.productName}</td>
+                      <td className="p-3 text-xs text-right font-bold text-emerald-700">
+                        +{m.quantity}
+                      </td>
+                      <td className="p-3 text-xs text-right">
+                        <button
+                          className="text-red-600 hover:underline"
+                          onClick={() => handleDeleteMovement(m)}
+                        >
+                          Excluir
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
