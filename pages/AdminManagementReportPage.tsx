@@ -244,6 +244,14 @@ const AdminManagementReportPage: React.FC = () => {
   const [appliedFilter, setAppliedFilter] =
     useState<AppliedFilter>(createGeneralFilter);
 
+  // Proteção por senha extra
+  const [senhaExtra, setSenhaExtra] = useState("");
+  const [senhaCorreta, setSenhaCorreta] = useState(false);
+  const [senhaErro, setSenhaErro] = useState("");
+
+  // Troque pela senha real depois
+  const SENHA_ESPECIAL = "135";
+
   const fetchReport = useCallback(async (filter: AppliedFilter) => {
     setLoading(true);
     setError("");
@@ -358,6 +366,51 @@ const AdminManagementReportPage: React.FC = () => {
   const handleRefresh = () => {
     fetchReport(appliedFilter);
   };
+
+  // Formulário de senha extra
+  if (!senhaCorreta) {
+    return (
+      <div className="max-w-md mx-auto mt-16 p-6 bg-white rounded-xl shadow flex flex-col items-center">
+        <h2 className="text-2xl font-bold mb-4 text-slate-900">
+          Acesso Restrito
+        </h2>
+        <p className="mb-4 text-slate-700 text-center">
+          Digite a senha especial para acessar o Relatório de Gestão.
+        </p>
+        <input
+          type="password"
+          className="border border-slate-300 rounded-lg px-4 py-2 mb-2 w-full text-lg"
+          placeholder="Senha especial"
+          value={senhaExtra}
+          onChange={(e) => setSenhaExtra(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              if (senhaExtra === SENHA_ESPECIAL) {
+                setSenhaCorreta(true);
+                setSenhaErro("");
+              } else {
+                setSenhaErro("Senha incorreta");
+              }
+            }
+          }}
+        />
+        <button
+          className="bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-800 mt-2"
+          onClick={() => {
+            if (senhaExtra === SENHA_ESPECIAL) {
+              setSenhaCorreta(true);
+              setSenhaErro("");
+            } else {
+              setSenhaErro("Senha incorreta");
+            }
+          }}
+        >
+          Entrar
+        </button>
+        {senhaErro && <p className="text-red-600 mt-2">{senhaErro}</p>}
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
