@@ -419,6 +419,66 @@ const AdminManagementReportPage: React.FC = () => {
           <h1 className="text-3xl md:text-4xl font-bold text-slate-900">
             Relatorio de Gestao
           </h1>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              className="bg-emerald-700 text-white font-semibold px-4 py-2 rounded-lg hover:bg-emerald-800"
+              onClick={() => {
+                // Gera um PDF/tabela estilizada para impressão
+                const produtos = report?.products || [];
+                const html = `
+                  <html>
+                  <head>
+                    <title>Estoque e Sugestão de Compra</title>
+                    <style>
+                      body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8fafc; margin: 0; padding: 24px; }
+                      h2 { color: #10b981; margin-bottom: 24px; }
+                      table { border-collapse: collapse; width: 100%; background: #fff; box-shadow: 0 2px 8px #0001; border-radius: 12px; overflow: hidden; }
+                      th, td { padding: 12px 16px; text-align: left; }
+                      th { background: #10b981; color: #fff; font-size: 16px; }
+                      tr:nth-child(even) { background: #f0fdf4; }
+                      tr:nth-child(odd) { background: #fff; }
+                      td { font-size: 15px; color: #334155; }
+                      .estoque-baixo { color: #ef4444; font-weight: bold; }
+                      .sugestao { color: #2563eb; font-weight: bold; }
+                    </style>
+                  </head>
+                  <body>
+                    <h2>Estoque e Sugestão de Compra</h2>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Produto</th>
+                          <th>Estoque</th>
+                          <th>Sugerido</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${produtos
+                          .map(
+                            (p) => `
+                          <tr>
+                            <td>${p.name}</td>
+                            <td class="${p.stock !== undefined && p.stock !== null && p.stock <= (p.minStock ?? 0) ? "estoque-baixo" : ""}">${p.stock ?? "N/A"}</td>
+                            <td class="sugestao">${p.minStock ?? "N/A"}</td>
+                          </tr>
+                        `,
+                          )
+                          .join("")}
+                      </tbody>
+                    </table>
+                  </body>
+                  </html>
+                `;
+                const printWindow = window.open("", "_blank");
+                printWindow?.document.write(html);
+                printWindow?.document.close();
+                printWindow?.print();
+              }}
+            >
+              Imprimir Estoque/Sugestão
+            </button>
+          </div>
           <p className="text-slate-600 mt-2">
             Visao financeira para admin com base na logica de repasse GiraKids
           </p>
