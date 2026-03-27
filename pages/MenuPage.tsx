@@ -377,7 +377,7 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
   };
 
   return (
-    <aside className="w-[100px] md:w-60 bg-white z-40 flex flex-col h-full border-r border-stone-200 shadow-xl overflow-hidden shrink-0">
+    <aside className="w-[100px] md:w-40 bg-white z-40 flex flex-col h-full border-r border-stone-200 shadow-xl overflow-hidden shrink-0">
       {/* Logo Area */}
       <div className="h-20 md:h-28 flex items-center justify-center border-b border-stone-100 bg-blue-700 hidden md:flex">
         <h1 className="text-3xl font-extrabold text-white tracking-wide">
@@ -395,14 +395,8 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
               : "border-transparent bg-white text-stone-400 hover:bg-stone-50 hover:text-stone-600"
           }`}
         >
-          <span
-            className={`text-3xl md:text-4xl ${
-              selectedCategory === null ? "scale-110" : "grayscale opacity-70"
-            }`}
-          >
-            🧸
-          </span>
-          <span className="text-xs md:text-xl font-bold uppercase">Todos</span>
+          
+          <span className="text-xs md:text-lg p-2 font-bold uppercase">Todos</span>
         </button>
 
         <div className="my-4 border-t border-stone-100 mx-4"></div>
@@ -421,13 +415,7 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
                   : "border-transparent text-stone-400 hover:bg-stone-50 hover:text-stone-600 bg-white"
               }`}
             >
-              <span
-                className={`text-3xl md:text-4xl transition-transform ${
-                  isSelected ? "scale-110" : "grayscale opacity-70"
-                }`}
-              >
-                {icon}
-              </span>
+              
               <span
                 className={`text-xs md:text-xl font-bold text-center md:text-left leading-tight uppercase`}
               >
@@ -736,7 +724,7 @@ const MenuPage: React.FC = () => {
                 {Object.entries(categorizedMenu).map(([category, products]) => (
                   <div
                     key={category}
-                    className="scroll-mt-24 flex-1 min-w-[280px]"
+                    className="scroll-mt-24 flex-1 min-w-[240px]"
                     id={`cat-${category}`}
                   >
                     <h3 className="text-2xl md:text-3xl font-bold text-stone-700 mb-6 flex items-center gap-3 border-b-2 border-stone-200 pb-3">
