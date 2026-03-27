@@ -732,31 +732,33 @@ const MenuPage: React.FC = () => {
           {/* Grid de Produtos */}
           <div className="max-w-6xl mx-auto min-h-[101%]">
             {selectedCategory === null ? (
-              Object.entries(categorizedMenu).map(([category, products]) => (
-                <div
-                  key={category}
-                  className="mb-12 scroll-mt-24"
-                  id={`cat-${category}`}
-                >
-                  <h3 className="text-2xl md:text-3xl font-bold text-stone-700 mb-6 flex items-center gap-3 border-b-2 border-stone-200 pb-3">
-                    {category}
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-8">
-                    {(products as Product[]).map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onAddToCart={addToCart}
-                        onOpenImage={openImageViewer}
-                        quantityInCart={
-                          cartItems.find((i) => i.id === product.id)
-                            ?.quantity || 0
-                        }
-                      />
-                    ))}
+              <div className="flex flex-wrap items-start gap-6 md:gap-8">
+                {Object.entries(categorizedMenu).map(([category, products]) => (
+                  <div
+                    key={category}
+                    className="scroll-mt-24 flex-1 min-w-[280px]"
+                    id={`cat-${category}`}
+                  >
+                    <h3 className="text-2xl md:text-3xl font-bold text-stone-700 mb-6 flex items-center gap-3 border-b-2 border-stone-200 pb-3">
+                      {category}
+                    </h3>
+                    <div className="flex flex-wrap gap-4 md:gap-6">
+                      {(products as Product[]).map((product) => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          onAddToCart={addToCart}
+                          onOpenImage={openImageViewer}
+                          quantityInCart={
+                            cartItems.find((i) => i.id === product.id)
+                              ?.quantity || 0
+                          }
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             ) : (
               <div className="animate-fadeIn">
                 <h3 className="text-2xl md:text-3xl font-bold text-stone-700 mb-6 flex items-center gap-3">
