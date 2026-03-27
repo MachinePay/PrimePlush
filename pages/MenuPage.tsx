@@ -389,13 +389,19 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
       <nav className="flex-1 overflow-y-auto py-4 scrollbar-hide gap-4 pb-20">
         <button
           onClick={() => onSelectCategory(null)}
-          className={`w-full py-6 px-2 md:px-6 flex flex-col md:flex-row items-center md:justify-start gap-2 md:gap-6 transition-all duration-200 border-l-8 ${
+          className={`w-full py-6 px-2 md:px-6 flex flex-col items-center md:justify-start gap-2 transition-all duration-200 border-l-8 ${
             selectedCategory === null
               ? "bg-blue-50 border-blue-600 text-blue-800"
               : "border-transparent bg-white text-stone-400 hover:bg-stone-50 hover:text-stone-600"
           }`}
         >
-          
+          <span
+            className={`text-3xl ${
+              selectedCategory === null ? "scale-110" : "grayscale opacity-70"
+            }`}
+          >
+            🧸
+          </span>
           <span className="text-xs md:text-lg p-2 font-bold uppercase">Todos</span>
         </button>
 
@@ -409,13 +415,19 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
             <button
               key={category}
               onClick={() => onSelectCategory(category)}
-              className={`w-full py-6 px-2 md:px-6 flex flex-col md:flex-row items-center md:justify-start gap-2 md:gap-6 transition-all duration-200 border-l-8 ${
+              className={`w-full py-6 px-2 md:px-6 flex flex-col  items-center md:justify-start gap-2 transition-all duration-200 border-l-8 ${
                 isSelected
                   ? "bg-blue-50 border-blue-600 text-blue-800"
                   : "border-transparent text-stone-400 hover:bg-stone-50 hover:text-stone-600 bg-white"
               }`}
             >
-              
+              <span
+                className={`text-3xl transition-transform ${
+                  isSelected ? "scale-110" : "grayscale opacity-70"
+                }`}
+              >
+                {icon}
+              </span>
               <span
                 className={`text-xs md:text-xl font-bold text-center md:text-left leading-tight uppercase`}
               >
