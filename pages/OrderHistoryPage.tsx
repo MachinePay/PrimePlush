@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Order } from "../types";
-import { authenticatedFetch } from "../services/apiService";
+import Swal from "sweetalert2";
+import {
+  authenticatedFetch,
+  deleteOrderFromHistory,
+  getToken,
+} from "../services/apiService";
 import { useAuth } from "../contexts/AuthContext";
 
 // Página de Histórico de Pedidos com filtro por data
@@ -9,14 +14,79 @@ import { useAuth } from "../contexts/AuthContext";
 
 const OrderHistoryPage: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, currentUser } = useAuth();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
 
   const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+  const isAdmin = currentUser?.role === "admin";
+
+  const getErrorMessageByStatus = (status?: number) => {
+    if (status === 401 || status === 403) {
+      return "Permissão negada ou sessão expirada. Faça login novamente.";
+    }
+    if (status === 404) {
+      return "Este pedido já não existe no histórico.";
+    }
+    if (status === 500) {
+      return "Erro interno do servidor. Tente novamente em instantes.";
+    }
+    return "Não foi possível excluir o pedido agora. Tente novamente.";
+  };
+
+  const handleDeleteFromHistory = async (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (!isAdmin || deletingOrderId === order.id) return;
+
+    const confirm = await Swal.fire({
+      title: "Excluir pedido do histórico?",
+      text: "Esta ação é irreversível na interface e o pedido deixará de aparecer no histórico.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sim, excluir",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#64748b",
+      reverseButtons: true,
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    setDeletingOrderId(order.id);
+
+    try {
+      const token = getToken() || "";
+      const result = await deleteOrderFromHistory(order.id, token);
+
+      if (result.ok) {
+        setOrders((prev) => prev.filter((item) => item.id !== order.id));
+        await Swal.fire({
+          toast: true,
+          position: "top-end",
+          icon: "success",
+          title: result.message || "Pedido excluído do histórico",
+          showConfirmButton: false,
+          timer: 2200,
+          timerProgressBar: true,
+        });
+      }
+    } catch (error: any) {
+      const status = error?.status as number | undefined;
+      await Swal.fire({
+        icon: "error",
+        title: "Falha ao excluir pedido",
+        text: getErrorMessageByStatus(status),
+        confirmButtonText: "Tentar novamente",
+      });
+    } finally {
+      setDeletingOrderId(null);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -205,34 +275,14 @@ const OrderHistoryPage: React.FC = () => {
                     ? "Entregue ao Cliente ✔"
                     : "Entregar ao Cliente"}
                 </button>
-                {/* Botão de deletar com dupla confirmação */}
-                {order.paymentStatus === "pending" && (
+                {isAdmin && (
                   <button
-                    className="px-3 py-1 rounded bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition ml-2"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (
-                        window.confirm(
-                          "Tem certeza que deseja deletar este pedido? Esta ação não pode ser desfeita.",
-                        ) &&
-                        window.confirm(
-                          "Confirme novamente: deseja realmente deletar este pedido?",
-                        )
-                      ) {
-                        const resp = await authenticatedFetch(
-                          `${BACKEND_URL}/api/orders/${order.id}`,
-                          { method: "DELETE" },
-                        );
-                        if (resp.ok) {
-                          fetchOrders();
-                        } else {
-                          alert("Erro ao deletar pedido");
-                        }
-                      }
-                    }}
-                    title="Deletar pedido (apenas se não pago)"
+                    className="px-3 py-1 rounded bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition disabled:bg-red-300 disabled:cursor-not-allowed"
+                    onClick={(e) => handleDeleteFromHistory(order, e)}
+                    disabled={deletingOrderId === order.id}
+                    title="Excluir pedido do histórico"
                   >
-                    Deletar
+                    {deletingOrderId === order.id ? "Excluindo..." : "Excluir"}
                   </button>
                 )}
               </div>

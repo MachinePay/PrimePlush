@@ -35,6 +35,60 @@ export function logout(): void {
   console.log("Usuário deslogado.");
 }
 
+export interface DeleteOrderFromHistoryResponse {
+  ok: boolean;
+  message: string;
+  orderId: string;
+}
+
+interface ApiHttpError extends Error {
+  status?: number;
+}
+
+/**
+ * Remove (soft delete) um pedido do histórico via rota administrativa.
+ * Exige JWT de admin no header Authorization.
+ */
+export async function deleteOrderFromHistory(
+  orderId: string,
+  token: string,
+): Promise<DeleteOrderFromHistoryResponse> {
+  if (!token) {
+    const error: ApiHttpError = new Error("Sessão expirada");
+    error.status = 401;
+    throw error;
+  }
+
+  const response = await fetch(`${API_URL}/admin/orders/history/${orderId}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  let data: Partial<DeleteOrderFromHistoryResponse> = {};
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
+
+  if (!response.ok) {
+    const error: ApiHttpError = new Error(
+      data.message || `Erro ao excluir pedido (${response.status})`,
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  return {
+    ok: data.ok ?? true,
+    message: data.message || "Pedido removido do histórico com sucesso",
+    orderId: data.orderId || orderId,
+  };
+}
+
 /**
  * Tenta fazer login e salva o token se for bem-sucedido.
  * @param role - 'admin', 'kitchen' ou 'superadmin'
@@ -93,9 +147,9 @@ export async function authenticatedFetch(
 ): Promise<Response> {
   const token = getToken();
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(options.headers || {}),
+    ...(options.headers as Record<string, string> | undefined),
   };
 
   if (token) {
