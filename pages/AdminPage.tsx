@@ -4,13 +4,7 @@
 // Comentários em português explicam cada parte do código.
 
 import React, { useState, useEffect } from "react";
-import {
-  getStockMovements,
-  addStockMovement,
-  filterStockMovementsByDate,
-  type StockMovement,
-  STOCK_MOVEMENTS_KEY,
-} from "../utils/stockMovements";
+import { type StockMovement } from "../utils/stockMovements";
 
 // Modal de movimentação de estoque para múltiplos produtos
 const StockMovementModal: React.FC<{
@@ -527,16 +521,57 @@ const AdminPage: React.FC = () => {
   const [menu, setMenu] = useState<Product[]>([]);
   // Modal de movimentação de estoque
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
-  // Histórico de movimentações
-  const [stockMovements, setStockMovements] =
-    useState<StockMovement[]>(getStockMovements());
+  // Histórico de movimentações (backend)
+  const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   // Filtro de datas para histórico
   const [filterStart, setFilterStart] = useState("");
   const [filterEnd, setFilterEnd] = useState("");
+
+  // Busca histórico do backend
+  const loadStockMovements = async (start?: string, end?: string) => {
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+    try {
+      let url = `${API_URL}/api/admin/stock-movements`;
+      const params = new URLSearchParams();
+      if (start) params.set("start", start);
+      if (end) params.set("end", end);
+      if (params.toString()) url += `?${params.toString()}`;
+      const res = await authenticatedFetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        // Normaliza para o formato StockMovement esperado pelo template
+        setStockMovements(
+          data.map(
+            (m: {
+              id: number;
+              productId: string;
+              productName: string;
+              quantity: number;
+              type: string;
+              orderId?: string;
+              created_at: string;
+            }) => ({
+              id: String(m.id),
+              productId: m.productId,
+              productName: m.productName,
+              quantity: m.quantity,
+              date: m.created_at,
+              type: m.type,
+              orderId: m.orderId,
+            }),
+          ),
+        );
+      }
+    } catch (e) {
+      console.error("Erro ao carregar movimentações de estoque:", e);
+    }
+  };
+
   // Atualiza histórico ao abrir página ou movimentar
   useEffect(() => {
-    setStockMovements(getStockMovements());
+    loadStockMovements();
   }, [isStockModalOpen]);
+
   // Lida com movimentação de estoque
   const handleStockMovement = async (
     movements: { productId: string; quantity: number }[],
@@ -544,34 +579,19 @@ const AdminPage: React.FC = () => {
     const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
     try {
-      // Para simplificar, vamos fazer um loop das requests.
-      // Em produção, seria melhor um endpoint que aceitasse o array.
       for (const move of movements) {
         const product = menu.find((p) => p.id === move.productId);
         if (!product) continue;
 
-        const response = await authenticatedFetch(
-          `${API_URL}/api/products/${move.productId}`,
-          {
-            method: "PUT",
-            body: JSON.stringify({
-              stock: (product.stock || 0) + move.quantity,
-            }),
-          },
-        );
-
-        if (response.ok) {
-          addStockMovement({
-            id: `${move.productId}-${Date.now()}-${Math.random()}`,
-            productId: move.productId,
-            productName: product.name,
-            quantity: move.quantity,
-            date: new Date().toISOString(),
-          });
-        }
+        await authenticatedFetch(`${API_URL}/api/products/${move.productId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            stock: (product.stock || 0) + move.quantity,
+          }),
+        });
       }
       await loadProducts();
-      setStockMovements(getStockMovements());
+      await loadStockMovements();
       setIsStockModalOpen(false);
     } catch (err) {
       alert("Erro ao processar movimentações");
@@ -745,13 +765,22 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  // Deleta movimentação e reverte estoque
+  // Deleta movimentação e reverte estoque (apenas ajustes manuais)
   const handleDeleteMovement = async (movement: StockMovement) => {
-    if (!window.confirm("Deseja remover esta movimentação?")) return;
+    const movType = (movement as StockMovement & { type?: string }).type;
+    if (movType === "sale") {
+      alert(
+        "Não é possível excluir movimentações de venda. Cancele o pedido correspondente.",
+      );
+      return;
+    }
+    if (
+      !window.confirm("Deseja remover esta movimentação e reverter o estoque?")
+    )
+      return;
     const product = menu.find((p) => p.id === movement.productId);
     if (!product) return alert("Produto não encontrado.");
     const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-    // Atualiza estoque no backend (subtrai a quantidade da movimentação)
     const response = await authenticatedFetch(
       `${API_URL}/api/products/${movement.productId}`,
       {
@@ -762,11 +791,8 @@ const AdminPage: React.FC = () => {
       },
     );
     if (response.ok) {
-      // Remove movimentação do localStorage
-      const list = getStockMovements().filter((m) => m.id !== movement.id);
-      localStorage.setItem(STOCK_MOVEMENTS_KEY, JSON.stringify(list));
-      setStockMovements(list);
       await loadProducts();
+      await loadStockMovements();
     } else {
       alert("Erro ao atualizar estoque");
     }
@@ -1077,15 +1103,12 @@ const AdminPage: React.FC = () => {
           </div>
           <button
             className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 font-semibold"
-            onClick={() => {
-              if (filterStart && filterEnd) {
-                setStockMovements(
-                  filterStockMovementsByDate(filterStart, filterEnd),
-                );
-              } else {
-                setStockMovements(getStockMovements());
-              }
-            }}
+            onClick={() =>
+              loadStockMovements(
+                filterStart || undefined,
+                filterEnd || undefined,
+              )
+            }
           >
             Filtrar
           </button>
@@ -1094,55 +1117,73 @@ const AdminPage: React.FC = () => {
             onClick={() => {
               setFilterStart("");
               setFilterEnd("");
-              setStockMovements(getStockMovements());
+              loadStockMovements();
             }}
           >
             Limpar Filtro
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-[480px] w-full bg-white rounded-xl shadow divide-y">
+          <table className="min-w-[560px] w-full bg-white rounded-xl shadow divide-y">
             <thead>
               <tr className="bg-stone-100">
                 <th className="p-3 text-left text-xs font-bold">Data/Hora</th>
                 <th className="p-3 text-left text-xs font-bold">Produto</th>
+                <th className="p-3 text-left text-xs font-bold">Tipo</th>
                 <th className="p-3 text-right text-xs font-bold">Quantidade</th>
-                <th className="p-3 text-right text-xs font-bold">Ação</th>
+                <th className="p-3 text-right text-xs font-bold"></th>
               </tr>
             </thead>
             <tbody>
               {stockMovements.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="p-6 text-center text-stone-500 text-base"
                   >
                     Nenhuma movimentação registrada.
                   </td>
                 </tr>
               ) : (
-                stockMovements
-                  .slice()
-                  .reverse()
-                  .map((m) => (
+                stockMovements.map((m) => {
+                  const qty = Number(m.quantity);
+                  const isEntry = qty > 0;
+                  const movType = (m as StockMovement & { type?: string }).type;
+                  const typeLabel =
+                    movType === "sale"
+                      ? "Venda"
+                      : movType === "cancel"
+                        ? "Cancelamento"
+                        : movType === "return"
+                          ? "Devolução"
+                          : "Ajuste manual";
+                  return (
                     <tr key={m.id}>
                       <td className="p-3 text-xs">
                         {new Date(m.date).toLocaleString("pt-BR")}
                       </td>
                       <td className="p-3 text-xs">{m.productName}</td>
-                      <td className="p-3 text-xs text-right font-bold text-emerald-700">
-                        +{m.quantity}
+                      <td className="p-3 text-xs text-stone-500">
+                        {typeLabel}
+                      </td>
+                      <td
+                        className={`p-3 text-xs text-right font-bold ${isEntry ? "text-emerald-700" : "text-red-600"}`}
+                      >
+                        {isEntry ? `+${qty}` : qty}
                       </td>
                       <td className="p-3 text-xs text-right">
-                        <button
-                          className="text-red-600 hover:underline"
-                          onClick={() => handleDeleteMovement(m)}
-                        >
-                          Excluir
-                        </button>
+                        {movType === "manual" && (
+                          <button
+                            className="text-red-500 hover:underline text-xs"
+                            onClick={() => handleDeleteMovement(m)}
+                          >
+                            Desfazer
+                          </button>
+                        )}
                       </td>
                     </tr>
-                  ))
+                  );
+                })
               )}
             </tbody>
           </table>
