@@ -402,7 +402,9 @@ const CategorySidebar: React.FC<CategorySidebarProps> = ({
           >
             🧸
           </span>
-          <span className="text-xs md:text-lg p-2 font-bold uppercase">Todos</span>
+          <span className="text-xs md:text-lg p-2 font-bold uppercase">
+            Todos
+          </span>
         </button>
 
         <div className="my-4 border-t border-stone-100 mx-4"></div>
@@ -739,22 +741,25 @@ const MenuPage: React.FC = () => {
                     className="scroll-mt-24 flex-1 min-w-[240px]"
                     id={`cat-${category}`}
                   >
-                    <h3 className="text-2xl md:text-3xl font-bold text-stone-700 mb-6 flex items-center gap-3 border-b-2 border-stone-200 pb-3">
-                      {category}
-                    </h3>
                     <div className="flex flex-wrap gap-4 md:gap-6">
-                      {(products as Product[]).map((product) => (
-                        <ProductCard
-                          key={product.id}
-                          product={product}
-                          onAddToCart={addToCart}
-                          onOpenImage={openImageViewer}
-                          quantityInCart={
-                            cartItems.find((i) => i.id === product.id)
-                              ?.quantity || 0
-                          }
-                        />
-                      ))}
+                      {[...(products as Product[])]
+                        .sort((a, b) => {
+                          const aOOS = a.stock === 0 ? 1 : 0;
+                          const bOOS = b.stock === 0 ? 1 : 0;
+                          return aOOS - bOOS;
+                        })
+                        .map((product) => (
+                          <ProductCard
+                            key={product.id}
+                            product={product}
+                            onAddToCart={addToCart}
+                            onOpenImage={openImageViewer}
+                            quantityInCart={
+                              cartItems.find((i) => i.id === product.id)
+                                ?.quantity || 0
+                            }
+                          />
+                        ))}
                     </div>
                   </div>
                 ))}
@@ -765,18 +770,24 @@ const MenuPage: React.FC = () => {
                   {selectedCategory}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-8">
-                  {categorizedMenu[selectedCategory]?.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onAddToCart={addToCart}
-                      onOpenImage={openImageViewer}
-                      quantityInCart={
-                        cartItems.find((i) => i.id === product.id)?.quantity ||
-                        0
-                      }
-                    />
-                  ))}
+                  {[...(categorizedMenu[selectedCategory] || [])]
+                    .sort((a, b) => {
+                      const aOOS = a.stock === 0 ? 1 : 0;
+                      const bOOS = b.stock === 0 ? 1 : 0;
+                      return aOOS - bOOS;
+                    })
+                    .map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        onAddToCart={addToCart}
+                        onOpenImage={openImageViewer}
+                        quantityInCart={
+                          cartItems.find((i) => i.id === product.id)
+                            ?.quantity || 0
+                        }
+                      />
+                    ))}
                 </div>
               </div>
             )}
