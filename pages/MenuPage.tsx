@@ -734,35 +734,26 @@ const MenuPage: React.FC = () => {
           {/* Grid de Produtos */}
           <div className="max-w-6xl mx-auto min-h-[101%]">
             {selectedCategory === null ? (
-              <div className="flex flex-wrap items-start gap-6 md:gap-8">
-                {Object.entries(categorizedMenu).map(([category, products]) => (
-                  <div
-                    key={category}
-                    className="scroll-mt-24 flex-1 min-w-[240px]"
-                    id={`cat-${category}`}
-                  >
-                    <div className="flex flex-wrap gap-4 md:gap-6">
-                      {[...(products as Product[])]
-                        .sort((a, b) => {
-                          const aOOS = a.stock === 0 ? 1 : 0;
-                          const bOOS = b.stock === 0 ? 1 : 0;
-                          return aOOS - bOOS;
-                        })
-                        .map((product) => (
-                          <ProductCard
-                            key={product.id}
-                            product={product}
-                            onAddToCart={addToCart}
-                            onOpenImage={openImageViewer}
-                            quantityInCart={
-                              cartItems.find((i) => i.id === product.id)
-                                ?.quantity || 0
-                            }
-                          />
-                        ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="flex flex-wrap gap-4 md:gap-6">
+                {[...menu]
+                  .sort((a, b) => {
+                    const aOOS = a.stock === 0 ? 1 : 0;
+                    const bOOS = b.stock === 0 ? 1 : 0;
+                    if (aOOS !== bOOS) return aOOS - bOOS;
+                    return a.name.localeCompare(b.name, "pt-BR");
+                  })
+                  .map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onAddToCart={addToCart}
+                      onOpenImage={openImageViewer}
+                      quantityInCart={
+                        cartItems.find((i) => i.id === product.id)?.quantity ||
+                        0
+                      }
+                    />
+                  ))}
               </div>
             ) : (
               <div className="animate-fadeIn">
