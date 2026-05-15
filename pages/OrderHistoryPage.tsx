@@ -20,6 +20,8 @@ const OrderHistoryPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [showUndeliveredOnly, setShowUndeliveredOnly] = useState(false);
+  const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
 
   const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -112,6 +114,23 @@ const OrderHistoryPage: React.FC = () => {
     // eslint-disable-next-line
   }, [startDate, endDate]);
 
+  const filteredOrders = orders.filter((order) => {
+    const isUndelivered = !order.entregueCliente;
+    const isUnpaid = !["paid", "authorized"].includes(
+      order.paymentStatus ?? "pending",
+    );
+
+    if (showUndeliveredOnly && !isUndelivered) {
+      return false;
+    }
+
+    if (showUnpaidOnly && !isUnpaid) {
+      return false;
+    }
+
+    return true;
+  });
+
   return (
     <div className="container mx-auto px-4 py-6 min-h-screen bg-stone-100">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
@@ -153,6 +172,24 @@ const OrderHistoryPage: React.FC = () => {
             className="border rounded px-2 py-1"
           />
         </div>
+        <label className="flex items-center gap-2 text-sm font-medium text-stone-700 pb-2">
+          <input
+            type="checkbox"
+            checked={showUndeliveredOnly}
+            onChange={(e) => setShowUndeliveredOnly(e.target.checked)}
+            className="h-4 w-4 rounded border-stone-300 text-blue-600 focus:ring-blue-500"
+          />
+          Não entregues
+        </label>
+        <label className="flex items-center gap-2 text-sm font-medium text-stone-700 pb-2">
+          <input
+            type="checkbox"
+            checked={showUnpaidOnly}
+            onChange={(e) => setShowUnpaidOnly(e.target.checked)}
+            className="h-4 w-4 rounded border-stone-300 text-blue-600 focus:ring-blue-500"
+          />
+          Não pagos
+        </label>
         <button
           onClick={fetchOrders}
           className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
@@ -163,6 +200,8 @@ const OrderHistoryPage: React.FC = () => {
           onClick={() => {
             setStartDate("");
             setEndDate("");
+            setShowUndeliveredOnly(false);
+            setShowUnpaidOnly(false);
           }}
           className="bg-stone-300 text-stone-700 font-bold py-2 px-4 rounded-lg hover:bg-stone-400 transition-colors shadow-md"
         >
@@ -174,19 +213,19 @@ const OrderHistoryPage: React.FC = () => {
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
           <p className="text-stone-500 font-medium">Carregando histórico...</p>
         </div>
-      ) : orders.length === 0 ? (
+      ) : filteredOrders.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-stone-200 max-w-2xl mx-auto">
           <span className="text-6xl block mb-4">📭</span>
           <h2 className="text-2xl font-bold text-stone-700">
             Nenhum pedido encontrado
           </h2>
           <p className="text-stone-500 mt-2">
-            Não há pedidos para o período selecionado.
+            Não há pedidos para os filtros selecionados.
           </p>
         </div>
       ) : (
         <div className="space-y-6">
-          {orders.map((order) => (
+          {filteredOrders.map((order) => (
             <div
               key={order.id}
               className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-600 cursor-pointer hover:shadow-lg transition"
