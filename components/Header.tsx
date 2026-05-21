@@ -14,7 +14,8 @@ const Header: React.FC = () => {
   const isLoginRoute =
     location.pathname === "/" ||
     location.pathname === "/login" ||
-    location.pathname === "/register";
+    location.pathname === "/register" ||
+    location.pathname === "/menu";
 
   useEffect(() => {
     setIsMenuOpen(false);

@@ -106,6 +106,7 @@ const RouterBody: React.FC = () => {
     location.pathname === "/" ||
     location.pathname === "/login" ||
     location.pathname === "/register";
+  const isFullBleedRoute = isLoginRoute || location.pathname === "/menu";
 
   // Loading state enquanto carrega a loja
   if (loading) {
@@ -129,8 +130,8 @@ const RouterBody: React.FC = () => {
       {/* <InactivityGuard /> */}
       <Header />
       <main
-        className={isLoginRoute ? "bg-[#02132f]" : "p-4 md:p-8"}
-        style={isLoginRoute ? undefined : { background: "#FFF6E5" }}
+        className={isFullBleedRoute ? "bg-[#02132f]" : "p-4 md:p-8"}
+        style={isFullBleedRoute ? undefined : { background: "#FFF6E5" }}
       >
         <Routes>
           <Route path="/superadmin/login" element={<SuperAdminPage />} />

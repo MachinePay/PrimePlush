@@ -456,6 +456,8 @@ const MenuPage: React.FC = () => {
   const [isSuggestionLoading, setIsSuggestionLoading] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  const [isCatalogNavOpen, setIsCatalogNavOpen] = useState(false);
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [imageViewer, setImageViewer] = useState<{
     isOpen: boolean;
     images: string[];
@@ -500,6 +502,12 @@ const MenuPage: React.FC = () => {
       return [product.imageUrl];
     }
     return [];
+  };
+
+  const getCategoryIcon = (categoryName: string): string => {
+    const dynamicCat = dynamicCategories.find((dc) => dc.name === categoryName);
+    if (dynamicCat) return dynamicCat.icon;
+    return "🧸";
   };
 
   const openImageViewer = (product: Product) => {
@@ -671,6 +679,29 @@ const MenuPage: React.FC = () => {
     fetchCartSuggestion();
   }, [cartItems, menu, currentUser]);
 
+  const latestProducts = useMemo(() => {
+    return [...menu]
+      .filter((product) => getProductImages(product).length > 0)
+      .slice(-5)
+      .reverse();
+  }, [menu]);
+
+  useEffect(() => {
+    if (latestProducts.length <= 1) return;
+
+    const interval = window.setInterval(() => {
+      setCurrentBannerIndex((current) => (current + 1) % latestProducts.length);
+    }, 10000);
+
+    return () => window.clearInterval(interval);
+  }, [latestProducts.length]);
+
+  useEffect(() => {
+    if (currentBannerIndex >= latestProducts.length) {
+      setCurrentBannerIndex(0);
+    }
+  }, [currentBannerIndex, latestProducts.length]);
+
   const handleCheckout = () => {
     if (!currentUser || cartItems.length === 0) return;
     navigate("/payment");
@@ -711,22 +742,76 @@ const MenuPage: React.FC = () => {
       ? ((imageViewer.currentIndex % totalViewerImages) + totalViewerImages) %
         totalViewerImages
       : 0;
+  const currentBannerProduct =
+    latestProducts.length > 0
+      ? latestProducts[currentBannerIndex % latestProducts.length]
+      : null;
+  const currentBannerImage = currentBannerProduct
+    ? getProductImages(currentBannerProduct)[0]
+    : "";
 
   return (
     <div
-      className="monster-shell flex h-screen w-full overflow-hidden font-sans"
+      className="monster-shell animated-gradient flex h-screen w-full overflow-hidden font-sans"
       style={{ background: "#050604" }}
     >
       {/* 1. SIDEBAR ESQUERDA */}
+      {false && (
       <CategorySidebar
         categories={displayCategories} // 🆕 Usa categorias dinâmicas ordenadas
         selectedCategory={selectedCategory}
         onSelectCategory={setSelectedCategory}
         dynamicCategories={dynamicCategories}
       />
+      )}
 
       {/* 2. ÁREA CENTRAL */}
       <main className="monster-content flex-1 flex flex-col h-full relative overflow-hidden">
+        <div className="catalog-header">
+          <button
+            type="button"
+            className="catalog-toggle"
+            onClick={() => setIsCatalogNavOpen((open) => !open)}
+          >
+            Ver catálogo
+            <span aria-hidden="true">{isCatalogNavOpen ? "−" : "+"}</span>
+          </button>
+        </div>
+
+        {isCatalogNavOpen && (
+          <div className="catalog-subnav">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory(null);
+                setIsCatalogNavOpen(false);
+              }}
+              className={`catalog-subnav-item ${
+                selectedCategory === null ? "is-active" : ""
+              }`}
+            >
+              <span>🧸</span>
+              Todos
+            </button>
+
+            {displayCategories.map((category) => (
+              <button
+                type="button"
+                key={category}
+                onClick={() => {
+                  setSelectedCategory(category);
+                  setIsCatalogNavOpen(false);
+                }}
+                className={`catalog-subnav-item ${
+                  selectedCategory === category ? "is-active" : ""
+                }`}
+              >
+                <span>{getCategoryIcon(category)}</span>
+                {category}
+              </button>
+            ))}
+          </div>
+        )}
         {/* Scroll Container */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-48 md:pb-8 scroll-smooth">
           {/* Mensagens IA */}
@@ -735,6 +820,44 @@ const MenuPage: React.FC = () => {
           <div className="max-w-7xl mx-auto min-h-[101%]">
             {selectedCategory === null ? (
               <>
+                {currentBannerProduct && (
+                  <section className="latest-banner" aria-label="Novidades">
+                    <div className="latest-banner-copy">
+                      <span>Novidades!</span>
+                      <h2>Últimos lançamentos!</h2>
+                      <p>Pelúcia Premium</p>
+                      <strong>{currentBannerProduct.name}</strong>
+                      <button
+                        type="button"
+                        onClick={() => openImageViewer(currentBannerProduct)}
+                      >
+                        Ver detalhes
+                      </button>
+                    </div>
+                    <div className="latest-banner-stage">
+                      <img
+                        src={currentBannerImage}
+                        alt={currentBannerProduct.name}
+                        loading="eager"
+                      />
+                    </div>
+                    {latestProducts.length > 1 && (
+                      <div className="latest-banner-dots">
+                        {latestProducts.map((product, index) => (
+                          <button
+                            type="button"
+                            key={`banner-dot-${product.id}`}
+                            aria-label={`Ver novidade ${index + 1}`}
+                            className={
+                              index === currentBannerIndex ? "is-active" : ""
+                            }
+                            onClick={() => setCurrentBannerIndex(index)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
                 <h2 className="monster-section-title">Produtos em destaque</h2>
                 <div className="monster-product-grid flex flex-wrap gap-4 md:gap-6">
                 {[...menu]
