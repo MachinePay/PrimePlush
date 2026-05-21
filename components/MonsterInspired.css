@@ -526,7 +526,8 @@ body {
 
 .plush-cart-orbit {
   position: fixed;
-  top: 5.6rem;
+  top: auto;
+  bottom: 2.2rem;
   right: 1.15rem;
   z-index: 55;
   width: 84px;
@@ -719,12 +720,218 @@ body {
 .checkout-modern-theme p,
 .checkout-modern-theme label,
 .checkout-modern-theme span {
+  color: #dbeafe;
   border-color: rgba(96, 165, 250, 0.25);
+}
+
+.admin-modern-theme div,
+.admin-modern-theme section,
+.admin-modern-theme article,
+.admin-modern-theme td,
+.admin-modern-theme th,
+.admin-modern-theme li,
+.checkout-modern-theme div,
+.checkout-modern-theme section,
+.checkout-modern-theme article,
+.checkout-modern-theme td,
+.checkout-modern-theme th,
+.checkout-modern-theme li {
+  color: inherit;
+  border-color: rgba(96, 165, 250, 0.24) !important;
+}
+
+.admin-modern-theme .text-gray-600,
+.admin-modern-theme .text-gray-700,
+.admin-modern-theme .text-gray-800,
+.admin-modern-theme .text-gray-900,
+.admin-modern-theme .text-stone-500,
+.admin-modern-theme .text-stone-600,
+.admin-modern-theme .text-stone-700,
+.admin-modern-theme .text-stone-800,
+.admin-modern-theme .text-slate-500,
+.admin-modern-theme .text-slate-600,
+.admin-modern-theme .text-slate-700,
+.admin-modern-theme .text-slate-800,
+.checkout-modern-theme .text-gray-600,
+.checkout-modern-theme .text-gray-700,
+.checkout-modern-theme .text-gray-800,
+.checkout-modern-theme .text-gray-900,
+.checkout-modern-theme .text-stone-500,
+.checkout-modern-theme .text-stone-600,
+.checkout-modern-theme .text-stone-700,
+.checkout-modern-theme .text-stone-800,
+.checkout-modern-theme .text-slate-500,
+.checkout-modern-theme .text-slate-600,
+.checkout-modern-theme .text-slate-700,
+.checkout-modern-theme .text-slate-800 {
+  color: #dbeafe !important;
+}
+
+.admin-modern-theme .text-blue-600,
+.admin-modern-theme .text-blue-700,
+.admin-modern-theme .text-blue-800,
+.admin-modern-theme .text-blue-900,
+.checkout-modern-theme .text-blue-600,
+.checkout-modern-theme .text-blue-700,
+.checkout-modern-theme .text-blue-800,
+.checkout-modern-theme .text-blue-900 {
+  color: #93c5fd !important;
+}
+
+.admin-modern-theme .text-purple-600,
+.admin-modern-theme .text-purple-700,
+.admin-modern-theme .text-purple-800,
+.checkout-modern-theme .text-purple-600,
+.checkout-modern-theme .text-purple-700,
+.checkout-modern-theme .text-purple-800 {
+  color: #bfdbfe !important;
+}
+
+.admin-modern-theme .text-emerald-600,
+.admin-modern-theme .text-emerald-700,
+.admin-modern-theme .text-green-600,
+.admin-modern-theme .text-green-700,
+.checkout-modern-theme .text-emerald-600,
+.checkout-modern-theme .text-emerald-700,
+.checkout-modern-theme .text-green-600,
+.checkout-modern-theme .text-green-700 {
+  color: #86efac !important;
+}
+
+.admin-modern-theme .text-red-600,
+.admin-modern-theme .text-red-700,
+.checkout-modern-theme .text-red-600,
+.checkout-modern-theme .text-red-700 {
+  color: #fca5a5 !important;
+}
+
+.admin-modern-theme .text-amber-600,
+.admin-modern-theme .text-orange-600,
+.checkout-modern-theme .text-amber-600,
+.checkout-modern-theme .text-orange-600 {
+  color: #fde68a !important;
+}
+
+.admin-modern-theme .bg-stone-50,
+.admin-modern-theme .bg-stone-100,
+.admin-modern-theme .bg-gray-50,
+.admin-modern-theme .bg-gray-100,
+.admin-modern-theme .bg-blue-50,
+.admin-modern-theme .bg-purple-50,
+.admin-modern-theme .bg-green-50,
+.admin-modern-theme .bg-emerald-50,
+.checkout-modern-theme .bg-stone-50,
+.checkout-modern-theme .bg-stone-100,
+.checkout-modern-theme .bg-gray-50,
+.checkout-modern-theme .bg-gray-100,
+.checkout-modern-theme .bg-blue-50,
+.checkout-modern-theme .bg-purple-50,
+.checkout-modern-theme .bg-green-50,
+.checkout-modern-theme .bg-emerald-50 {
+  background: rgba(15, 36, 75, 0.78) !important;
+  color: #eaf2ff !important;
+}
+
+.admin-modern-theme .bg-blue-100,
+.admin-modern-theme .bg-purple-100,
+.admin-modern-theme .bg-green-100,
+.admin-modern-theme .bg-emerald-100,
+.checkout-modern-theme .bg-blue-100,
+.checkout-modern-theme .bg-purple-100,
+.checkout-modern-theme .bg-green-100,
+.checkout-modern-theme .bg-emerald-100 {
+  background: rgba(37, 99, 235, 0.2) !important;
+  color: #eaf2ff !important;
+}
+
+.admin-modern-theme option,
+.checkout-modern-theme option {
+  background: #02132f;
+  color: #f8fbff;
+}
+
+.admin-modern-theme table thead,
+.checkout-modern-theme table thead {
+  background: rgba(37, 99, 235, 0.22) !important;
+  color: #fff !important;
+}
+
+.admin-modern-theme table tbody tr,
+.checkout-modern-theme table tbody tr {
+  background: rgba(3, 14, 35, 0.54) !important;
+}
+
+.admin-modern-theme table tbody tr:hover,
+.checkout-modern-theme table tbody tr:hover {
+  background: rgba(37, 99, 235, 0.18) !important;
+}
+
+.admin-modern-theme a,
+.checkout-modern-theme a {
+  color: #93c5fd !important;
 }
 
 .admin-modern-theme button:not(.swal2-confirm):not(.swal2-cancel),
 .checkout-modern-theme button:not(.swal2-confirm):not(.swal2-cancel) {
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.72);
+}
+
+.admin-modern-theme button:not(.swal2-confirm):not(.swal2-cancel):not([class*="bg-blue-"]):not([class*="bg-red-"]):not([class*="bg-green-"]):not([class*="bg-emerald-"]):not([class*="bg-purple-"]):not([class*="bg-amber-"]):not([class*="bg-orange-"]),
+.checkout-modern-theme button:not(.swal2-confirm):not(.swal2-cancel):not([class*="bg-blue-"]):not([class*="bg-red-"]):not([class*="bg-green-"]):not([class*="bg-emerald-"]):not([class*="bg-purple-"]):not([class*="bg-amber-"]):not([class*="bg-orange-"]) {
+  background: rgba(2, 19, 47, 0.82) !important;
+  color: #dbeafe !important;
+  border: 1px solid rgba(96, 165, 250, 0.34) !important;
+}
+
+.admin-modern-theme .bg-white button,
+.checkout-modern-theme .bg-white button,
+.admin-modern-theme button.bg-white,
+.checkout-modern-theme button.bg-white {
+  background: rgba(2, 19, 47, 0.82) !important;
+  color: #dbeafe !important;
+  border-color: rgba(96, 165, 250, 0.34) !important;
+}
+
+.admin-modern-theme button:hover,
+.checkout-modern-theme button:hover {
+  filter: brightness(1.08);
+}
+
+.admin-modern-theme > .min-h-screen,
+.checkout-modern-theme > .min-h-screen {
+  min-height: calc(100vh - 68px) !important;
+  background: transparent !important;
+}
+
+.admin-modern-theme [class*="from-purple-"],
+.admin-modern-theme [class*="to-pink-"],
+.admin-modern-theme [class*="from-stone-"],
+.admin-modern-theme [class*="to-blue-"],
+.checkout-modern-theme [class*="from-purple-"],
+.checkout-modern-theme [class*="to-pink-"],
+.checkout-modern-theme [class*="from-stone-"],
+.checkout-modern-theme [class*="to-blue-"] {
+  background: transparent !important;
+}
+
+.superadmin-login-shell {
+  min-height: calc(100vh - 68px) !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.superadmin-login-card {
+  background: rgba(3, 14, 35, 0.86) !important;
+  border-color: rgba(96, 165, 250, 0.36) !important;
+  color: #eaf2ff !important;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42), 0 0 46px rgba(37, 99, 235, 0.22) !important;
+  backdrop-filter: blur(20px);
+}
+
+.superadmin-login-card input {
+  background: rgba(2, 19, 47, 0.78) !important;
+  color: #fff !important;
+  border-color: rgba(96, 165, 250, 0.38) !important;
 }
 
 @keyframes product-rise {

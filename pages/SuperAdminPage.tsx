@@ -109,10 +109,10 @@ const SuperAdminPage: React.FC = () => {
 
   if (!loggedIn) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
+      <div className="superadmin-login-shell min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
         <form
           onSubmit={handleLogin}
-          className="bg-white shadow-2xl rounded-2xl p-10 w-full max-w-md flex flex-col gap-6 border-2 border-purple-200"
+          className="superadmin-login-card bg-white shadow-2xl rounded-2xl p-10 w-full max-w-md flex flex-col gap-6 border-2 border-purple-200"
         >
           <div className="flex flex-col items-center gap-3">
             <img src={logo} alt="PrimePlush Logo" className="w-24 h-24 mb-2" />
