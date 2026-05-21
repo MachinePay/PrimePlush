@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useStore } from "../contexts/StoreContext"; // 🏪 MULTI-TENANT
-import Chatbot from "./Chatbot";
 import logo from "../assets/primeplush-logo.png";
 
 const Header: React.FC = () => {
@@ -40,7 +39,7 @@ const Header: React.FC = () => {
         }`}
       >
         <div className="container mx-auto px-4 h-full flex items-center justify-between">
-          {/* Logo e Chatbot lado a lado no mobile */}
+          {/* Logo */}
           <div className="flex items-center gap-2 relative">
             <NavLink
               to={currentUser ? "/menu" : "/"}
@@ -55,10 +54,6 @@ const Header: React.FC = () => {
                 PrimePlush
               </span>
             </NavLink>
-            {/* Chatbot ao lado do logo no mobile */}
-            <span className="block md:hidden ml-2">
-              <Chatbot />
-            </span>
           </div>
 
           {/* Navegação Central (Desktop) */}
@@ -161,10 +156,6 @@ const Header: React.FC = () => {
             <div className="flex items-center gap-4 max-[1100px]:hidden">
               {currentUser ? (
                 <>
-                  {/* Chatbot só desktop aqui */}
-                  <span className="hidden md:block">
-                    <Chatbot />
-                  </span>
                   <div className="h-6 w-px bg-stone-200 mx-1"></div>
                   <div className="flex items-center gap-3">
                     <div className="hidden sm:block text-right leading-tight">
