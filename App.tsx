@@ -102,6 +102,10 @@ const App: React.FC = () => {
 const RouterBody: React.FC = () => {
   const location = useLocation();
   const { store, loading, error } = useStore(); // 🏪 MULTI-TENANT
+  const isLoginRoute =
+    location.pathname === "/" ||
+    location.pathname === "/login" ||
+    location.pathname === "/register";
 
   // Loading state enquanto carrega a loja
   if (loading) {
@@ -124,7 +128,10 @@ const RouterBody: React.FC = () => {
     <div className="min-h-screen bg-stone-100 text-stone-800">
       {/* <InactivityGuard /> */}
       <Header />
-      <main className="p-4 md:p-8 bg-" style={{ background: "#FFF6E5" }}>
+      <main
+        className={isLoginRoute ? "bg-[#02132f]" : "p-4 md:p-8"}
+        style={isLoginRoute ? undefined : { background: "#FFF6E5" }}
+      >
         <Routes>
           <Route path="/superadmin/login" element={<SuperAdminPage />} />
           {/* Rota protegida para detalhamento do superadmin */}

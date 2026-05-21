@@ -1,12 +1,78 @@
-/* Animação de gradiente em movimento para tela de login */
+/* Animacao de gradiente em movimento para tela de login */
 .animated-gradient {
-  background: linear-gradient(120deg, #2563eb, #60a5fa, #a7f3d0, #f0fdfa);
+  background:
+    radial-gradient(circle at 18% 22%, rgba(96, 165, 250, 0.38), transparent 24rem),
+    radial-gradient(circle at 84% 18%, rgba(4, 119, 191, 0.32), transparent 28rem),
+    linear-gradient(135deg, #02132f 0%, #022859 42%, #0477bf 100%);
   background-size: 400% 400%;
-  animation: gradientMove 12s ease-in-out infinite;
+  animation: gradientMove 14s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.animated-gradient::before,
+.animated-gradient::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+}
+
+.animated-gradient::before {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 54px 54px;
+  transform: rotate(-8deg);
+  animation: gridDrift 18s linear infinite;
+  opacity: 0.28;
+}
+
+.animated-gradient::after {
+  background:
+    radial-gradient(circle, rgba(96, 165, 250, 0.28) 0 2px, transparent 3px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.18) 0 1px, transparent 2px);
+  background-size: 120px 120px, 78px 78px;
+  animation: particleFloat 16s ease-in-out infinite alternate;
+  opacity: 0.45;
 }
 
 @keyframes gradientMove {
-  0% {background-position: 0% 50%;}
-  50% {background-position: 100% 50%;}
-  100% {background-position: 0% 50%;}
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes gridDrift {
+  from { transform: rotate(-8deg) translate3d(0, 0, 0); }
+  to { transform: rotate(-8deg) translate3d(54px, 54px, 0); }
+}
+
+@keyframes particleFloat {
+  from { transform: translate3d(-2%, 1%, 0) scale(1); }
+  to { transform: translate3d(2%, -2%, 0) scale(1.04); }
+}
+
+.login-glass-card {
+  position: relative;
+  z-index: 1;
+  background: rgba(3, 14, 35, 0.82);
+  border: 1px solid rgba(96, 165, 250, 0.32);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.4), 0 0 42px rgba(37, 99, 235, 0.22);
+  backdrop-filter: blur(20px);
+}
+
+.login-input {
+  background: rgba(2, 19, 47, 0.74);
+  border-color: rgba(96, 165, 250, 0.32);
+  color: #eff6ff;
+}
+
+.login-input::placeholder {
+  color: rgba(191, 219, 254, 0.66);
+}
+
+.login-input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.18);
 }
