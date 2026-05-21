@@ -524,6 +524,209 @@ body {
   border-top: 1px solid rgba(96, 165, 250, 0.48);
 }
 
+.plush-cart-orbit {
+  position: fixed;
+  top: 5.6rem;
+  right: 1.15rem;
+  z-index: 55;
+  width: 84px;
+  height: 84px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 25%, #60a5fa, #2563eb 55%, #022859);
+  color: #fff;
+  border: 1px solid rgba(191, 219, 254, 0.62);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42), 0 0 30px rgba(37, 99, 235, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.plush-cart-orbit:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.48), 0 0 42px rgba(96, 165, 250, 0.52);
+}
+
+.plush-cart-orbit-icon {
+  font-size: 2rem;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+}
+
+.plush-cart-orbit strong {
+  position: absolute;
+  top: -7px;
+  right: -5px;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #022859;
+  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plush-cart-orbit small {
+  position: absolute;
+  bottom: -1.2rem;
+  color: #dbeafe;
+  font-size: 0.72rem;
+  font-weight: 900;
+  white-space: nowrap;
+  text-shadow: 0 2px 8px #000;
+}
+
+.plush-orbit {
+  position: absolute;
+  font-size: 1.05rem;
+  animation: plushOrbit 4.8s linear infinite;
+}
+
+.plush-orbit-two {
+  animation-delay: -1.6s;
+}
+
+.plush-orbit-three {
+  animation-delay: -3.2s;
+}
+
+@keyframes plushOrbit {
+  from {
+    transform: rotate(0deg) translateX(54px) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateX(54px) rotate(-360deg);
+  }
+}
+
+.cart-drawer-shell {
+  position: fixed;
+  inset: 0 0 0 auto;
+  z-index: 60;
+  width: min(390px, 94vw);
+  animation: cartSlideIn 220ms ease-out both;
+}
+
+.cart-drawer-shell .monster-cart {
+  height: 100%;
+  max-height: none;
+  border-radius: 0 !important;
+}
+
+.cart-drawer-close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 3;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.16);
+  color: #fff;
+  border: 1px solid rgba(96, 165, 250, 0.38);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+@keyframes cartSlideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.admin-modern-theme,
+.checkout-modern-theme {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(96, 165, 250, 0.32), transparent 24rem),
+    radial-gradient(circle at 82% 8%, rgba(37, 99, 235, 0.28), transparent 25rem),
+    linear-gradient(135deg, #02132f, #022859 48%, #050604) !important;
+  color: #eaf2ff;
+  min-height: calc(100vh - 68px);
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-modern-theme::before,
+.checkout-modern-theme::before {
+  content: "🧸 🐻 🐰 🐼 🧸 🐻 🐰 🐼";
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 5rem;
+  z-index: 0;
+  color: rgba(191, 219, 254, 0.22);
+  font-size: 2rem;
+  letter-spacing: 2rem;
+  white-space: nowrap;
+  animation: plushHeaderFloat 28s linear infinite;
+  pointer-events: none;
+}
+
+.admin-modern-theme > *,
+.checkout-modern-theme > * {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-modern-theme .bg-white,
+.checkout-modern-theme .bg-white,
+.admin-modern-theme form,
+.checkout-modern-theme form,
+.admin-modern-theme table,
+.checkout-modern-theme table {
+  background: rgba(3, 14, 35, 0.82) !important;
+  color: #eaf2ff !important;
+  border-color: rgba(96, 165, 250, 0.28) !important;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
+}
+
+.admin-modern-theme input,
+.admin-modern-theme select,
+.admin-modern-theme textarea,
+.checkout-modern-theme input,
+.checkout-modern-theme select,
+.checkout-modern-theme textarea {
+  background: rgba(2, 19, 47, 0.75) !important;
+  color: #f8fbff !important;
+  border-color: rgba(96, 165, 250, 0.35) !important;
+}
+
+.admin-modern-theme input::placeholder,
+.checkout-modern-theme input::placeholder,
+.admin-modern-theme textarea::placeholder,
+.checkout-modern-theme textarea::placeholder {
+  color: rgba(191, 219, 254, 0.7);
+}
+
+.admin-modern-theme h1,
+.admin-modern-theme h2,
+.admin-modern-theme h3,
+.checkout-modern-theme h1,
+.checkout-modern-theme h2,
+.checkout-modern-theme h3 {
+  color: #fff !important;
+}
+
+.admin-modern-theme p,
+.admin-modern-theme label,
+.admin-modern-theme span,
+.checkout-modern-theme p,
+.checkout-modern-theme label,
+.checkout-modern-theme span {
+  border-color: rgba(96, 165, 250, 0.25);
+}
+
+.admin-modern-theme button:not(.swal2-confirm):not(.swal2-cancel),
+.checkout-modern-theme button:not(.swal2-confirm):not(.swal2-cancel) {
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.72);
+}
+
 @keyframes product-rise {
   from {
     opacity: 0;

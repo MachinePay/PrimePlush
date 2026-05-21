@@ -107,6 +107,17 @@ const RouterBody: React.FC = () => {
     location.pathname === "/login" ||
     location.pathname === "/register";
   const isFullBleedRoute = isLoginRoute || location.pathname === "/menu";
+  const isAdminThemeRoute =
+    location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/superadmin");
+  const isCheckoutThemeRoute = location.pathname === "/payment";
+  const mainClassName = isFullBleedRoute
+    ? "bg-[#02132f]"
+    : isAdminThemeRoute
+      ? "admin-modern-theme p-4 md:p-8"
+      : isCheckoutThemeRoute
+        ? "checkout-modern-theme p-4 md:p-8"
+        : "p-4 md:p-8";
 
   // Loading state enquanto carrega a loja
   if (loading) {
@@ -130,8 +141,12 @@ const RouterBody: React.FC = () => {
       {/* <InactivityGuard /> */}
       <Header />
       <main
-        className={isFullBleedRoute ? "bg-[#02132f]" : "p-4 md:p-8"}
-        style={isFullBleedRoute ? undefined : { background: "#FFF6E5" }}
+        className={mainClassName}
+        style={
+          isFullBleedRoute || isAdminThemeRoute || isCheckoutThemeRoute
+            ? undefined
+            : { background: "#FFF6E5" }
+        }
       >
         <Routes>
           <Route path="/superadmin/login" element={<SuperAdminPage />} />

@@ -784,7 +784,6 @@ const MenuPage: React.FC = () => {
               type="button"
               onClick={() => {
                 setSelectedCategory(null);
-                setIsCatalogNavOpen(false);
               }}
               className={`catalog-subnav-item ${
                 selectedCategory === null ? "is-active" : ""
@@ -800,7 +799,6 @@ const MenuPage: React.FC = () => {
                 key={category}
                 onClick={() => {
                   setSelectedCategory(category);
-                  setIsCatalogNavOpen(false);
                 }}
                 className={`catalog-subnav-item ${
                   selectedCategory === category ? "is-active" : ""
@@ -911,51 +909,37 @@ const MenuPage: React.FC = () => {
           </div>
         </div>
         {cartItems.length > 0 && !isMobileCartOpen && (
-          <div className="xl:hidden fixed bottom-0 right-0 z-50 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.2)] min-[900px]:left-0 min-[900px]:right-0 min-[900px]:w-full">
-            <div
-              className="monster-mobile-cart bg-stone-900 text-white min-[900px]:px-8 min-[900px]:py-8 px-3 py-3 flex justify-between items-center rounded-tl-2xl min-[900px]:rounded-t-none cursor-pointer active:bg-stone-800 transition-colors"
-              onClick={() => setIsMobileCartOpen(true)}
-            >
-              <span className="font-bold uppercase tracking-wider flex items-center gap-3 min-[900px]:text-2xl">
-                <span className="min-[900px]:text-2xl">Carrinho</span>
-                <p>{cartItems.reduce((acc, i) => acc + i.quantity, 0)}</p>
-                <span className="text-sm bg-blue-600 text-white px-2 py-1 rounded-none m-2 animate-pulse">
-                  ▲ Ver
-                </span>
-              </span>
-              <span className=" font-bold text-blue-300 min-[900px]:text-2xl">
-                R$ {cartTotal.toFixed(2)}
-              </span>
-            </div>
-          </div>
+          <button
+            type="button"
+            className="plush-cart-orbit"
+            onClick={() => setIsMobileCartOpen(true)}
+            aria-label="Abrir carrinho"
+          >
+            <span className="plush-cart-orbit-icon">🛒</span>
+            <span className="plush-orbit plush-orbit-one">🧸</span>
+            <span className="plush-orbit plush-orbit-two">🐻</span>
+            <span className="plush-orbit plush-orbit-three">🐰</span>
+            <strong>{cartItems.reduce((acc, i) => acc + i.quantity, 0)}</strong>
+            <small>R$ {cartTotal.toFixed(2)}</small>
+          </button>
         )}
       </main>
 
-      {/* 4. COLUNA DIREITA (Carrinho Desktop) */}
-      <div className="hidden xl:block w-[380px] h-full shadow-2xl z-20">
-        <CartSidebar
-          cartItems={cartItems}
-          cartTotal={cartTotal}
-          updateQuantity={updateQuantity}
-          onCheckout={handleCheckout}
-          isPlacingOrder={isPlacingOrder}
-          cartSuggestion={cartSuggestion}
-          menu={menu}
-          onAddToCart={addToCart}
-          observation={observation}
-          setObservation={setObservation}
-          currentUser={currentUser}
-        />
-      </div>
-
-      {/* 5. DRAWER MOBILE EXPANDIDO */}
       {isMobileCartOpen && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-transparent"
+            className="fixed inset-0 z-40 bg-black/45 backdrop-blur-sm"
             onClick={() => setIsMobileCartOpen(false)}
           />
-
+          <div className="cart-drawer-shell">
+          <button
+            type="button"
+            className="cart-drawer-close"
+            onClick={() => setIsMobileCartOpen(false)}
+            aria-label="Fechar carrinho"
+          >
+            ×
+          </button>
           <CartSidebar
             cartItems={cartItems}
             cartTotal={cartTotal}
@@ -963,14 +947,13 @@ const MenuPage: React.FC = () => {
             onCheckout={handleCheckout}
             isPlacingOrder={isPlacingOrder}
             cartSuggestion={cartSuggestion}
-            isMobile={true}
-            onClose={() => setIsMobileCartOpen(false)}
             menu={menu}
             onAddToCart={addToCart}
             observation={observation}
             setObservation={setObservation}
             currentUser={currentUser}
           />
+          </div>
         </>
       )}
 
