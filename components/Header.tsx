@@ -38,19 +38,19 @@ const Header: React.FC = () => {
           isLoginRoute ? "login-plush-header" : ""
         }`}
       >
-        <div className="container mx-auto px-4 h-full flex items-center justify-between">
+        <div className="container mx-auto px-3 sm:px-4 h-full flex items-center justify-between gap-3 min-w-0">
           {/* Logo */}
-          <div className="flex items-center gap-2 relative">
+          <div className="flex items-center gap-2 relative min-w-0">
             <NavLink
               to={currentUser ? "/menu" : "/"}
-              className="flex items-center gap-2 group"
+              className="flex items-center gap-2 group min-w-0"
             >
               <img
                 src={logo}
                 alt="PrimePlush logo"
-                className="monster-header-logo w-12 h-12 rounded-lg group-hover:scale-105 transition-transform object-cover"
+                className="monster-header-logo w-10 h-10 sm:w-12 sm:h-12 rounded-lg group-hover:scale-105 transition-transform object-cover shrink-0"
               />
-              <span className="monster-header-brand text-xl font-bold text-stone-800 tracking-tight">
+              <span className="monster-header-brand text-base sm:text-xl font-bold text-stone-800 tracking-tight truncate">
                 PrimePlush
               </span>
             </NavLink>
@@ -129,10 +129,10 @@ const Header: React.FC = () => {
           </nav>
 
           {/* Área do Usuário (Desktop) + Menu Hambúrguer (<1100px) */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setIsMenuOpen((prev) => !prev)}
-              className="monster-header-action hidden max-[1100px]:inline-flex items-center justify-center h-10 w-10 rounded-lg bg-blue-700 text-white hover:bg-blue-800 transition-colors"
+              className="monster-header-action hidden max-[1100px]:inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-blue-700 text-white hover:bg-blue-800 transition-colors shrink-0"
               aria-label="Abrir menu"
               title="Menu"
             >
