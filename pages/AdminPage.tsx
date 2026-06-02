@@ -807,6 +807,12 @@ const AdminPage: React.FC = () => {
         </h1>
         <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
           <button
+            onClick={() => navigate("/menu")}
+            className="bg-emerald-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-emerald-700 transition-colors shadow-md"
+          >
+            Nova Venda
+          </button>
+          <button
             onClick={() => setIsStockModalOpen(true)}
             className="bg-amber-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-amber-600 transition-colors shadow-md"
           >

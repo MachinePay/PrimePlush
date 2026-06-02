@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +11,8 @@ import {
   cancelPayment,
   clearPaymentQueue,
 } from "../services/paymentService";
-import type { Order, CartItem } from "../types";
+import { getUsers } from "../services/apiService";
+import type { Order, CartItem, User } from "../types";
 import PaymentOnline from "../components/PaymentOnline";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -46,6 +47,28 @@ const PaymentPage: React.FC = () => {
   const { cartItems, cartTotal, clearCart, observation } = useCart();
   const { currentUser, addOrderToHistory, logout } = useAuth();
   const navigate = useNavigate();
+  const isAdminSale =
+    currentUser?.role === "admin" || currentUser?.role === "admincustomer";
+  const canSelectCustomer = currentUser?.role === "admin";
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [usersError, setUsersError] = useState("");
+
+  const customerUsers = useMemo(
+    () =>
+      users
+        .filter((user) => {
+          const role = user.role || "customer";
+          return role === "customer" || role === "admincustomer";
+        })
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [users],
+  );
+
+  const checkoutUser = canSelectCustomer
+    ? customerUsers.find((user) => user.id === selectedUserId) || null
+    : currentUser;
 
   // Estados de UI
   const [paymentType, setPaymentType] = useState<
@@ -58,7 +81,7 @@ const PaymentPage: React.FC = () => {
   >(null);
 
   const [paymentMethod, setPaymentMethod] = useState<
-    "credit" | "debit" | "pix" | null
+    "credit" | "debit" | "pix" | "cheque" | "boleto" | null
   >(null);
 
   const [status, setStatus] = useState<
@@ -92,6 +115,33 @@ const PaymentPage: React.FC = () => {
   // Novo estado para orderId do pagamento online
   const [onlineOrderId, setOnlineOrderId] = useState<string | null>(null);
   const [creatingOnlineOrder, setCreatingOnlineOrder] = useState(false);
+
+  useEffect(() => {
+    if (!canSelectCustomer) return;
+
+    const loadUsers = async () => {
+      setIsLoadingUsers(true);
+      setUsersError("");
+      try {
+        const data = await getUsers();
+        if (!Array.isArray(data)) {
+          throw new Error("Resposta invalida ao buscar usuarios");
+        }
+        setUsers(data);
+      } catch (error) {
+        console.error("Erro ao buscar usuarios:", error);
+        setUsersError("Nao foi possivel carregar os usuarios.");
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    };
+
+    loadUsers();
+  }, [canSelectCustomer]);
+
+  useEffect(() => {
+    setOnlineOrderId(null);
+  }, [selectedUserId]);
 
   // Ref para limpeza (cleanup) ao desmontar a página
   const paymentIdRef = useRef<string | null>(null);
@@ -187,12 +237,20 @@ const PaymentPage: React.FC = () => {
     setQrCodeBase64(null);
   };
 
+  const requireCheckoutUser = () => {
+    if (!checkoutUser) {
+      throw new Error("Selecione um cliente antes de finalizar a compra.");
+    }
+    return checkoutUser;
+  };
+
   const finalizeOrder = async (
     orderId: string,
     paymentId: string,
     type: "pix" | "card",
   ) => {
     try {
+      const buyer = checkoutUser || currentUser!;
       let safePaymentId: string | null = paymentId;
       if (safePaymentId !== undefined && safePaymentId !== null) {
         if (typeof safePaymentId !== "string") {
@@ -221,8 +279,8 @@ const PaymentPage: React.FC = () => {
 
       const orderData: Order = {
         id: orderId,
-        userId: currentUser!.id,
-        userName: currentUser!.name,
+        userId: buyer.id,
+        userName: buyer.name,
         items: cartItems.map((i) => ({
           productId: i.id,
           name: i.name,
@@ -235,7 +293,9 @@ const PaymentPage: React.FC = () => {
         status: "active",
       };
 
-      addOrderToHistory(orderData);
+      if (!canSelectCustomer) {
+        addOrderToHistory(orderData);
+      }
 
       setActivePayment(null);
       setStatus("success");
@@ -281,11 +341,13 @@ const PaymentPage: React.FC = () => {
   };
 
   const createOrder = async () => {
+    const buyer = requireCheckoutUser();
     const orderResp = await fetchStandard(`${BACKEND_URL}/api/orders`, {
       method: "POST",
       body: JSON.stringify({
-        userId: currentUser!.id,
-        userName: currentUser!.name,
+        userId: buyer.id,
+        userName: buyer.name,
+        userDoc: buyer.cpf,
         items: cartItems.map((i) => ({
           id: i.id,
           name: i.name,
@@ -316,14 +378,15 @@ const PaymentPage: React.FC = () => {
     setPaymentStatusMessage("Gerando QR Code...");
 
     try {
+      const buyer = requireCheckoutUser();
       const orderId = await createOrder();
 
       const result = await createPixPayment({
         amount: cartTotal,
-        description: `Pedido de ${currentUser!.name}`,
+        description: `Pedido de ${buyer.name}`,
         orderId: orderId,
-        email: currentUser?.email,
-        payerName: currentUser?.name,
+        email: buyer.email,
+        payerName: buyer.name,
         items: cartItems.map((i) => ({
           id: i.id,
           name: i.name,
@@ -331,8 +394,8 @@ const PaymentPage: React.FC = () => {
           price: i.price,
         })),
         user: {
-          email: currentUser?.email,
-          name: currentUser?.name,
+          email: buyer.email,
+          name: buyer.name,
         },
       });
 
@@ -356,6 +419,7 @@ const PaymentPage: React.FC = () => {
     setPaymentStatusMessage("Conectando à maquininha...");
 
     try {
+      const buyer = requireCheckoutUser();
       const orderId = await createOrder();
 
       const valorFinal = paymentMethod === "credit" ? totalComTaxa : cartTotal;
@@ -364,7 +428,7 @@ const PaymentPage: React.FC = () => {
 
       const result = await createCardPayment({
         amount: valorFinal,
-        description: `Pedido ${currentUser!.name}`,
+        description: `Pedido ${buyer.name}`,
         orderId: orderId,
         paymentMethod: paymentMethod as "credit" | "debit",
         installments: paymentMethod === "credit" ? selectedInstallments : 1,
@@ -375,8 +439,8 @@ const PaymentPage: React.FC = () => {
           price: i.price,
         })),
         user: {
-          email: currentUser?.email,
-          name: currentUser?.name,
+          email: buyer.email,
+          name: buyer.name,
         },
       });
 
@@ -436,6 +500,45 @@ const PaymentPage: React.FC = () => {
         Finalizar Pagamento
       </h1>
 
+      {canSelectCustomer && (
+        <div className="bg-white p-5 rounded-xl shadow-lg border border-blue-100 mb-6">
+          <label
+            htmlFor="admin-customer"
+            className="block text-sm font-bold text-stone-700 mb-2"
+          >
+            Cliente da compra
+          </label>
+          <select
+            id="admin-customer"
+            value={selectedUserId}
+            onChange={(event) => setSelectedUserId(event.target.value)}
+            disabled={isLoadingUsers || status === "processing"}
+            className="w-full border-2 border-stone-200 rounded-lg px-4 py-3 bg-white text-stone-800 focus:outline-none focus:border-blue-500"
+          >
+            <option value="">
+              {isLoadingUsers ? "Carregando usuarios..." : "Selecione um usuario"}
+            </option>
+            {customerUsers.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name}
+                {user.cpf ? ` - ${user.cpf}` : ""}
+                {user.email ? ` - ${user.email}` : ""}
+              </option>
+            ))}
+          </select>
+          {usersError && (
+            <p className="mt-2 text-sm font-semibold text-red-600">
+              {usersError}
+            </p>
+          )}
+          {checkoutUser && (
+            <p className="mt-2 text-sm text-blue-700">
+              Esta compra sera registrada na conta de {checkoutUser.name}.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* COLUNA ESQUERDA - RESUMO */}
         <div className="bg-white p-6 rounded-2xl shadow-lg h-fit">
@@ -480,14 +583,16 @@ const PaymentPage: React.FC = () => {
                 Como você quer pagar?
               </h2>
               <button
-                className="p-4 rounded-xl border-2 border-green-500 bg-green-50 text-green-900 font-bold text-lg hover:bg-green-100 transition-all"
+                className="p-4 rounded-xl border-2 border-green-500 bg-green-50 text-green-900 font-bold text-lg hover:bg-green-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => setPaymentType("online")}
+                disabled={canSelectCustomer && !checkoutUser}
               >
                 💻 Pagamento Online (Mercado Pago)
               </button>
               <button
-                className="p-4 rounded-xl border-2 border-blue-500 bg-blue-50 text-blue-900 font-bold text-lg hover:bg-blue-100 transition-all"
+                className="p-4 rounded-xl border-2 border-blue-500 bg-blue-50 text-blue-900 font-bold text-lg hover:bg-blue-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => setPaymentType("presencial")}
+                disabled={canSelectCustomer && !checkoutUser}
               >
                 🏪 Pagar na Loja Girakids
               </button>
@@ -504,29 +609,8 @@ const PaymentPage: React.FC = () => {
                   onClick={async () => {
                     setCreatingOnlineOrder(true);
                     try {
-                      const orderResp = await fetchStandard(
-                        `${BACKEND_URL}/api/orders`,
-                        {
-                          method: "POST",
-                          body: JSON.stringify({
-                            userId: currentUser!.id,
-                            userName: currentUser!.name,
-                            items: cartItems.map((i) => ({
-                              id: i.id,
-                              name: i.name,
-                              quantity: i.quantity,
-                              price: i.price,
-                            })),
-                            total: cartTotal,
-                            observation,
-                            status: "pending",
-                          }),
-                        },
-                      );
-                      if (!orderResp.ok)
-                        throw new Error("Erro ao criar pedido");
-                      const data = await orderResp.json();
-                      setOnlineOrderId(data.id);
+                      const orderId = await createOrder();
+                      setOnlineOrderId(orderId);
                     } catch (err: any) {
                       Swal.fire({
                         icon: "error",
@@ -556,8 +640,8 @@ const PaymentPage: React.FC = () => {
                     quantity: i.quantity,
                     price: i.price,
                   }))}
-                  userEmail={currentUser?.email || ""}
-                  userName={currentUser?.name || ""}
+                  userEmail={checkoutUser?.email || ""}
+                  userName={checkoutUser?.name || ""}
                   onSuccess={(paymentId) => {
                     Swal.fire({
                       icon: "success",
@@ -636,7 +720,7 @@ const PaymentPage: React.FC = () => {
                     PIX
                   </button>
                   {/* Opções extras para admin */}
-                  {currentUser?.role === "admincustomer" && (
+                  {isAdminSale && (
                     <>
                       <button
                         className={`px-6 py-3 rounded font-bold text-lg transition-all ${
@@ -707,47 +791,15 @@ const PaymentPage: React.FC = () => {
                     setStatus("processing");
                     setErrorMessage("");
                     try {
-                      const orderResp = await fetchStandard(
-                        `${BACKEND_URL}/api/orders`,
-                        {
-                          method: "POST",
-                          body: JSON.stringify({
-                            userId: currentUser!.id,
-                            userName: currentUser!.name,
-                            items: cartItems.map((i) => ({
-                              id: i.id,
-                              name: i.name,
-                              quantity: i.quantity,
-                              price: i.price,
-                            })),
-                            paymentType: "presencial",
-                            paymentMethod,
-                            installments:
-                              paymentMethod === "credit"
-                                ? selectedInstallments
-                                : 1,
-                            fee:
-                              paymentMethod === "credit" ? taxaSelecionada : 0,
-                            total:
-                              paymentMethod === "credit"
-                                ? totalComTaxa
-                                : cartTotal,
-                            paymentStatus: "pending",
-                            observation,
-                          }),
-                        },
-                      );
-                      if (!orderResp.ok)
-                        throw new Error("Erro ao criar pedido");
-                      const orderData = await orderResp.json();
+                      const orderId = await createOrder();
                       setStatus("success");
                       clearCart();
                       setPresencialStep(null);
                       setPaymentType(null);
 
                       // Abrir PDF em nova aba se o pedido foi criado com sucesso
-                      if (orderData && orderData.id) {
-                        const pdfUrl = `${BACKEND_URL}/api/orders/${orderData.id}/receipt-pdf`;
+                      if (orderId) {
+                        const pdfUrl = `${BACKEND_URL}/api/orders/${orderId}/receipt-pdf`;
                         window.open(pdfUrl, "_blank");
                       }
 

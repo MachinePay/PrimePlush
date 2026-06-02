@@ -47,7 +47,7 @@ export interface Order {
   observation?: string;
   // Novos campos para pagamento
   paymentType?: "online" | "presencial";
-  paymentMethod?: "credit" | "debit" | "pix";
+  paymentMethod?: "credit" | "debit" | "pix" | "cheque" | "boleto";
   installments?: number;
   fee?: number;
   paymentStatus?: "pending" | "paid" | "authorized" | "canceled";

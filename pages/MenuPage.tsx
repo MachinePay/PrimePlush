@@ -255,7 +255,8 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                   >
                     -
                   </button>
-                  {currentUser?.role === "admincustomer" ? (
+                  {currentUser?.role === "admincustomer" ||
+                  currentUser?.role === "admin" ? (
                     <input
                       type="number"
                       min={1}

@@ -51,9 +51,6 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   if (currentUser.role === "kitchen") {
     return <Navigate to="/cozinha" replace />;
   }
-  if (currentUser.role === "admin") {
-    return <Navigate to="/admin" replace />;
-  }
   return <>{children}</>;
 };
 

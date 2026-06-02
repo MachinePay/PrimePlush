@@ -92,7 +92,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     }
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id);
-      const isAdminCustomer = currentUser?.role === "admincustomer";
+      const isAdminCustomer =
+        currentUser?.role === "admincustomer" || currentUser?.role === "admin";
       const quantidadeVenda = product.quantidadeVenda ?? 1;
       const addQuantidade = isAdminCustomer ? 1 : quantidadeVenda;
       if (existingItem) {
@@ -130,7 +131,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     setCartItems((prevItems) => {
       const item = prevItems.find((i) => i.id === productId);
       if (!item) return prevItems;
-      const isAdminCustomer = currentUser?.role === "admincustomer";
+      const isAdminCustomer =
+        currentUser?.role === "admincustomer" || currentUser?.role === "admin";
       const quantidadeVenda = item.quantidadeVenda ?? 1;
       let novaQuantidade = Math.max(quantity, 0);
       if (!isAdminCustomer && novaQuantidade > 0) {
