@@ -20,6 +20,7 @@ const OrderHistoryPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [customerFilter, setCustomerFilter] = useState("");
   const [showUndeliveredOnly, setShowUndeliveredOnly] = useState(false);
   const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
@@ -115,10 +116,21 @@ const OrderHistoryPage: React.FC = () => {
   }, [startDate, endDate]);
 
   const filteredOrders = orders.filter((order) => {
+    const normalizedCustomerFilter = customerFilter.trim().toLowerCase();
+    const customerName = (order.userName || "").toLowerCase();
+    const customerId = (order.userId || "").toLowerCase();
     const isUndelivered = !order.entregueCliente;
     const isUnpaid = !["paid", "authorized"].includes(
       order.paymentStatus ?? "pending",
     );
+
+    if (
+      normalizedCustomerFilter &&
+      !customerName.includes(normalizedCustomerFilter) &&
+      !customerId.includes(normalizedCustomerFilter)
+    ) {
+      return false;
+    }
 
     if (showUndeliveredOnly && !isUndelivered) {
       return false;
@@ -172,6 +184,18 @@ const OrderHistoryPage: React.FC = () => {
             className="border rounded px-2 py-1"
           />
         </div>
+        <div className="min-w-[240px] flex-1">
+          <label className="block text-sm font-medium text-stone-700 mb-1">
+            Cliente
+          </label>
+          <input
+            type="search"
+            value={customerFilter}
+            onChange={(e) => setCustomerFilter(e.target.value)}
+            placeholder="Nome ou ID do cliente"
+            className="border rounded px-2 py-1 w-full"
+          />
+        </div>
         <label className="flex items-center gap-2 text-sm font-medium text-stone-700 pb-2">
           <input
             type="checkbox"
@@ -200,6 +224,7 @@ const OrderHistoryPage: React.FC = () => {
           onClick={() => {
             setStartDate("");
             setEndDate("");
+            setCustomerFilter("");
             setShowUndeliveredOnly(false);
             setShowUnpaidOnly(false);
           }}
