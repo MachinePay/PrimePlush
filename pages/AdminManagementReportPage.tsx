@@ -91,6 +91,15 @@ interface StockAlertItem {
   severity: "critical" | "warning";
 }
 
+interface StockIncomingProductItem {
+  productId: string;
+  name: string;
+  category: string;
+  quantityIncoming: number;
+  quantityOutgoing: number;
+  stock: number | null;
+}
+
 interface ManagementReportResponse {
   success: boolean;
   summary: ManagementReportSummary;
@@ -114,6 +123,7 @@ interface ManagementReportResponse {
     topProductsByVolume: ProductVolumeAnalyticsItem[];
     abcCurve: AbcAnalyticsItem[];
     categoryPerformance: CategoryPerformanceItem[];
+    stockIncomingByProduct: StockIncomingProductItem[];
     stockAlerts: StockAlertItem[];
   };
   filters?: {
@@ -336,6 +346,10 @@ const AdminManagementReportPage: React.FC = () => {
   );
   const categoryPerformanceData = useMemo(
     () => report?.analytics.categoryPerformance || [],
+    [report],
+  );
+  const stockIncomingByProductData = useMemo(
+    () => report?.analytics.stockIncomingByProduct || [],
     [report],
   );
   const stockAlertsData = useMemo(
@@ -1375,9 +1389,9 @@ const AdminManagementReportPage: React.FC = () => {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-sm">
-                  <thead>
-                    <tr className="bg-slate-100 text-slate-700">
+                  <table className="w-full min-w-[720px] text-sm">
+                    <thead>
+                      <tr className="bg-slate-900 text-white border-b border-slate-700">
                       <th className="text-left p-3 font-semibold">#</th>
                       <th className="text-left p-3 font-semibold">Produto</th>
                       <th className="text-right p-3 font-semibold">
@@ -1395,20 +1409,94 @@ const AdminManagementReportPage: React.FC = () => {
                     {products.map((product, index) => (
                       <tr
                         key={`${product.productId}-${index}`}
-                        className="border-b border-slate-100 hover:bg-slate-50"
+                        className="border-b border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-900"
                       >
-                        <td className="p-3 text-slate-500">{index + 1}</td>
-                        <td className="p-3 font-medium text-slate-800">
+                        <td className="p-3 text-slate-300">{index + 1}</td>
+                        <td className="p-3 font-medium text-white">
                           {product.name}
                         </td>
-                        <td className="p-3 text-right text-slate-700">
+                        <td className="p-3 text-right text-slate-100">
                           {formatInteger(product.quantitySold)}
                         </td>
-                        <td className="p-3 text-right font-semibold text-slate-800">
+                        <td className="p-3 text-right font-semibold text-slate-100">
                           {formatCurrency(product.revenue)}
                         </td>
-                        <td className="p-3 text-right font-semibold text-amber-700">
+                        <td className="p-3 text-right font-semibold text-amber-300">
                           {formatCurrency(product.giraKidsValue)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl shadow p-4 md:p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900">
+                Quanto entrou de cada produto
+              </h2>
+              <div className="text-sm text-slate-500">
+                Total de entradas:{" "}
+                <span className="font-semibold text-slate-700">
+                  {formatInteger(
+                    stockIncomingByProductData.reduce(
+                      (sum, product) =>
+                        sum + (Number(product.quantityIncoming) || 0),
+                      0,
+                    ),
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {stockIncomingByProductData.length === 0 ? (
+              <p className="text-slate-500">
+                Nenhuma entrada de estoque registrada ate o momento.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead>
+                    <tr className="bg-slate-900 text-white border-b border-slate-700">
+                      <th className="text-left p-3 font-semibold">#</th>
+                      <th className="text-left p-3 font-semibold">Produto</th>
+                      <th className="text-left p-3 font-semibold">Categoria</th>
+                      <th className="text-right p-3 font-semibold">
+                        Qtd. entrada
+                      </th>
+                      <th className="text-right p-3 font-semibold">
+                        Qtd. saida
+                      </th>
+                      <th className="text-right p-3 font-semibold">
+                        Estoque atual
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stockIncomingByProductData.map((product, index) => (
+                      <tr
+                        key={`${product.productId}-incoming-${index}`}
+                        className="border-b border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-900"
+                      >
+                        <td className="p-3 text-slate-300">{index + 1}</td>
+                        <td className="p-3 font-medium text-white">
+                          {product.name}
+                        </td>
+                        <td className="p-3 text-slate-200">
+                          {product.category}
+                        </td>
+                        <td className="p-3 text-right font-semibold text-emerald-300">
+                          {formatInteger(product.quantityIncoming)}
+                        </td>
+                        <td className="p-3 text-right font-semibold text-red-300">
+                          {formatInteger(product.quantityOutgoing)}
+                        </td>
+                        <td className="p-3 text-right text-slate-100">
+                          {product.stock === null
+                            ? "Ilimitado"
+                            : formatInteger(product.stock)}
                         </td>
                       </tr>
                     ))}
