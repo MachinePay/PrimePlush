@@ -526,15 +526,21 @@ const AdminPage: React.FC = () => {
   // Filtro de datas para histórico
   const [filterStart, setFilterStart] = useState("");
   const [filterEnd, setFilterEnd] = useState("");
+  const [filterProductId, setFilterProductId] = useState("");
 
   // Busca histórico do backend
-  const loadStockMovements = async (start?: string, end?: string) => {
+  const loadStockMovements = async (
+    start?: string,
+    end?: string,
+    productId?: string,
+  ) => {
     const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
     try {
       let url = `${API_URL}/api/admin/stock-movements`;
       const params = new URLSearchParams();
       if (start) params.set("start", start);
       if (end) params.set("end", end);
+      if (productId) params.set("productId", productId);
       if (params.toString()) url += `?${params.toString()}`;
       const res = await authenticatedFetch(url);
       if (res.ok) {
@@ -549,6 +555,8 @@ const AdminPage: React.FC = () => {
               quantity: number;
               type: string;
               orderId?: string;
+              stock_before?: number | null;
+              stock_after?: number | null;
               created_at: string;
             }) => ({
               id: String(m.id),
@@ -558,6 +566,8 @@ const AdminPage: React.FC = () => {
               date: m.created_at,
               type: m.type,
               orderId: m.orderId,
+              stockBefore: m.stock_before ?? null,
+              stockAfter: m.stock_after ?? null,
             }),
           ),
         );
@@ -1107,12 +1117,30 @@ const AdminPage: React.FC = () => {
               className="border rounded px-3 py-2 min-w-[140px]"
             />
           </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">Produto</label>
+            <select
+              value={filterProductId}
+              onChange={(e) => setFilterProductId(e.target.value)}
+              className="border rounded px-3 py-2 min-w-[260px]"
+            >
+              <option value="">Todos os produtos</option>
+              {[...menu]
+                .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+                .map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name} - estoque atual: {product.stock ?? "Ilimitado"}
+                  </option>
+                ))}
+            </select>
+          </div>
           <button
             className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 font-semibold"
             onClick={() =>
               loadStockMovements(
                 filterStart || undefined,
                 filterEnd || undefined,
+                filterProductId || undefined,
               )
             }
           >
@@ -1123,6 +1151,7 @@ const AdminPage: React.FC = () => {
             onClick={() => {
               setFilterStart("");
               setFilterEnd("");
+              setFilterProductId("");
               loadStockMovements();
             }}
           >
@@ -1130,13 +1159,16 @@ const AdminPage: React.FC = () => {
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-[560px] w-full bg-white rounded-xl shadow divide-y">
+          <table className="min-w-[860px] w-full bg-white rounded-xl shadow divide-y">
             <thead>
               <tr className="bg-stone-100">
                 <th className="p-3 text-left text-xs font-bold">Data/Hora</th>
                 <th className="p-3 text-left text-xs font-bold">Produto</th>
+                <th className="p-3 text-right text-xs font-bold">Estoque atual</th>
                 <th className="p-3 text-left text-xs font-bold">Tipo</th>
                 <th className="p-3 text-right text-xs font-bold">Quantidade</th>
+                <th className="p-3 text-right text-xs font-bold">Estoque antes</th>
+                <th className="p-3 text-right text-xs font-bold">Estoque no momento</th>
                 <th className="p-3 text-right text-xs font-bold"></th>
               </tr>
             </thead>
@@ -1144,7 +1176,7 @@ const AdminPage: React.FC = () => {
               {stockMovements.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={8}
                     className="p-6 text-center text-stone-500 text-base"
                   >
                     Nenhuma movimentação registrada.
@@ -1155,6 +1187,10 @@ const AdminPage: React.FC = () => {
                   const qty = Number(m.quantity);
                   const isEntry = qty > 0;
                   const movType = (m as StockMovement & { type?: string }).type;
+                  const currentProduct = menu.find((p) => p.id === m.productId);
+                  const currentStock = currentProduct?.stock ?? null;
+                  const stockBefore = m.stockBefore ?? null;
+                  const stockAfter = m.stockAfter ?? null;
                   const typeLabel =
                     movType === "sale"
                       ? "Venda"
@@ -1169,6 +1205,9 @@ const AdminPage: React.FC = () => {
                         {new Date(m.date).toLocaleString("pt-BR")}
                       </td>
                       <td className="p-3 text-xs">{m.productName}</td>
+                      <td className="p-3 text-xs text-right font-semibold">
+                        {currentStock === null ? "-" : currentStock}
+                      </td>
                       <td className="p-3 text-xs text-stone-500">
                         {typeLabel}
                       </td>
@@ -1176,6 +1215,12 @@ const AdminPage: React.FC = () => {
                         className={`p-3 text-xs text-right font-bold ${isEntry ? "text-emerald-700" : "text-red-600"}`}
                       >
                         {isEntry ? `+${qty}` : qty}
+                      </td>
+                      <td className="p-3 text-xs text-right">
+                        {stockBefore === null ? "-" : stockBefore}
+                      </td>
+                      <td className="p-3 text-xs text-right font-semibold">
+                        {stockAfter === null ? "-" : stockAfter}
                       </td>
                       <td className="p-3 text-xs text-right">
                         {movType === "manual" && (

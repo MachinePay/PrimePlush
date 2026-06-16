@@ -5,6 +5,10 @@ export interface StockMovement {
   productName: string;
   quantity: number;
   date: string; // ISO string
+  type?: string;
+  orderId?: string;
+  stockBefore?: number | null;
+  stockAfter?: number | null;
 }
 
 // Utilitário para salvar e buscar do localStorage
