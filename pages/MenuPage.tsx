@@ -13,6 +13,12 @@ import type { Product, CartItem } from "../types";
 // URL da API
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
+const getAvailableStock = (product: Product | CartItem): number | null => {
+  if (product.stock_available !== undefined) return product.stock_available;
+  if (product.stock !== undefined) return product.stock;
+  return null;
+};
+
 // ==========================================
 // 1. COMPONENTE: PRODUCT CARD (Produtos maiores)
 // ==========================================
@@ -30,7 +36,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onOpenImage,
 }) => {
   // Lógica ajustada: Se for null é ilimitado. Se for 0 é esgotado.
-  const isOutOfStock = product.stock === 0;
+  const isOutOfStock = getAvailableStock(product) === 0;
   const primaryImage = product.images?.[0] || product.imageUrl;
 
   return (
@@ -260,7 +266,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                     <input
                       type="number"
                       min={1}
-                      max={item.stock ?? 99}
+                      max={getAvailableStock(item) ?? 99}
                       value={item.quantity}
                       onChange={(e) => {
                         const q = parseInt(e.target.value);
@@ -861,8 +867,8 @@ const MenuPage: React.FC = () => {
                 <div className="monster-product-grid flex flex-wrap gap-4 md:gap-6">
                 {[...menu]
                   .sort((a, b) => {
-                    const aOOS = a.stock === 0 ? 1 : 0;
-                    const bOOS = b.stock === 0 ? 1 : 0;
+                    const aOOS = getAvailableStock(a) === 0 ? 1 : 0;
+                    const bOOS = getAvailableStock(b) === 0 ? 1 : 0;
                     if (aOOS !== bOOS) return aOOS - bOOS;
                     return a.name.localeCompare(b.name, "pt-BR");
                   })
@@ -888,8 +894,8 @@ const MenuPage: React.FC = () => {
                 <div className="monster-product-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-8">
                   {[...(categorizedMenu[selectedCategory] || [])]
                     .sort((a, b) => {
-                      const aOOS = a.stock === 0 ? 1 : 0;
-                      const bOOS = b.stock === 0 ? 1 : 0;
+                      const aOOS = getAvailableStock(a) === 0 ? 1 : 0;
+                      const bOOS = getAvailableStock(b) === 0 ? 1 : 0;
                       return aOOS - bOOS;
                     })
                     .map((product) => (

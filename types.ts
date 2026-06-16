@@ -22,7 +22,9 @@ export interface Product {
   images?: string[];
   videoUrl: string;
   popular?: boolean;
-  stock?: number;
+  stock?: number | null;
+  stock_reserved?: number;
+  stock_available?: number | null;
   minStock?: number; // Estoque mínimo
   quantidadeVenda?: number; // Quantidade mínima de venda
   active?: boolean; // Produto ativo ou inativo

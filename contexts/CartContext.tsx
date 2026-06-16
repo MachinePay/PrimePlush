@@ -31,6 +31,12 @@ interface CartContextType {
 // Cria o contexto com tipo opcional (undefined por padrão até o Provider ser usado)
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const getAvailableStock = (product: Product | CartItem): number | null => {
+  if (product.stock_available !== undefined) return product.stock_available;
+  if (product.stock !== undefined) return product.stock;
+  return null;
+};
+
 /*
   Provider do contexto do carrinho.
   Envolve a árvore de componentes que precisa acessar o carrinho.
@@ -85,8 +91,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
   */
   const { currentUser } = useAuth();
   const addToCart = (product: Product) => {
+    const availableStock = getAvailableStock(product);
     // Validação de estoque
-    if ((product.stock ?? 0) === 0) {
+    if (availableStock === 0) {
       alert("Produto esgotado!");
       return;
     }
@@ -98,9 +105,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       const addQuantidade = isAdminCustomer ? 1 : quantidadeVenda;
       if (existingItem) {
         const novaQuantidade = existingItem.quantity + addQuantidade;
-        if (product.stock !== undefined && novaQuantidade > product.stock) {
+        if (availableStock !== null && novaQuantidade > availableStock) {
           alert(
-            `Estoque limitado! Máximo de ${product.stock} unidades disponíveis.`,
+            `Estoque limitado! Maximo de ${availableStock} unidades disponiveis.`,
           );
           return prevItems;
         }
@@ -134,19 +141,20 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       const isAdminCustomer =
         currentUser?.role === "admincustomer" || currentUser?.role === "admin";
       const quantidadeVenda = item.quantidadeVenda ?? 1;
+      const availableStock = getAvailableStock(item);
       let novaQuantidade = Math.max(quantity, 0);
       if (!isAdminCustomer && novaQuantidade > 0) {
         novaQuantidade =
           Math.round(novaQuantidade / quantidadeVenda) * quantidadeVenda;
-        if (item.stock !== undefined && novaQuantidade > item.stock) {
-          novaQuantidade = item.stock;
+        if (availableStock !== null && novaQuantidade > availableStock) {
+          novaQuantidade = availableStock;
         }
       } else if (
         isAdminCustomer &&
-        item.stock !== undefined &&
-        novaQuantidade > item.stock
+        availableStock !== null &&
+        novaQuantidade > availableStock
       ) {
-        novaQuantidade = item.stock;
+        novaQuantidade = availableStock;
       }
       if (novaQuantidade <= 0) {
         return prevItems.filter((i) => i.id !== productId);
