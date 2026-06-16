@@ -1200,7 +1200,7 @@ const AdminManagementReportPage: React.FC = () => {
                           Entrada total
                         </th>
                         <th className="text-right p-3 font-semibold">
-                          Saida total
+                          Saida periodo
                         </th>
                         <th className="text-right p-3 font-semibold">
                           Faturamento
@@ -1457,7 +1457,7 @@ const AdminManagementReportPage: React.FC = () => {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-sm">
+                <table className="w-full min-w-[860px] text-sm">
                   <thead>
                     <tr className="bg-slate-900 text-white border-b border-slate-700">
                       <th className="text-left p-3 font-semibold">#</th>
@@ -1467,7 +1467,10 @@ const AdminManagementReportPage: React.FC = () => {
                         Qtd. entrada
                       </th>
                       <th className="text-right p-3 font-semibold">
-                        Qtd. saida
+                        Qtd. vendida
+                      </th>
+                      <th className="text-right p-3 font-semibold">
+                        Diferenca
                       </th>
                       <th className="text-right p-3 font-semibold">
                         Estoque atual
@@ -1492,6 +1495,17 @@ const AdminManagementReportPage: React.FC = () => {
                         </td>
                         <td className="p-3 text-right font-semibold text-red-300">
                           {formatInteger(product.quantityOutgoing)}
+                        </td>
+                        <td
+                          className={`p-3 text-right font-semibold ${
+                            product.quantityIncoming - product.quantityOutgoing < 0
+                              ? "text-red-300"
+                              : "text-emerald-300"
+                          }`}
+                        >
+                          {formatInteger(
+                            product.quantityIncoming - product.quantityOutgoing,
+                          )}
                         </td>
                         <td className="p-3 text-right text-slate-100">
                           {product.stock === null
