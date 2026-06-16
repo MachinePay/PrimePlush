@@ -51,6 +51,9 @@ interface ProductVolumeAnalyticsItem {
   name: string;
   category: string;
   quantitySold: number;
+  quantityIncoming: number;
+  totalIncoming: number;
+  totalOutgoing: number;
   revenue: number;
 }
 
@@ -59,6 +62,7 @@ interface AbcAnalyticsItem {
   name: string;
   category: string;
   quantitySold: number;
+  quantityIncoming: number;
   revenue: number;
   revenueShare: number;
   cumulativeShare: number;
@@ -321,6 +325,14 @@ const AdminManagementReportPage: React.FC = () => {
   const abcCurveData = useMemo(
     () => report?.analytics.abcCurve || [],
     [report],
+  );
+  const totalIncomingStock = useMemo(
+    () =>
+      abcCurveData.reduce(
+        (sum, item) => sum + (Number(item.quantityIncoming) || 0),
+        0,
+      ),
+    [abcCurveData],
   );
   const categoryPerformanceData = useMemo(
     () => report?.analytics.categoryPerformance || [],
@@ -1077,8 +1089,13 @@ const AdminManagementReportPage: React.FC = () => {
                   Classe A concentra ate 80% da receita, B ate 95% e C os demais
                 </p>
               </div>
-              <div className="text-sm text-slate-500">
-                Produtos analisados: {formatInteger(abcCurveData.length)}
+              <div className="flex flex-wrap gap-3 text-sm">
+                <span className="rounded-md bg-slate-100 px-3 py-2 text-slate-700">
+                  Produtos analisados: {formatInteger(abcCurveData.length)}
+                </span>
+                <span className="rounded-md bg-emerald-50 px-3 py-2 font-semibold text-emerald-700">
+                  Entradas no periodo: {formatInteger(totalIncomingStock)}
+                </span>
               </div>
             </div>
 
@@ -1153,15 +1170,24 @@ const AdminManagementReportPage: React.FC = () => {
                 </ResponsiveContainer>
 
                 <div className="overflow-x-auto mt-5">
-                  <table className="w-full min-w-[860px] text-sm">
+                  <table className="w-full min-w-[1120px] text-sm">
                     <thead>
-                      <tr className="bg-slate-100 text-slate-700">
+                      <tr className="bg-slate-900 text-white border-b border-slate-700">
                         <th className="text-left p-3 font-semibold">#</th>
                         <th className="text-left p-3 font-semibold">Produto</th>
                         <th className="text-left p-3 font-semibold">
                           Categoria
                         </th>
                         <th className="text-right p-3 font-semibold">Qtd.</th>
+                        <th className="text-right p-3 font-semibold">
+                          Entradas
+                        </th>
+                        <th className="text-right p-3 font-semibold">
+                          Entrada total
+                        </th>
+                        <th className="text-right p-3 font-semibold">
+                          Saida total
+                        </th>
                         <th className="text-right p-3 font-semibold">
                           Faturamento
                         </th>
@@ -1180,25 +1206,34 @@ const AdminManagementReportPage: React.FC = () => {
                       {abcCurveData.map((item, index) => (
                         <tr
                           key={item.productId}
-                          className="border-b border-slate-100 hover:bg-slate-50"
+                          className="border-b border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-900"
                         >
-                          <td className="p-3 text-slate-500">{index + 1}</td>
-                          <td className="p-3 font-medium text-slate-800">
+                          <td className="p-3 text-slate-300">{index + 1}</td>
+                          <td className="p-3 font-medium text-white">
                             {item.name}
                           </td>
-                          <td className="p-3 text-slate-600">
+                          <td className="p-3 text-slate-200">
                             {item.category}
                           </td>
-                          <td className="p-3 text-right text-slate-700">
+                          <td className="p-3 text-right text-slate-100">
                             {formatInteger(item.quantitySold)}
                           </td>
-                          <td className="p-3 text-right font-semibold text-slate-800">
+                          <td className="p-3 text-right font-semibold text-emerald-300">
+                            {formatInteger(item.quantityIncoming || 0)}
+                          </td>
+                          <td className="p-3 text-right font-semibold text-emerald-200">
+                            {formatInteger(item.totalIncoming || 0)}
+                          </td>
+                          <td className="p-3 text-right font-semibold text-red-300">
+                            {formatInteger(item.totalOutgoing || 0)}
+                          </td>
+                          <td className="p-3 text-right font-semibold text-slate-100">
                             {formatCurrency(item.revenue)}
                           </td>
-                          <td className="p-3 text-right text-slate-700">
+                          <td className="p-3 text-right text-slate-100">
                             {formatPercent(item.revenueShare)}
                           </td>
-                          <td className="p-3 text-right text-slate-700">
+                          <td className="p-3 text-right text-slate-100">
                             {formatPercent(item.cumulativeShare)}
                           </td>
                           <td className="p-3 text-center">
