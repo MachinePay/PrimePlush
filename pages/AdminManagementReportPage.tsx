@@ -1438,7 +1438,7 @@ const AdminManagementReportPage: React.FC = () => {
                 Quanto entrou de cada produto
               </h2>
               <div className="text-sm text-slate-500">
-                Total de entradas:{" "}
+                Entradas no periodo:{" "}
                 <span className="font-semibold text-slate-700">
                   {formatInteger(
                     stockIncomingByProductData.reduce(
