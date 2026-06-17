@@ -615,6 +615,8 @@ const AdminPage: React.FC = () => {
   const [aiAnalysis, setAiAnalysis] = useState<string>("");
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [isReleasingReservedStock, setIsReleasingReservedStock] =
+    useState(false);
   // Estados para estatísticas
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -698,6 +700,50 @@ const AdminPage: React.FC = () => {
       );
     } finally {
       setIsLoadingAnalysis(false);
+    }
+  };
+
+  const handleReleaseReservedStock = async () => {
+    const confirmed = window.confirm(
+      "Liberar todo estoque reservado? Isso zera apenas reservas de carrinho/pagamento pendente. Pedidos ja feitos e estoque real nao serao apagados.",
+    );
+
+    if (!confirmed) return;
+
+    const typedConfirmation = window.prompt(
+      'Confirmacao final: digite "LIBERAR" para zerar todas as reservas de estoque.',
+    );
+
+    if (typedConfirmation !== "LIBERAR") {
+      alert("Operacao cancelada. Nenhuma reserva foi alterada.");
+      return;
+    }
+
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+    setIsReleasingReservedStock(true);
+
+    try {
+      const response = await authenticatedFetch(
+        `${API_URL}/api/admin/release-reserved-stock`,
+        { method: "POST" },
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "Erro ao liberar estoque reservado");
+        return;
+      }
+
+      alert(
+        `Estoque reservado liberado!\nProdutos afetados: ${data.affectedProducts || 0}\nUnidades liberadas: ${data.releasedUnits || 0}`,
+      );
+      await loadProducts();
+      await loadStockMovements();
+    } catch (error) {
+      console.error("Erro ao liberar estoque reservado:", error);
+      alert("Erro ao liberar estoque reservado");
+    } finally {
+      setIsReleasingReservedStock(false);
     }
   };
 
@@ -827,6 +873,15 @@ const AdminPage: React.FC = () => {
             className="bg-amber-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-amber-600 transition-colors shadow-md"
           >
             Movimentação Estoque
+          </button>
+          <button
+            onClick={handleReleaseReservedStock}
+            disabled={isReleasingReservedStock}
+            className="bg-cyan-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-colors shadow-md disabled:bg-cyan-300"
+          >
+            {isReleasingReservedStock
+              ? "Liberando..."
+              : "Liberar Reservas"}
           </button>
           {/* Modal de movimentação de estoque */}
           {isStockModalOpen && (
