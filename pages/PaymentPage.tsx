@@ -481,7 +481,30 @@ const PaymentPage: React.FC = () => {
               Comprovante enviado para seu e-mail!
             </span>
           </p>
-          <p className="text-sm text-stone-400">Redirecionando...</p>
+          <p className="text-sm text-stone-400 mb-4">Redirecionando...</p>
+          <button
+            onClick={async () => {
+              await logout();
+              navigate("/", { replace: true });
+            }}
+            className="inline-flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              />
+            </svg>
+            Sair da conta
+          </button>
         </div>
       </div>
     );
