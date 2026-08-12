@@ -47,7 +47,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     >
       {/* Badges - Apenas ESGOTADO agora */}
       {isOutOfStock && (
-        <div className="absolute top-3 right-3 z-10 bg-blue-600 text-white font-bold px-3 py-1 rounded-none text-sm shadow-sm">
+        <div className="absolute top-3 right-3 z-10 bg-blue-600 text-white font-bold px-3 py-1 rounded-full text-sm shadow-sm">
           ESGOTADO
         </div>
       )}
@@ -83,8 +83,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
             </span>
             {product.quantidadeVenda && product.quantidadeVenda > 1 && (
               <span
-                className="text-xs text-stone-300 mt-1 block"
-                style={{ fontSize: "12px", opacity: 0.7 }}
+                className="text-xs text-stone-500 mt-1 block"
+                style={{ fontSize: "12px" }}
               >
                 Mínimo: {product.quantidadeVenda} por compra
               </span>
@@ -193,30 +193,23 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
     }, 2000); // Oculta a mensagem após 2 segundos
   };
   return (
-    <div
-      className={containerClass}
-      style={isMobile ? undefined : { background: "#050604" }}
-    >
+    <div className={containerClass}>
       {/* Header do Carrinho */}
       <div
         className={`monster-cart-header p-5 flex items-center justify-between ${
           isMobile
-            ? "bg-stone-900 text-white rounded-t-3xl"
+            ? "bg-white text-gray-800 rounded-t-3xl border-b border-stone-100"
             : "bg-white border-b border-stone-100"
         }`}
       >
-        <h2
-          className={`text-xl md:text-2xl font-black uppercase flex items-center gap-2 ${
-            isMobile ? "text-white" : "text-gray-800"
-          }`}
-        >
+        <h2 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-gray-800">
           <span>Carrinho</span> (
           {cartItems.reduce((acc, i) => acc + i.quantity, 0)})
         </h2>
         {isMobile && onClose && (
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-white bg-stone-800 p-2 rounded-full w-10 h-10 flex items-center justify-center text-xl font-bold"
+            className="text-stone-500 hover:text-stone-800 bg-stone-100 p-2 rounded-full w-10 h-10 flex items-center justify-center text-xl font-bold"
           >
             ✕
           </button>
@@ -242,10 +235,10 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                 className="monster-cart-item flex bg-white p-3 rounded-lg shadow-sm border border-stone-200 items-center justify-between"
               >
                 <div className="flex-1 pr-3">
-                  <p className="font-bold text-stone-100 text-base md:text-lg leading-tight mb-1">
+                  <p className="font-bold text-stone-800 text-base md:text-lg leading-tight mb-1">
                     {item.name}
                   </p>
-                  <p className="text-sm md:text-base font-semibold text-blue-300">
+                  <p className="text-sm md:text-base font-semibold text-blue-600">
                     R$ {item.price.toFixed(2)}
                   </p>
                 </div>
@@ -257,7 +250,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                       const step = item.quantidadeVenda ?? 1;
                       updateQuantity(item.id, item.quantity - step);
                     }}
-                    className="w-9 md:w-10 h-full flex items-center justify-center text-stone-100 font-bold text-xl hover:bg-blue-600 hover:text-white transition-colors active:bg-blue-700"
+                    className="w-9 md:w-10 h-full flex items-center justify-center text-stone-700 font-bold text-xl hover:bg-blue-600 hover:text-white transition-colors active:bg-blue-700"
                   >
                     -
                   </button>
@@ -272,10 +265,10 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                         const q = parseInt(e.target.value);
                         if (!isNaN(q) && q > 0) updateQuantity(item.id, q);
                       }}
-                      className="w-12 md:w-14 h-full text-base md:text-lg font-bold text-center bg-black text-white border-x border-blue-500/20"
+                      className="w-12 md:w-14 h-full text-base md:text-lg font-bold text-center bg-white text-stone-800 border-x border-stone-200"
                     />
                   ) : (
-                    <span className="w-9 md:w-10 h-full flex items-center justify-center text-base md:text-lg font-bold bg-black border-x border-blue-500/20">
+                    <span className="w-9 md:w-10 h-full flex items-center justify-center text-base md:text-lg font-bold bg-white text-stone-800 border-x border-stone-200">
                       {item.quantity}
                     </span>
                   )}
@@ -302,7 +295,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
           <div className="mb-4">
             <label
               htmlFor="observation"
-              className="block text-base font-bold text-stone-100 mb-2"
+              className="block text-base font-bold text-stone-700 mb-2"
             >
               📝 Alguma observação?
             </label>
@@ -311,7 +304,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
               value={observation}
               onChange={handleObservationChange}
               placeholder="Ex: Em caixa, em sacos..."
-              className="w-full p-2 border-2 border-blue-500/30 bg-black text-white rounded-none focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/20 transition-all text-sm"
+              className="w-full p-2 border border-stone-300 bg-white text-stone-800 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/30 transition-all text-sm"
               rows={2}
             />
             {showObservationSaved && observation && (
@@ -322,8 +315,8 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
           </div>
 
           <div className="flex justify-between items-center mb-4">
-            <span className="text-stone-300 font-bold text-lg">Total</span>
-            <span className="text-2xl md:text-3xl font-bold text-blue-300">
+            <span className="text-stone-600 font-bold text-lg">Total</span>
+            <span className="text-2xl md:text-3xl font-bold text-blue-600">
               R$ {cartTotal.toFixed(2)}
             </span>
           </div>
@@ -758,10 +751,7 @@ const MenuPage: React.FC = () => {
     : "";
 
   return (
-    <div
-      className="monster-shell animated-gradient flex h-screen w-full overflow-hidden font-sans"
-      style={{ background: "#050604" }}
-    >
+    <div className="monster-shell flex h-screen w-full overflow-hidden font-sans">
       {/* 1. SIDEBAR ESQUERDA */}
       {false && (
       <CategorySidebar

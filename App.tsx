@@ -108,9 +108,11 @@ const RouterBody: React.FC = () => {
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/superadmin");
   const isCheckoutThemeRoute = location.pathname === "/payment";
-  const mainClassName = isFullBleedRoute
+  const mainClassName = isLoginRoute
     ? "bg-[#02132f]"
-    : isAdminThemeRoute
+    : location.pathname === "/menu"
+      ? "bg-white"
+      : isAdminThemeRoute
       ? "admin-modern-theme p-4 md:p-8"
       : isCheckoutThemeRoute
         ? "checkout-modern-theme p-4 md:p-8"
