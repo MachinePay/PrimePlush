@@ -619,6 +619,17 @@ const MenuPage: React.FC = () => {
     }
   }, [currentBannerIndex, latestProducts.length]);
 
+  const showNextBanner = () => {
+    setCurrentBannerIndex((current) => (current + 1) % latestProducts.length);
+  };
+
+  const showPreviousBanner = () => {
+    setCurrentBannerIndex(
+      (current) =>
+        (current - 1 + latestProducts.length) % latestProducts.length,
+    );
+  };
+
   const handleCheckout = () => {
     if (!currentUser || cartItems.length === 0) return;
     navigate("/payment");
@@ -718,11 +729,70 @@ const MenuPage: React.FC = () => {
           ))}
         </div>
         {/* Scroll Container */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-48 md:pb-8 scroll-smooth">
-          {/* Mensagens IA */}
+        <div className="flex-1 overflow-y-auto pb-48 md:pb-8 scroll-smooth">
+          {searchResults === null &&
+            selectedCategory === null &&
+            currentBannerProduct && (
+              <section className="latest-banner" aria-label="Novidades">
+                {latestProducts.length > 1 && (
+                  <button
+                    type="button"
+                    className="latest-banner-arrow latest-banner-arrow-prev"
+                    onClick={showPreviousBanner}
+                    aria-label="Destaque anterior"
+                  >
+                    ‹
+                  </button>
+                )}
+                <div className="latest-banner-copy">
+                  <span>Novidades!</span>
+                  <h2>Últimos lançamentos!</h2>
+                  <p>Pelúcia Premium</p>
+                  <strong>{currentBannerProduct.name}</strong>
+                  <button
+                    type="button"
+                    onClick={() => openImageViewer(currentBannerProduct)}
+                  >
+                    Ver detalhes
+                  </button>
+                </div>
+                <div className="latest-banner-stage">
+                  <img
+                    src={currentBannerImage}
+                    alt={currentBannerProduct.name}
+                    loading="eager"
+                  />
+                </div>
+                {latestProducts.length > 1 && (
+                  <button
+                    type="button"
+                    className="latest-banner-arrow latest-banner-arrow-next"
+                    onClick={showNextBanner}
+                    aria-label="Próximo destaque"
+                  >
+                    ›
+                  </button>
+                )}
+                {latestProducts.length > 1 && (
+                  <div className="latest-banner-dots">
+                    {latestProducts.map((product, index) => (
+                      <button
+                        type="button"
+                        key={`banner-dot-${product.id}`}
+                        aria-label={`Ver novidade ${index + 1}`}
+                        className={
+                          index === currentBannerIndex ? "is-active" : ""
+                        }
+                        onClick={() => setCurrentBannerIndex(index)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
           {/* Grid de Produtos */}
-          <div className="max-w-7xl mx-auto min-h-[101%]">
+          <div className="max-w-7xl mx-auto min-h-[101%] p-4 md:p-8 pt-6">
             {searchResults !== null ? (
               <div className="animate-fadeIn">
                 <h3 className="monster-section-title text-2xl md:text-3xl font-bold text-stone-700 mb-6">
@@ -747,44 +817,6 @@ const MenuPage: React.FC = () => {
               </div>
             ) : selectedCategory === null ? (
               <>
-                {currentBannerProduct && (
-                  <section className="latest-banner" aria-label="Novidades">
-                    <div className="latest-banner-copy">
-                      <span>Novidades!</span>
-                      <h2>Últimos lançamentos!</h2>
-                      <p>Pelúcia Premium</p>
-                      <strong>{currentBannerProduct.name}</strong>
-                      <button
-                        type="button"
-                        onClick={() => openImageViewer(currentBannerProduct)}
-                      >
-                        Ver detalhes
-                      </button>
-                    </div>
-                    <div className="latest-banner-stage">
-                      <img
-                        src={currentBannerImage}
-                        alt={currentBannerProduct.name}
-                        loading="eager"
-                      />
-                    </div>
-                    {latestProducts.length > 1 && (
-                      <div className="latest-banner-dots">
-                        {latestProducts.map((product, index) => (
-                          <button
-                            type="button"
-                            key={`banner-dot-${product.id}`}
-                            aria-label={`Ver novidade ${index + 1}`}
-                            className={
-                              index === currentBannerIndex ? "is-active" : ""
-                            }
-                            onClick={() => setCurrentBannerIndex(index)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                )}
                 <h2 className="monster-section-title">Produtos em destaque</h2>
                 <div className="monster-product-grid flex flex-wrap gap-4 md:gap-6">
                 {[...menu]

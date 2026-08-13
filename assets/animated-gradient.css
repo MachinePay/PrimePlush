@@ -1,9 +1,9 @@
 /* Animacao de gradiente em movimento para tela de login */
 .animated-gradient {
   background:
-    radial-gradient(circle at 18% 22%, rgba(96, 165, 250, 0.38), transparent 24rem),
-    radial-gradient(circle at 84% 18%, rgba(4, 119, 191, 0.32), transparent 28rem),
-    linear-gradient(135deg, #02132f 0%, #022859 42%, #0477bf 100%);
+    radial-gradient(circle at 18% 22%, rgba(191, 219, 254, 0.7), transparent 24rem),
+    radial-gradient(circle at 84% 18%, rgba(147, 197, 253, 0.5), transparent 28rem),
+    linear-gradient(135deg, #ffffff 0%, #f5f9ff 45%, #e3eeff 100%);
   background-size: 400% 400%;
   animation: gradientMove 14s ease-in-out infinite;
   position: relative;
@@ -20,21 +20,21 @@
 
 .animated-gradient::before {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    linear-gradient(rgba(37, 99, 235, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.06) 1px, transparent 1px);
   background-size: 54px 54px;
   transform: rotate(-8deg);
   animation: gridDrift 18s linear infinite;
-  opacity: 0.28;
+  opacity: 0.5;
 }
 
 .animated-gradient::after {
   background:
-    radial-gradient(circle, rgba(96, 165, 250, 0.28) 0 2px, transparent 3px),
-    radial-gradient(circle, rgba(255, 255, 255, 0.18) 0 1px, transparent 2px);
+    radial-gradient(circle, rgba(37, 99, 235, 0.16) 0 2px, transparent 3px),
+    radial-gradient(circle, rgba(96, 165, 250, 0.22) 0 1px, transparent 2px);
   background-size: 120px 120px, 78px 78px;
   animation: particleFloat 16s ease-in-out infinite alternate;
-  opacity: 0.45;
+  opacity: 0.55;
 }
 
 @keyframes gradientMove {
