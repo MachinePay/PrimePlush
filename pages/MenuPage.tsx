@@ -684,6 +684,30 @@ const MenuPage: React.FC = () => {
     navigate("/payment");
   };
 
+  // Produtos em destaque, ordenados (esgotados por último). Dividido em
+  // duas partes para encaixar o banner de quebra de linha no meio da
+  // grade, como um intervalo promocional entre os produtos.
+  const featuredProducts = useMemo(() => {
+    return [...menu].sort((a, b) => {
+      const aOOS = getAvailableStock(a) === 0 ? 1 : 0;
+      const bOOS = getAvailableStock(b) === 0 ? 1 : 0;
+      if (aOOS !== bOOS) return aOOS - bOOS;
+      return a.name.localeCompare(b.name, "pt-BR");
+    });
+  }, [menu]);
+
+  const showFeaturedDivider = featuredProducts.length > 3;
+  const featuredBreakIndex = Math.min(
+    8,
+    Math.ceil(featuredProducts.length / 2),
+  );
+  const featuredFirstHalf = showFeaturedDivider
+    ? featuredProducts.slice(0, featuredBreakIndex)
+    : featuredProducts;
+  const featuredSecondHalf = showFeaturedDivider
+    ? featuredProducts.slice(featuredBreakIndex)
+    : [];
+
   const categorizedMenu = useMemo(() => {
     // ✅ Proteção: garante que menu é array antes de usar .reduce
     if (!Array.isArray(menu) || menu.length === 0) {
@@ -868,26 +892,45 @@ const MenuPage: React.FC = () => {
               <>
                 <h2 className="monster-section-title">Produtos em destaque</h2>
                 <div className="monster-product-grid flex flex-wrap gap-4 md:gap-6">
-                {[...menu]
-                  .sort((a, b) => {
-                    const aOOS = getAvailableStock(a) === 0 ? 1 : 0;
-                    const bOOS = getAvailableStock(b) === 0 ? 1 : 0;
-                    if (aOOS !== bOOS) return aOOS - bOOS;
-                    return a.name.localeCompare(b.name, "pt-BR");
-                  })
-                    .map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onAddToCart={addToCart}
-                        onOpenImage={openImageViewer}
-                        quantityInCart={
-                          cartItems.find((i) => i.id === product.id)?.quantity ||
-                          0
-                        }
-                      />
-                    ))}
+                  {featuredFirstHalf.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onAddToCart={addToCart}
+                      onOpenImage={openImageViewer}
+                      quantityInCart={
+                        cartItems.find((i) => i.id === product.id)
+                          ?.quantity || 0
+                      }
+                    />
+                  ))}
                 </div>
+
+                {showFeaturedDivider && (
+                  <>
+                    <div className="section-divider-banner">
+                      <img
+                        src="/banner-quebra-linha.jpg"
+                        alt="Momentos que viram lembranças para sempre! Pelúcias de alta qualidade."
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="monster-product-grid flex flex-wrap gap-4 md:gap-6">
+                      {featuredSecondHalf.map((product) => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          onAddToCart={addToCart}
+                          onOpenImage={openImageViewer}
+                          quantityInCart={
+                            cartItems.find((i) => i.id === product.id)
+                              ?.quantity || 0
+                          }
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
               </>
             ) : (
               <div className="animate-fadeIn">
