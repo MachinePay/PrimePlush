@@ -3,24 +3,32 @@ import "./Footer.css";
 
 const Footer = () => {
   const footerRef = useRef<HTMLDivElement>(null);
-  let lastScrollY = window.scrollY;
 
   useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
+    let lastScrollTop = 0;
+
+    const getScrollTop = (target: EventTarget | null): number => {
+      if (target instanceof HTMLElement) return target.scrollTop;
+      return window.scrollY;
+    };
+
+    const handleScroll = (e: Event) => {
+      const currentScrollTop = getScrollTop(e.target);
       if (footerRef.current) {
-        if (currentScrollY > lastScrollY) {
+        if (currentScrollTop > lastScrollTop) {
           // Scrolling down
           footerRef.current.classList.remove("footer-hidden");
-        } else {
+        } else if (currentScrollTop < lastScrollTop) {
           // Scrolling up
           footerRef.current.classList.add("footer-hidden");
         }
       }
-      lastScrollY = currentScrollY;
+      lastScrollTop = currentScrollTop;
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    // Capture phase: catches scroll events from nested scrollable
+    // containers too (e.g. the catalog grid), not just window/document.
+    document.addEventListener("scroll", handleScroll, true);
+    return () => document.removeEventListener("scroll", handleScroll, true);
   }, []);
 
   return (
