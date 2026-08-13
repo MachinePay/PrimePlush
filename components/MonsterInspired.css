@@ -491,13 +491,11 @@ body {
 }
 
 .latest-banner-slide {
+  position: relative;
   display: block;
   width: 100%;
   aspect-ratio: 1920 / 600;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
+  overflow: hidden;
 }
 
 .latest-banner-slide img {
@@ -506,11 +504,37 @@ body {
   height: 100%;
   object-fit: cover;
   object-position: center;
-  transition: transform 400ms ease;
 }
 
-.latest-banner-slide:hover img {
-  transform: scale(1.015);
+.latest-banner-cta {
+  position: absolute;
+  left: 4.5%;
+  bottom: 12%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: clamp(0.55rem, 1.3vw, 0.9rem) clamp(1rem, 2.2vw, 1.6rem);
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(0.72rem, 1.3vw, 1rem);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  box-shadow: 0 10px 24px rgba(2, 19, 47, 0.4);
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.latest-banner-cta span {
+  font-size: 1.15em;
+  line-height: 1;
+}
+
+.latest-banner-cta:hover {
+  background: #1d4ed8;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(2, 19, 47, 0.48);
 }
 
 .latest-banner-arrow {

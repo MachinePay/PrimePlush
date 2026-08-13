@@ -20,21 +20,55 @@ const getAvailableStock = (product: Product | CartItem): number | null => {
   return null;
 };
 
-// Banners promocionais fixos (imagens já prontas, com texto e botão
-// desenhados na própria arte). O clique navega para os produtos da coleção.
+// Banners promocionais fixos (imagens já prontas, sem texto/botão
+// desenhados na arte). O botão real é desenhado por cima e navega para a
+// coleção correspondente: "category" usa uma categoria já cadastrada
+// (seleciona a aba certa em /menu); "query" é um fallback por busca de
+// texto para coleções que ainda não têm categoria própria cadastrada.
 interface PromoBanner {
   image: string;
   alt: string;
-  query?: string; // termo de busca da coleção; vazio = catálogo geral
+  buttonLabel: string;
+  category?: string;
+  query?: string;
 }
 
 const PROMO_BANNERS: PromoBanner[] = [
-  { image: "/1.jpg", alt: "Fofo, macio e feito para encantar" },
-  { image: "/2.jpg", alt: "Coleção Pokémon GG", query: "Pokémon" },
-  { image: "/3.jpg", alt: "Coleção Stitch GG", query: "Stitch" },
-  { image: "/4.jpg", alt: "Coleção Capitão América", query: "Capitão América" },
-  { image: "/5.jpg", alt: "Pelúcias Premium", query: "Premium" },
-  { image: "/6.jpg", alt: "Coleção Charming", query: "Charming" },
+  {
+    image: "/1.jpg",
+    alt: "Fofo, macio e feito para encantar",
+    buttonLabel: "Ver catálogo",
+  },
+  {
+    image: "/2.jpg",
+    alt: "Coleção Pokémon GG",
+    buttonLabel: "Ver coleção",
+    category: "Pokémon",
+  },
+  {
+    image: "/3.jpg",
+    alt: "Coleção Stitch GG",
+    buttonLabel: "Ver coleção",
+    category: "Stich",
+  },
+  {
+    image: "/4.jpg",
+    alt: "Coleção Capitão América",
+    buttonLabel: "Ver coleção",
+    query: "Capitão América",
+  },
+  {
+    image: "/5.jpg",
+    alt: "Pelúcias Premium",
+    buttonLabel: "Ver coleção",
+    category: "Pelúcias Prime",
+  },
+  {
+    image: "/6.jpg",
+    alt: "Coleção Charming",
+    buttonLabel: "Ver coleção",
+    query: "Charming",
+  },
 ];
 
 // ==========================================
@@ -635,9 +669,12 @@ const MenuPage: React.FC = () => {
   };
 
   const handleBannerClick = (banner: PromoBanner) => {
-    if (banner.query) {
+    if (banner.category) {
+      navigate(`/menu?cat=${encodeURIComponent(banner.category)}`);
+    } else if (banner.query) {
       navigate(`/menu?q=${encodeURIComponent(banner.query)}`);
     } else {
+      setSelectedCategory(null);
       navigate("/menu");
     }
   };
@@ -675,6 +712,18 @@ const MenuPage: React.FC = () => {
     // Fallback: usa categorias dos produtos existentes
     return Object.keys(categorizedMenu).sort();
   }, [dynamicCategories, categorizedMenu]);
+
+  // Seleciona a categoria vinda de um link externo (?cat=Nome), assim que a
+  // lista real de categorias estiver disponível.
+  useEffect(() => {
+    const catParam = new URLSearchParams(location.search).get("cat");
+    if (!catParam) return;
+    const normalized = catParam.trim().toLowerCase();
+    const match = displayCategories.find(
+      (category) => category.toLowerCase() === normalized,
+    );
+    if (match) setSelectedCategory(match);
+  }, [location.search, displayCategories]);
 
   const searchResults = useMemo(() => {
     if (!searchTerm) return null;
@@ -748,18 +797,21 @@ const MenuPage: React.FC = () => {
                   ‹
                 </button>
               )}
-              <button
-                type="button"
-                className="latest-banner-slide"
-                onClick={() => handleBannerClick(currentBanner)}
-                aria-label={`Ver coleção: ${currentBanner.alt}`}
-              >
+              <div className="latest-banner-slide">
                 <img
                   src={currentBanner.image}
                   alt={currentBanner.alt}
                   loading="eager"
                 />
-              </button>
+                <button
+                  type="button"
+                  className="latest-banner-cta"
+                  onClick={() => handleBannerClick(currentBanner)}
+                >
+                  {currentBanner.buttonLabel}
+                  <span aria-hidden="true">›</span>
+                </button>
+              </div>
               {PROMO_BANNERS.length > 1 && (
                 <button
                   type="button"
