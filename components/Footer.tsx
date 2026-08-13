@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import "./Footer.css";
-import logo from "../assets/primeplush-logo.png";
 
 const CATEGORY_LINKS = [
   "Ursos",
@@ -93,7 +92,11 @@ const Footer: React.FC = () => {
       <div className="footer-main">
         <div className="footer-main-inner">
           <div className="footer-col footer-brand-col">
-            <img src={logo} alt="PrimePlush" className="footer-logo" />
+            <img
+              src="/logonova.png"
+              alt="PrimePlush"
+              className="footer-logo"
+            />
             <p className="footer-tagline">
               Pelúcias premium feitas para abraçar, presentear e eternizar
               momentos especiais.

@@ -4,7 +4,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { useStore } from "../contexts/StoreContext"; // 🏪 MULTI-TENANT
 import { useCart } from "../contexts/CartContext";
 import { useFavorites } from "../contexts/FavoritesContext";
-import logo from "../assets/primeplush-logo.png";
 
 const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -79,9 +78,9 @@ const Header: React.FC = () => {
             className="site-header-logo-link group min-w-0"
           >
             <img
-              src={logo}
+              src="/logonova.png"
               alt="PrimePlush logo"
-              className="site-header-logo w-10 h-10 sm:w-11 sm:h-11 rounded-lg group-hover:scale-105 transition-transform object-cover shrink-0"
+              className="site-header-logo w-10 h-10 sm:w-11 sm:h-11 group-hover:scale-105 transition-transform object-contain shrink-0"
             />
             <span className="site-header-brand truncate">PrimePlush</span>
           </NavLink>

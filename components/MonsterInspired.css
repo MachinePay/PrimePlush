@@ -75,7 +75,7 @@ body {
 }
 
 .site-header-logo {
-  border: 1px solid #e5e7eb;
+  border: none;
 }
 
 .site-header-brand {
@@ -482,106 +482,35 @@ body {
 
 .latest-banner {
   position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: stretch;
-  height: 400px;
   margin: 0;
   overflow: hidden;
   background: linear-gradient(120deg, #02132f 0%, #022859 100%);
   border: none;
   border-bottom: 1px solid rgba(96, 165, 250, 0.24);
-  border-radius: 0;
   box-shadow: 0 10px 30px rgba(2, 19, 47, 0.25);
 }
 
-.latest-banner-copy,
-.latest-banner-stage,
-.latest-banner-dots {
-  position: relative;
-  z-index: 1;
-}
-
-.latest-banner-copy {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1.5rem, 3vw, 2.5rem) clamp(1.5rem, 3vw, 2.5rem) clamp(3.4rem, 6.5vw, 4.2rem);
-}
-
-.latest-banner-copy span {
-  display: inline-flex;
-  padding: 0.4rem 0.9rem;
-  margin-bottom: 0.9rem;
-  border-radius: 999px;
-  background: #dbeafe;
-  color: #1d4ed8;
-  font-size: 0.8rem;
-  font-weight: 800;
-  text-transform: none;
-  width: fit-content;
-}
-
-.latest-banner-copy h2 {
-  max-width: 16ch;
-  color: #fff;
-  font-size: clamp(1.9rem, 3.6vw, 2.9rem);
-  font-weight: 800;
-  line-height: 1.08;
-  text-transform: none;
-  letter-spacing: -0.01em;
-}
-
-.latest-banner-copy p {
-  margin-top: 0.75rem;
-  color: #93c5fd;
-  font-size: clamp(0.95rem, 1.4vw, 1.15rem);
-  font-weight: 700;
-  text-transform: none;
-}
-
-.latest-banner-copy strong {
-  display: block;
-  max-width: 36rem;
-  margin-top: 0.3rem;
-  color: #cbd5e1;
-  font-weight: 500;
-  font-size: 0.98rem;
-}
-
-.latest-banner-copy button {
-  margin-top: 1.15rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 999px;
-  background: #2563eb;
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.95rem;
-  text-transform: none;
-  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.3);
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
-}
-
-.latest-banner-copy button:hover {
-  background: #1d4ed8;
-  transform: translateY(-2px);
-  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.34);
-}
-
-.latest-banner-stage {
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-  height: 400px;
-  padding: 0;
-}
-
-.latest-banner-stage img {
+.latest-banner-slide {
   display: block;
   width: 100%;
-  height: 400px;
+  aspect-ratio: 1920 / 600;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.latest-banner-slide img {
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   object-position: center;
+  transition: transform 400ms ease;
+}
+
+.latest-banner-slide:hover img {
+  transform: scale(1.015);
 }
 
 .latest-banner-arrow {
@@ -619,10 +548,12 @@ body {
 
 .latest-banner-dots {
   position: absolute;
-  left: clamp(3.4rem, 6.5vw, 4.2rem);
-  bottom: 1.3rem;
+  left: 50%;
+  bottom: clamp(0.7rem, 2vw, 1.3rem);
+  transform: translateX(-50%);
   display: flex;
   gap: 0.45rem;
+  z-index: 2;
 }
 
 .latest-banner-dots button {
@@ -1127,38 +1058,6 @@ body {
 }
 
 @media (max-width: 768px) {
-  .latest-banner {
-    grid-template-columns: 1fr;
-    height: auto;
-    margin: 0;
-  }
-
-  .latest-banner-copy {
-    padding: 1.25rem 1.25rem 0.75rem;
-  }
-
-  .latest-banner-copy h2 {
-    max-width: 20ch;
-    font-size: 1.8rem;
-  }
-
-  .latest-banner-copy p {
-    font-size: 1rem;
-  }
-
-  .latest-banner-copy strong {
-    font-size: 0.95rem;
-    overflow-wrap: anywhere;
-  }
-
-  .latest-banner-stage {
-    height: 240px;
-  }
-
-  .latest-banner-stage img {
-    height: 240px;
-  }
-
   .latest-banner-arrow {
     width: 1.9rem;
     height: 1.9rem;
@@ -1166,8 +1065,7 @@ body {
   }
 
   .latest-banner-dots {
-    left: 1rem;
-    bottom: 0.65rem;
+    bottom: 0.5rem;
   }
 
   .latest-banner-dots button {
