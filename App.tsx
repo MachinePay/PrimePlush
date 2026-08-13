@@ -31,6 +31,7 @@ import type { UserRole } from "./types";
 import OrderDetailPage from "./pages/OrderDetailPage";
 import CustomerOrdersPage from "./pages/CustomerOrdersPage";
 import FavoritesPage from "./pages/FavoritesPage";
+import AdminLayout from "./components/admin/AdminLayout";
 
 // 1. Configuração do Cliente React Query
 const queryClient = new QueryClient({
@@ -247,7 +248,9 @@ const RouterBody: React.FC = () => {
                 allowedRoles={["admin"]}
                 redirectTo="/admin/login"
               >
-                <AdminPage />
+                <AdminLayout>
+                  <AdminPage />
+                </AdminLayout>
               </RoleProtectedRoute>
             }
           />
@@ -260,7 +263,9 @@ const RouterBody: React.FC = () => {
                 allowedRoles={["admin"]}
                 redirectTo="/admin/login"
               >
-                <AdminCategoriesPage />
+                <AdminLayout>
+                  <AdminCategoriesPage />
+                </AdminLayout>
               </RoleProtectedRoute>
             }
           />
@@ -273,7 +278,9 @@ const RouterBody: React.FC = () => {
                 allowedRoles={["admin"]}
                 redirectTo="/admin/login"
               >
-                <AdminReportsPage />
+                <AdminLayout>
+                  <AdminReportsPage />
+                </AdminLayout>
               </RoleProtectedRoute>
             }
           />
@@ -286,7 +293,9 @@ const RouterBody: React.FC = () => {
                 allowedRoles={["admin"]}
                 redirectTo="/admin/login"
               >
-                <AdminManagementReportPage />
+                <AdminLayout>
+                  <AdminManagementReportPage />
+                </AdminLayout>
               </RoleProtectedRoute>
             }
           />

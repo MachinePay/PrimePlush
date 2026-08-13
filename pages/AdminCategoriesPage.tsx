@@ -123,10 +123,10 @@ const AdminCategoriesPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-purple-100 to-indigo-200">
+      <div className="flex justify-center items-center min-h-screen bg-transparent">
         <div className="text-center">
           <div className="animate-spin text-6xl mb-4">🔄</div>
-          <p className="text-xl text-purple-800 font-semibold">
+          <p className="text-xl text-blue-800 font-semibold">
             Carregando categorias...
           </p>
         </div>
@@ -135,7 +135,7 @@ const AdminCategoriesPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 to-indigo-200 p-6">
+    <div className="min-h-screen bg-transparent p-2 sm:p-4 md:p-6">
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
