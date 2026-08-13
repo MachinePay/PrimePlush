@@ -126,7 +126,6 @@ const StockMovementModal: React.FC<{
 import { useNavigate } from "react-router-dom";
 import type { Product } from "../types";
 import { authenticatedFetch } from "../services/apiService";
-import { useAuth } from "../contexts/AuthContext";
 
 // --- Componente de formulário de produto (Modal) ---
 // Props esperadas pelo formulário:
@@ -515,7 +514,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
 // --- Componente principal da página administrativa ---
 const AdminPage: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
 
   // Estado que contém a lista de produtos exibida na tabela
   const [menu, setMenu] = useState<Product[]>([]);
@@ -891,20 +889,6 @@ const AdminPage: React.FC = () => {
               onMovement={handleStockMovement}
             />
           )}
-          {/* Histórico de movimentações de estoque */}
-          <div className="mt-12"></div>
-          <button
-            onClick={() => navigate("/admin/categories")}
-            className="bg-purple-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-purple-700 transition-colors shadow-md"
-          >
-            📂 Categorias
-          </button>
-          <button
-            onClick={() => navigate("/historico")}
-            className="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition-colors shadow-md"
-          >
-            📋 Histórico de Pedidos
-          </button>
           <button
             onClick={handleGenerateAnalysis}
             disabled={isLoadingAnalysis}
@@ -920,17 +904,6 @@ const AdminPage: React.FC = () => {
             className="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
           >
             + Adicionar Produto
-          </button>
-          <button
-            onClick={async () => {
-              if (window.confirm("Deseja realmente sair?")) {
-                await logout();
-                navigate("/admin/login");
-              }
-            }}
-            className="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
-          >
-            🚪 Sair
           </button>
         </div>
       </div>

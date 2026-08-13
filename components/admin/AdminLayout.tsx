@@ -58,7 +58,7 @@ const NAV_ITEMS: AdminNavItem[] = [
 ];
 
 const navLinkClasses = (isActive: boolean) =>
-  `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold transition-colors whitespace-nowrap ${
+  `admin-nav-link flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold transition-colors whitespace-nowrap ${
     isActive
       ? "bg-blue-600 text-white shadow"
       : "text-stone-600 hover:bg-blue-50 hover:text-blue-700"

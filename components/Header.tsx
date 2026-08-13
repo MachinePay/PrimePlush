@@ -148,7 +148,7 @@ const Header: React.FC = () => {
               {currentUser?.role === "admin" && (
                 <>
                   <NavLink to="/admin" className="site-header-link">
-                    Produtos
+                    Admin
                   </NavLink>
                   <NavLink
                     to="/admin/management-report"
@@ -391,7 +391,7 @@ const Header: React.FC = () => {
             {currentUser?.role === "admin" && (
               <>
                 <NavLink to="/admin" className="site-header-mobile-link">
-                  Produtos
+                  Admin
                 </NavLink>
                 <NavLink
                   to="/admin/management-report"

@@ -1038,8 +1038,8 @@ body {
   background: #f8fafc !important;
 }
 
-.admin-modern-theme a,
-.checkout-modern-theme a {
+.admin-modern-theme a:not(.admin-nav-link),
+.checkout-modern-theme a:not(.admin-nav-link) {
   color: #2563eb !important;
 }
 

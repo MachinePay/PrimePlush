@@ -146,9 +146,21 @@ const OrderHistoryPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-6 min-h-screen bg-stone-100">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="text-3xl font-bold text-blue-800">
-          Histórico de Pedidos
-        </h1>
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <button
+              onClick={() => navigate("/admin")}
+              aria-label="Voltar ao Painel Administrativo"
+              title="Voltar ao Painel Administrativo"
+              className="text-blue-600 hover:bg-blue-100 p-2 rounded-full transition-colors"
+            >
+              ← Voltar
+            </button>
+          )}
+          <h1 className="text-3xl font-bold text-blue-800">
+            Histórico de Pedidos
+          </h1>
+        </div>
         <button
           onClick={async () => {
             if (window.confirm("Deseja realmente sair?")) {
