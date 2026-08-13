@@ -198,7 +198,7 @@
 .footer-mascot-slot {
   position: relative;
   align-self: stretch;
-  width: 172px;
+  width: 260px;
   pointer-events: none;
 }
 
@@ -484,7 +484,7 @@
 
 @media (max-width: 700px) {
   .footer-newsletter-inner {
-    grid-template-columns: 108px 1fr;
+    grid-template-columns: 150px 1fr;
     grid-template-areas:
       "mascot copy"
       "mascot form";
@@ -495,7 +495,7 @@
     width: 100%;
   }
   .footer-mascot {
-    height: 170px;
+    height: 140px;
   }
   .footer-newsletter-copy {
     grid-area: copy;
