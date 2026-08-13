@@ -477,7 +477,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: stretch;
-  min-height: 170px;
+  height: 180px;
   margin: 0;
   overflow: hidden;
   background: linear-gradient(120deg, #eff6ff 0%, #f8fafc 55%, #ffffff 100%);
@@ -564,12 +564,14 @@ body {
   display: flex;
   justify-content: center;
   align-items: stretch;
+  height: 180px;
   padding: 0;
 }
 
 .latest-banner-stage img {
+  display: block;
   width: 100%;
-  height: 100%;
+  height: 180px;
   object-fit: cover;
   object-position: center;
 }
@@ -1119,7 +1121,7 @@ body {
 @media (max-width: 768px) {
   .latest-banner {
     grid-template-columns: 1fr;
-    min-height: auto;
+    height: auto;
     margin: 0;
   }
 
@@ -1142,7 +1144,11 @@ body {
   }
 
   .latest-banner-stage {
-    min-height: 120px;
+    height: 130px;
+  }
+
+  .latest-banner-stage img {
+    height: 130px;
   }
 
   .latest-banner-arrow {
