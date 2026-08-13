@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import {
@@ -8,6 +8,7 @@ import {
   getChefMessage,
 } from "../services/geminiService";
 import { getProducts } from "../services/apiService";
+import ProductCard from "../components/ProductCard";
 import type { Product, CartItem } from "../types";
 
 // URL da API
@@ -17,96 +18,6 @@ const getAvailableStock = (product: Product | CartItem): number | null => {
   if (product.stock_available !== undefined) return product.stock_available;
   if (product.stock !== undefined) return product.stock;
   return null;
-};
-
-// ==========================================
-// 1. COMPONENTE: PRODUCT CARD (Produtos maiores)
-// ==========================================
-interface ProductCardProps {
-  product: Product;
-  onAddToCart: (product: Product) => void;
-  quantityInCart?: number;
-  onOpenImage: (product: Product) => void;
-}
-
-const ProductCard: React.FC<ProductCardProps> = ({
-  product,
-  onAddToCart,
-  quantityInCart = 0,
-  onOpenImage,
-}) => {
-  // Lógica ajustada: Se for null é ilimitado. Se for 0 é esgotado.
-  const isOutOfStock = getAvailableStock(product) === 0;
-  const primaryImage = product.images?.[0] || product.imageUrl;
-
-  return (
-    <div
-      className={`monster-product-card bg-white w-60 rounded-2xl shadow-md overflow-hidden flex flex-col relative h-full transition-transform hover:shadow-xl ${
-        isOutOfStock ? "opacity-60 grayscale" : ""
-      }`}
-    >
-      {/* Badges - Apenas ESGOTADO agora */}
-      {isOutOfStock && (
-        <div className="absolute top-3 right-3 z-10 bg-blue-600 text-white font-bold px-3 py-1 rounded-full text-sm shadow-sm">
-          ESGOTADO
-        </div>
-      )}
-
-      {/* Mídia (Imagem ou Vídeo) */}
-      <div className="monster-product-media relative h-40 md:h-52 bg-gray-100">
-        {primaryImage ? (
-          <img
-            src={primaryImage}
-            alt={product.name}
-            className="w-full h-full object-cover hover:scale-105 transition-transform cursor-zoom-in"
-            loading="lazy"
-            onClick={() => onOpenImage(product)}
-          />
-        ) : null}
-      </div>
-
-      {/* Conteúdo */}
-      <div className="monster-product-body p-4 flex flex-col flex-grow justify-between">
-        <div>
-          <h3 className="monster-product-title font-bold text-lg md:text-xl text-gray-800 leading-tight mb-2">
-            {product.name}
-          </h3>
-          <p className="monster-product-description hidden md:block text-sm text-stone-600 line-clamp-2 mb-3">
-            {product.description}
-          </p>
-        </div>
-
-        <div className="mt-2">
-          <div className="flex flex-col gap-3">
-            <span className="monster-product-price text-xl md:text-2xl font-bold text-stone-800">
-              R$ {product.price.toFixed(2)}
-            </span>
-            {product.quantidadeVenda && product.quantidadeVenda > 1 && (
-              <span
-                className="text-xs text-stone-500 mt-1 block"
-                style={{ fontSize: "12px" }}
-              >
-                Mínimo: {product.quantidadeVenda} por compra
-              </span>
-            )}
-            <button
-              onClick={() => onAddToCart(product)}
-              disabled={isOutOfStock}
-              className={`monster-buy-button w-full font-bold py-3 px-4 rounded-xl text-base md:text-lg transition-colors shadow-sm ${
-                isOutOfStock
-                  ? "bg-stone-300 text-stone-500 cursor-not-allowed"
-                  : "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800"
-              }`}
-            >
-              {quantityInCart > 0
-                ? `Adicionado (${quantityInCart})`
-                : "Adicionar"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 };
 
 // ==========================================
@@ -455,8 +366,6 @@ const MenuPage: React.FC = () => {
   const [isChefLoading, setIsChefLoading] = useState<boolean>(false);
   const [isSuggestionLoading, setIsSuggestionLoading] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
-  const [isCatalogNavOpen, setIsCatalogNavOpen] = useState(false);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [imageViewer, setImageViewer] = useState<{
     isOpen: boolean;
@@ -487,12 +396,20 @@ const MenuPage: React.FC = () => {
     clearCart,
     observation,
     setObservation,
+    isCartOpen,
+    openCart,
+    closeCart,
   } = useCart();
   const touchStartXRef = useRef<number | null>(null);
   const didSwipeRef = useRef(false);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchTerm = useMemo(
+    () => new URLSearchParams(location.search).get("q")?.trim() || "",
+    [location.search],
+  );
 
   const getProductImages = (product: Product): string[] => {
     if (Array.isArray(product.images) && product.images.length > 0) {
@@ -736,6 +653,18 @@ const MenuPage: React.FC = () => {
     return Object.keys(categorizedMenu).sort();
   }, [dynamicCategories, categorizedMenu]);
 
+  const searchResults = useMemo(() => {
+    if (!searchTerm) return null;
+    const normalized = searchTerm.toLowerCase();
+    return menu.filter((product) => {
+      const description = (product as { description?: string }).description;
+      return (
+        product.name.toLowerCase().includes(normalized) ||
+        (description && description.toLowerCase().includes(normalized))
+      );
+    });
+  }, [menu, searchTerm]);
+
   const totalViewerImages = imageViewer.images.length;
   const normalizedViewerIndex =
     totalViewerImages > 0
@@ -764,56 +693,59 @@ const MenuPage: React.FC = () => {
 
       {/* 2. ÁREA CENTRAL */}
       <main className="monster-content flex-1 flex flex-col h-full relative overflow-hidden">
-        <div className="catalog-header">
+        <div className="catalog-subnav">
           <button
             type="button"
-            className="catalog-toggle"
-            onClick={() => setIsCatalogNavOpen((open) => !open)}
+            onClick={() => setSelectedCategory(null)}
+            className={`catalog-subnav-item ${
+              selectedCategory === null ? "is-active" : ""
+            }`}
           >
-            Ver catálogo
-            <span aria-hidden="true">{isCatalogNavOpen ? "−" : "+"}</span>
+            Todos
           </button>
-        </div>
 
-        {isCatalogNavOpen && (
-          <div className="catalog-subnav">
+          {displayCategories.map((category) => (
             <button
               type="button"
-              onClick={() => {
-                setSelectedCategory(null);
-              }}
+              key={category}
+              onClick={() => setSelectedCategory(category)}
               className={`catalog-subnav-item ${
-                selectedCategory === null ? "is-active" : ""
+                selectedCategory === category ? "is-active" : ""
               }`}
             >
-              <span>🧸</span>
-              Todos
+              {category}
             </button>
-
-            {displayCategories.map((category) => (
-              <button
-                type="button"
-                key={category}
-                onClick={() => {
-                  setSelectedCategory(category);
-                }}
-                className={`catalog-subnav-item ${
-                  selectedCategory === category ? "is-active" : ""
-                }`}
-              >
-                <span>{getCategoryIcon(category)}</span>
-                {category}
-              </button>
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
         {/* Scroll Container */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-48 md:pb-8 scroll-smooth">
           {/* Mensagens IA */}
 
           {/* Grid de Produtos */}
           <div className="max-w-7xl mx-auto min-h-[101%]">
-            {selectedCategory === null ? (
+            {searchResults !== null ? (
+              <div className="animate-fadeIn">
+                <h3 className="monster-section-title text-2xl md:text-3xl font-bold text-stone-700 mb-6">
+                  {searchResults.length > 0
+                    ? `Resultados para "${searchTerm}"`
+                    : `Nenhum resultado para "${searchTerm}"`}
+                </h3>
+                <div className="monster-product-grid flex flex-wrap gap-4 md:gap-6">
+                  {searchResults.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onAddToCart={addToCart}
+                      onOpenImage={openImageViewer}
+                      quantityInCart={
+                        cartItems.find((i) => i.id === product.id)
+                          ?.quantity || 0
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : selectedCategory === null ? (
               <>
                 {currentBannerProduct && (
                   <section className="latest-banner" aria-label="Novidades">
@@ -905,11 +837,11 @@ const MenuPage: React.FC = () => {
             )}
           </div>
         </div>
-        {cartItems.length > 0 && !isMobileCartOpen && (
+        {cartItems.length > 0 && !isCartOpen && (
           <button
             type="button"
             className="plush-cart-orbit"
-            onClick={() => setIsMobileCartOpen(true)}
+            onClick={() => openCart()}
             aria-label="Abrir carrinho"
           >
             <span className="plush-cart-orbit-icon">🛒</span>
@@ -922,17 +854,17 @@ const MenuPage: React.FC = () => {
         )}
       </main>
 
-      {isMobileCartOpen && (
+      {isCartOpen && (
         <>
           <div
             className="fixed inset-0 z-40 bg-black/45 backdrop-blur-sm"
-            onClick={() => setIsMobileCartOpen(false)}
+            onClick={() => closeCart()}
           />
           <div className="cart-drawer-shell">
           <button
             type="button"
             className="cart-drawer-close"
-            onClick={() => setIsMobileCartOpen(false)}
+            onClick={() => closeCart()}
             aria-label="Fechar carrinho"
           >
             ×

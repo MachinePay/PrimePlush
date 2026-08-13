@@ -2,23 +2,69 @@ import React, { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useStore } from "../contexts/StoreContext"; // 🏪 MULTI-TENANT
+import { useCart } from "../contexts/CartContext";
+import { useFavorites } from "../contexts/FavoritesContext";
 import logo from "../assets/primeplush-logo.png";
 
 const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const { store } = useStore(); // 🏪 Obtém configurações da loja
+  const { cartItems, isCartOpen, openCart, toggleCart } = useCart();
+  const { favoriteIds } = useFavorites();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const isLoginRoute =
+  const [searchInput, setSearchInput] = useState("");
+
+  const isBrandRoute =
     location.pathname === "/" ||
     location.pathname === "/login" ||
-    location.pathname === "/register" ||
-    location.pathname === "/menu";
+    location.pathname === "/register";
+
+  const isCustomerRole =
+    !!currentUser && (!currentUser.role || currentUser.role === "customer");
 
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (location.pathname === "/menu") {
+      const params = new URLSearchParams(location.search);
+      setSearchInput(params.get("q") || "");
+    } else {
+      setSearchInput("");
+    }
+  }, [location.pathname, location.search]);
+
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
+    if (location.pathname === "/menu") {
+      const params = new URLSearchParams(location.search);
+      if (value.trim()) params.set("q", value);
+      else params.delete("q");
+      navigate(`/menu?${params.toString()}`, { replace: true });
+    }
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const params = new URLSearchParams(
+      location.pathname === "/menu" ? location.search : "",
+    );
+    if (searchInput.trim()) params.set("q", searchInput.trim());
+    else params.delete("q");
+    navigate(`/menu?${params.toString()}`);
+  };
+
+  const handleCartClick = () => {
+    if (location.pathname !== "/menu") {
+      navigate("/menu");
+      openCart();
+    } else {
+      toggleCart();
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -26,113 +72,174 @@ const Header: React.FC = () => {
     navigate("/");
   };
 
-  const activeLinkStyle = {
-    color: "#2563eb", // azul escuro
-    fontWeight: 600,
-  };
+  const cartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
 
   return (
     <>
       <header
-        className={`monster-header bg-gradient-to-r from-white via-blue-800 to-blue-900 border-b border-stone-200 sticky top-0 z-50 h-16 ${
-          isLoginRoute ? "login-plush-header" : ""
+        className={`site-header sticky top-0 z-50 ${
+          isBrandRoute ? "site-header-brand-route" : ""
         }`}
       >
-        <div className="container mx-auto px-3 sm:px-4 h-full flex items-center justify-between gap-3 min-w-0">
+        <div className="site-header-row container mx-auto px-3 sm:px-4 min-w-0">
           {/* Logo */}
-          <div className="flex items-center gap-2 relative min-w-0">
-            <NavLink
-              to={currentUser ? "/menu" : "/"}
-              className="flex items-center gap-2 group min-w-0"
-            >
-              <img
-                src={logo}
-                alt="PrimePlush logo"
-                className="monster-header-logo w-10 h-10 sm:w-12 sm:h-12 rounded-lg group-hover:scale-105 transition-transform object-cover shrink-0"
-              />
-              <span className="monster-header-brand text-base sm:text-xl font-bold text-stone-800 tracking-tight truncate">
-                PrimePlush
-              </span>
-            </NavLink>
-          </div>
+          <NavLink
+            to={currentUser ? "/menu" : "/"}
+            className="site-header-logo-link group min-w-0"
+          >
+            <img
+              src={logo}
+              alt="PrimePlush logo"
+              className="site-header-logo w-10 h-10 sm:w-11 sm:h-11 rounded-lg group-hover:scale-105 transition-transform object-cover shrink-0"
+            />
+            <span className="site-header-brand truncate">PrimePlush</span>
+          </NavLink>
 
-          {/* Navegação Central (Desktop) */}
-          <nav className="flex items-center gap-4 md:gap-8 max-[1100px]:hidden">
-            {currentUser &&
-              (!currentUser.role || currentUser.role === "customer") && (
-                <NavLink
-                  to="/menu"
-                  className="monster-header-link text-white transition-colors font-medium"
-                >
-                  Catálogo
+          {/* Busca (clientes logados) */}
+          {isCustomerRole && (
+            <form
+              className="site-header-search max-[860px]:hidden"
+              onSubmit={handleSearchSubmit}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path strokeLinecap="round" d="M21 21l-4.35-4.35" />
+              </svg>
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Buscar pelúcias, kits, promoções..."
+                aria-label="Buscar produtos"
+              />
+            </form>
+          )}
+
+          {/* Área direita */}
+          <div className="site-header-actions shrink-0">
+            {/* Navegação por papel (Desktop) */}
+            <nav className="site-header-nav max-[1100px]:hidden">
+              {currentUser?.role === "kitchen" && (
+                <NavLink to="/cozinha" className="site-header-link">
+                  Pedidos Cozinha
                 </NavLink>
               )}
-
-            {currentUser?.role === "kitchen" && (
-              <NavLink
-                to="/cozinha"
-                style={({ isActive }) =>
-                  isActive ? activeLinkStyle : undefined
-                }
-                className="monster-header-link text-stone-500 hover:text-blue-700 transition-colors font-medium"
-              >
-                Pedidos Cozinha
-              </NavLink>
-            )}
-
-            {currentUser?.role === "admincustomer" && (
-              <NavLink
-                to="/admin/login"
-                className="monster-header-link text-white hover:text-blue-700 transition-colors font-medium"
-              >
-                Ir para Admin
-              </NavLink>
-            )}
-
-            {currentUser?.role === "admin" && (
-              <>
-                <NavLink
-                  to="/admin"
-                  className="monster-header-link text-white hover:text-blue-700 transition-colors font-medium"
-                >
-                  Produtos
+              {currentUser?.role === "admincustomer" && (
+                <NavLink to="/admin/login" className="site-header-link">
+                  Ir para Admin
                 </NavLink>
-                <NavLink
-                  to="/admin/management-report"
-                  className="monster-header-link text-emerald-300 hover:text-emerald-200 transition-colors font-medium"
-                >
-                  Relatorio Gestao
-                </NavLink>
-                <NavLink
-                  to="/admin/reports"
-                  className="monster-header-link text-[#FFA500] hover:text-blue-700 transition-colors font-medium"
-                >
-                  Relatórios IA
-                </NavLink>
-                {/* SuperAdmin button: text on desktop, crown emoji on mobile */}
-                <NavLink
-                  to="/superadmin/login"
-                  className="monster-header-action bg-blue-600 text-white font-bold py-1 px-4 rounded-lg ml-2 hover:bg-blue-700 transition-colors shadow-md superadmin-btn"
-                  title="SuperAdmin"
-                >
-                  <span className="superadmin-btn-label">SuperAdmin</span>
-                  <span
-                    className="superadmin-btn-icon"
-                    role="img"
-                    aria-label="SuperAdmin"
+              )}
+              {currentUser?.role === "admin" && (
+                <>
+                  <NavLink to="/admin" className="site-header-link">
+                    Produtos
+                  </NavLink>
+                  <NavLink
+                    to="/admin/management-report"
+                    className="site-header-link site-header-link-accent"
                   >
-                    👑
-                  </span>
-                </NavLink>
+                    Relatorio Gestao
+                  </NavLink>
+                  <NavLink
+                    to="/admin/reports"
+                    className="site-header-link site-header-link-warn"
+                  >
+                    Relatórios IA
+                  </NavLink>
+                  <NavLink
+                    to="/superadmin/login"
+                    className="site-header-pill"
+                    title="SuperAdmin"
+                  >
+                    <span>SuperAdmin</span>
+                    <span role="img" aria-label="SuperAdmin">
+                      👑
+                    </span>
+                  </NavLink>
+                </>
+              )}
+            </nav>
+
+            {isCustomerRole && (
+              <>
+                <button
+                  type="button"
+                  className="site-header-icon-btn"
+                  onClick={() => navigate("/favoritos")}
+                  aria-label="Meus favoritos"
+                  title="Favoritos"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    width="21"
+                    height="21"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 20.727c-.39 0-.78-.146-1.076-.438L4.318 13.72C2.83 12.25 2.83 9.868 4.318 8.4c1.487-1.47 3.898-1.47 5.385 0L12 10.667l2.297-2.267c1.487-1.47 3.898-1.47 5.385 0 1.487 1.469 1.487 3.85 0 5.319l-6.606 6.57c-.296.292-.686.438-1.076.438z"
+                    />
+                  </svg>
+                  {favoriteIds.length > 0 && (
+                    <span className="site-header-badge">
+                      {favoriteIds.length}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  className="site-header-icon-btn"
+                  onClick={handleCartClick}
+                  aria-label="Abrir carrinho"
+                  title="Carrinho"
+                  aria-pressed={isCartOpen}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    width="21"
+                    height="21"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 6h15l-1.5 9h-12z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 6L5 3H2M9 10V6a3 3 0 016 0v4"
+                    />
+                    <circle cx="9" cy="20" r="1.5" />
+                    <circle cx="18" cy="20" r="1.5" />
+                  </svg>
+                  {cartCount > 0 && (
+                    <span className="site-header-badge">{cartCount}</span>
+                  )}
+                </button>
               </>
             )}
-          </nav>
 
-          {/* Área do Usuário (Desktop) + Menu Hambúrguer (<1100px) */}
-          <div className="flex items-center gap-2 shrink-0">
+            {/* Hamburguer (<1100px) */}
             <button
               onClick={() => setIsMenuOpen((prev) => !prev)}
-              className="monster-header-action hidden max-[1100px]:inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-blue-700 text-white hover:bg-blue-800 transition-colors shrink-0"
+              className="site-header-hamburger hidden max-[1100px]:inline-flex"
               aria-label="Abrir menu"
               title="Menu"
             >
@@ -152,51 +259,28 @@ const Header: React.FC = () => {
               </svg>
             </button>
 
-            {/* Área do Usuário (Direita) */}
-            <div className="flex items-center gap-4 max-[1100px]:hidden">
+            {/* Conta (Desktop) */}
+            <div className="site-header-account max-[1100px]:hidden">
               {currentUser ? (
                 <>
-                  <div className="h-6 w-px bg-stone-200 mx-1"></div>
+                  <div className="site-header-divider" />
                   <div className="flex items-center gap-3">
                     <div className="hidden sm:block text-right leading-tight">
-                      <p className="text-xs text-white font-medium">Olá,</p>
-                      <p
-                        className="text-sm font-bold max-w-[100px] truncate"
-                        style={{ color: "#60a5fa" }}
-                      >
+                      <p className="site-header-hello">Olá,</p>
+                      <p className="site-header-username truncate max-w-[100px]">
                         {currentUser.name}
                       </p>
                     </div>
                     <button
                       onClick={() => navigate("/register?edit=1")}
-                      className="monster-header-action edit-btn bg-blue-600 text-white font-bold py-1 px-3 rounded-lg ml-2 hover:bg-blue-700 transition-colors shadow-md text-xs"
+                      className="site-header-chip"
                       title="Editar meus dados"
                     >
-                      <span className="edit-btn-label">Editar meus dados</span>
-                      <span
-                        className="edit-btn-icon"
-                        style={{ display: "none" }}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="18"
-                          height="18"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13z"
-                          />
-                        </svg>
-                      </span>
+                      Editar meus dados
                     </button>
                     <NavLink
                       to="/meus-pedidos"
-                      className="monster-header-action bg-blue-100 text-blue-700 font-bold py-1 px-3 rounded-lg ml-2 hover:bg-blue-200 transition-colors shadow-md text-xs flex items-center gap-2"
+                      className="site-header-chip site-header-chip-alt"
                       title="Meus Pedidos"
                     >
                       <span>📦</span>
@@ -204,8 +288,9 @@ const Header: React.FC = () => {
                     </NavLink>
                     <button
                       onClick={handleLogout}
-                      className="text-white hover:text-blue-600 hover:bg-blue-100 p-2 rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                      className="site-header-icon-btn"
                       title="Sair"
+                      aria-label="Sair"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -225,7 +310,24 @@ const Header: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <span className="text-sm text-white">Bem-vindo!</span>
+                <NavLink to="/login" className="site-header-guest-link">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <circle cx="12" cy="8" r="4" />
+                    <path
+                      strokeLinecap="round"
+                      d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"
+                    />
+                  </svg>
+                  <span>Entre ou Cadastre-se</span>
+                </NavLink>
               )}
             </div>
           </div>
@@ -233,59 +335,67 @@ const Header: React.FC = () => {
       </header>
 
       {isMenuOpen && (
-        <div className="min-[1101px]:hidden bg-[#050604] border-b border-blue-500/30 shadow-md">
+        <div className="site-header-mobile min-[1101px]:hidden">
           <div className="container mx-auto px-4 py-4 flex flex-col gap-3">
-            {currentUser &&
-              (!currentUser.role || currentUser.role === "customer") && (
-                <NavLink
-                  to="/menu"
-                  className="text-stone-100 hover:text-blue-300 font-medium"
+            {isCustomerRole && (
+              <form
+                className="site-header-search site-header-search-mobile"
+                onSubmit={handleSearchSubmit}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
                 >
-                  Catálogo
-                </NavLink>
-              )}
+                  <circle cx="11" cy="11" r="7" />
+                  <path strokeLinecap="round" d="M21 21l-4.35-4.35" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Buscar pelúcias, kits, promoções..."
+                  aria-label="Buscar produtos"
+                />
+              </form>
+            )}
 
             {currentUser?.role === "kitchen" && (
-              <NavLink
-                to="/cozinha"
-                className="text-stone-100 hover:text-blue-300 font-medium"
-              >
+              <NavLink to="/cozinha" className="site-header-mobile-link">
                 Pedidos Cozinha
               </NavLink>
             )}
 
             {currentUser?.role === "admincustomer" && (
-              <NavLink
-                to="/admin/login"
-                className="text-stone-100 hover:text-blue-300 font-medium"
-              >
+              <NavLink to="/admin/login" className="site-header-mobile-link">
                 Ir para Admin
               </NavLink>
             )}
 
             {currentUser?.role === "admin" && (
               <>
-                <NavLink
-                  to="/admin"
-                  className="text-stone-100 hover:text-blue-300 font-medium"
-                >
+                <NavLink to="/admin" className="site-header-mobile-link">
                   Produtos
                 </NavLink>
                 <NavLink
                   to="/admin/management-report"
-                  className="text-stone-100 hover:text-blue-300 font-medium"
+                  className="site-header-mobile-link"
                 >
                   Relatorio Gestao
                 </NavLink>
                 <NavLink
                   to="/admin/reports"
-                  className="text-stone-100 hover:text-blue-300 font-medium"
+                  className="site-header-mobile-link"
                 >
                   Relatórios IA
                 </NavLink>
                 <NavLink
                   to="/superadmin/login"
-                  className="text-stone-100 hover:text-blue-300 font-medium"
+                  className="site-header-mobile-link"
                 >
                   SuperAdmin
                 </NavLink>
@@ -294,28 +404,28 @@ const Header: React.FC = () => {
 
             {currentUser ? (
               <>
-                <div className="h-px bg-blue-500/20 my-1" />
-                <p className="text-sm text-stone-300">
-                  Olá,{" "}
-                  <span className="font-bold text-blue-300">
-                    {currentUser.name}
-                  </span>
+                <div className="site-header-divider" />
+                <p className="site-header-hello">
+                  Olá, <span className="site-header-username">{currentUser.name}</span>
                 </p>
                 <button
                   onClick={() => navigate("/register?edit=1")}
-                  className="text-left text-stone-100 hover:text-blue-300 font-medium"
+                  className="site-header-mobile-link text-left"
                 >
                   Editar meus dados
                 </button>
-                <NavLink
-                  to="/meus-pedidos"
-                  className="text-stone-100 hover:text-blue-300 font-medium"
-                >
+                <NavLink to="/meus-pedidos" className="site-header-mobile-link">
                   Meus Pedidos
                 </NavLink>
+                {isCustomerRole && (
+                  <NavLink to="/favoritos" className="site-header-mobile-link">
+                    Favoritos{" "}
+                    {favoriteIds.length > 0 ? `(${favoriteIds.length})` : ""}
+                  </NavLink>
+                )}
                 <button
                   onClick={handleLogout}
-                  className="text-left text-stone-100 hover:text-blue-300 font-medium flex items-center gap-2"
+                  className="site-header-mobile-link text-left flex items-center gap-2"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -335,14 +445,13 @@ const Header: React.FC = () => {
                 </button>
               </>
             ) : (
-              <span className="text-sm text-stone-100">Bem-vindo!</span>
+              <NavLink to="/login" className="site-header-mobile-link">
+                Entre ou Cadastre-se
+              </NavLink>
             )}
           </div>
         </div>
       )}
-
-      {/* Traço laranja embaixo do header */}
-      <div style={{ height: "4px", background: "#2563eb", width: "100%" }} />
     </>
   );
 };

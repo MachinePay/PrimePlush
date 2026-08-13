@@ -10,6 +10,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"; // <--- IMPORTANTE
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CartProvider } from "./contexts/CartContext";
+import { FavoritesProvider } from "./contexts/FavoritesContext";
 import { StoreProvider, useStore } from "./contexts/StoreContext"; // 🏪 MULTI-TENANT
 import LoginPage from "./pages/LoginPage";
 import StoreNotFound from "./pages/StoreNotFound";
@@ -29,6 +30,7 @@ import type { UserRole } from "./types";
 
 import OrderDetailPage from "./pages/OrderDetailPage";
 import CustomerOrdersPage from "./pages/CustomerOrdersPage";
+import FavoritesPage from "./pages/FavoritesPage";
 
 // 1. Configuração do Cliente React Query
 const queryClient = new QueryClient({
@@ -85,10 +87,12 @@ const App: React.FC = () => {
       <StoreProvider>
         <AuthProvider>
           <CartProvider>
-            <HashRouter>
-              <RouterBody />
-              <Footer />
-            </HashRouter>
+            <FavoritesProvider>
+              <HashRouter>
+                <RouterBody />
+                <Footer />
+              </HashRouter>
+            </FavoritesProvider>
           </CartProvider>
         </AuthProvider>
       </StoreProvider>
@@ -221,6 +225,16 @@ const RouterBody: React.FC = () => {
             element={
               <ProtectedRoute>
                 <CustomerOrdersPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Rota protegida para favoritos */}
+          <Route
+            path="/favoritos"
+            element={
+              <ProtectedRoute>
+                <FavoritesPage />
               </ProtectedRoute>
             }
           />
