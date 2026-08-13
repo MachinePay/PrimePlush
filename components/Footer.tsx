@@ -14,7 +14,14 @@ const CATEGORY_LINKS = [
   "Ofertas",
 ];
 
-const PAYMENT_BADGES = ["Visa", "Mastercard", "Elo", "Amex", "Pix", "Boleto"];
+const PAYMENT_BADGES: { name: string; src?: string }[] = [
+  { name: "Visa", src: "/payment-logos/visa.svg" },
+  { name: "Mastercard", src: "/payment-logos/mastercard.svg" },
+  { name: "Elo", src: "/payment-logos/elo.svg" },
+  { name: "Amex", src: "/payment-logos/amex.svg" },
+  { name: "Pix", src: "/payment-logos/pix.svg" },
+  { name: "Boleto" },
+];
 
 const SocialIcon: React.FC<{ label: string; children: React.ReactNode }> = ({
   label,
@@ -45,12 +52,14 @@ const Footer: React.FC = () => {
     <footer className="site-footer-v2">
       <div className="footer-newsletter">
         <div className="footer-newsletter-inner">
-          <img
-            src="/mascoteprime.png"
-            alt="Mascote PrimePlush"
-            className="footer-mascot"
-            loading="lazy"
-          />
+          <div className="footer-mascot-slot">
+            <img
+              src="/mascoteprime.png"
+              alt="Mascote PrimePlush"
+              className="footer-mascot"
+              loading="lazy"
+            />
+          </div>
           <div className="footer-newsletter-copy">
             <span className="footer-newsletter-eyebrow">
               Receba novidades e promoções exclusivas
@@ -162,11 +171,43 @@ const Footer: React.FC = () => {
           <div className="footer-col footer-trust-col">
             <h3>Formas de pagamento</h3>
             <div className="footer-payment-badges">
-              {PAYMENT_BADGES.map((label) => (
-                <span key={label} className="footer-payment-badge">
-                  {label}
-                </span>
-              ))}
+              {PAYMENT_BADGES.map(({ name, src }) =>
+                src ? (
+                  <span
+                    key={name}
+                    className="footer-payment-badge"
+                    title={name}
+                  >
+                    <img src={src} alt={name} loading="lazy" />
+                  </span>
+                ) : (
+                  <span
+                    key={name}
+                    className="footer-payment-badge footer-payment-badge-boleto"
+                    title={name}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="20"
+                      height="14"
+                      aria-hidden="true"
+                    >
+                      <rect x="0" y="1" width="2" height="12" fill="#1f2937" />
+                      <rect x="3" y="1" width="1" height="12" fill="#1f2937" />
+                      <rect x="5" y="1" width="3" height="12" fill="#1f2937" />
+                      <rect x="9" y="1" width="1" height="12" fill="#1f2937" />
+                      <rect x="11" y="1" width="2" height="12" fill="#1f2937" />
+                      <rect x="14" y="1" width="1" height="12" fill="#1f2937" />
+                      <rect x="16" y="1" width="3" height="12" fill="#1f2937" />
+                      <rect x="20" y="1" width="1" height="12" fill="#1f2937" />
+                      <rect x="22" y="1" width="2" height="12" fill="#1f2937" />
+                    </svg>
+                    <span className="footer-payment-badge-label">
+                      Boleto
+                    </span>
+                  </span>
+                ),
+              )}
             </div>
 
             <h3>Segurança</h3>

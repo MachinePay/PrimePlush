@@ -172,30 +172,51 @@
 
 /* --- Newsletter --- */
 .footer-newsletter {
+  position: relative;
+  overflow: visible;
   background: linear-gradient(120deg, #02132f 0%, #022859 60%, #063a8c 100%);
   border-bottom: 1px solid rgba(96, 165, 250, 0.18);
 }
 
 .footer-newsletter-inner {
+  position: relative;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2.25rem 1.5rem;
+  /* Sem padding embaixo de propósito: o slot do mascote precisa "tocar" a
+     borda inferior real da seção. As colunas de texto/form recuperam esse
+     respiro com padding-bottom próprio (ver abaixo). */
+  padding: 2.5rem 1.5rem 0;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 1.5rem;
 }
 
+/* Slot reserva o espaço horizontal do mascote no grid; a imagem em si é
+   posicionada de forma absoluta para "vazar" para fora da caixa do rodapé
+   (sem margem embaixo, ultrapassando o topo) e dar profundidade 3D. */
+.footer-mascot-slot {
+  position: relative;
+  align-self: stretch;
+  width: 172px;
+  pointer-events: none;
+}
+
 .footer-mascot {
-  width: 150px;
-  height: auto;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 230px;
+  width: auto;
+  max-width: none;
   object-fit: contain;
-  filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.35));
-  justify-self: start;
+  object-position: bottom;
+  filter: drop-shadow(0 20px 22px rgba(0, 0, 0, 0.45));
 }
 
 .footer-newsletter-copy {
   min-width: 0;
+  padding-bottom: 2.5rem;
 }
 
 .footer-newsletter-eyebrow {
@@ -223,6 +244,7 @@
 
 .footer-newsletter-form {
   width: min(360px, 100%);
+  padding-bottom: 2.5rem;
 }
 
 .footer-newsletter-input-row {
@@ -369,13 +391,29 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.4rem 0.75rem;
+  height: 34px;
+  padding: 0.4rem 0.7rem;
   border-radius: 8px;
   background: #fff;
   color: #1f2937;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.01em;
+}
+
+.footer-payment-badge img {
+  display: block;
+  height: 16px;
+  width: 44px;
+  object-fit: contain;
+}
+
+.footer-payment-badge-boleto {
+  gap: 0.4rem;
+}
+
+.footer-payment-badge-label {
+  color: #1f2937;
 }
 
 .footer-security-badges {
@@ -446,14 +484,18 @@
 
 @media (max-width: 700px) {
   .footer-newsletter-inner {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: 108px 1fr;
     grid-template-areas:
       "mascot copy"
-      "form form";
+      "mascot form";
+    row-gap: 0.25rem;
+  }
+  .footer-mascot-slot {
+    grid-area: mascot;
+    width: 100%;
   }
   .footer-mascot {
-    grid-area: mascot;
-    width: 92px;
+    height: 170px;
   }
   .footer-newsletter-copy {
     grid-area: copy;

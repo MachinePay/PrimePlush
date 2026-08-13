@@ -310,7 +310,7 @@ body {
 
 /* Variante escura do header (área admin/superadmin) */
 .site-header-dark {
-  background: linear-gradient(120deg, #02132f 0%, #022859 55%, #050604 100%) !important;
+  background: linear-gradient(120deg, #02132f 0%, #022859 100%) !important;
   border-bottom-color: rgba(96, 165, 250, 0.34) !important;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.32);
 }
@@ -329,6 +329,14 @@ body {
 
 .site-header-dark .site-header-link:hover {
   color: #93c5fd;
+}
+
+.site-header-dark .site-header-link-accent {
+  color: #34d399;
+}
+
+.site-header-dark .site-header-link-warn {
+  color: #fbbf24;
 }
 
 .site-header-dark .site-header-pill {
@@ -443,8 +451,8 @@ body {
   gap: 1.6rem;
   overflow-x: auto;
   padding: 0.7rem 1.25rem;
-  background: #fafafa;
-  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(120deg, #02132f 0%, #022859 100%);
+  border-bottom: 1px solid rgba(96, 165, 250, 0.24);
 }
 
 .catalog-subnav-item {
@@ -453,7 +461,7 @@ body {
   align-items: center;
   min-width: max-content;
   padding-bottom: 0.3rem;
-  color: #64748b;
+  color: rgba(219, 234, 254, 0.75);
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -463,12 +471,12 @@ body {
 }
 
 .catalog-subnav-item:hover {
-  color: #1d4ed8;
+  color: #93c5fd;
 }
 
 .catalog-subnav-item.is-active {
-  color: #1d4ed8;
-  border-bottom-color: #2563eb;
+  color: #60a5fa;
+  border-bottom-color: #60a5fa;
   font-weight: 700;
 }
 
@@ -480,11 +488,11 @@ body {
   height: 400px;
   margin: 0;
   overflow: hidden;
-  background: linear-gradient(120deg, #eff6ff 0%, #f8fafc 55%, #ffffff 100%);
+  background: linear-gradient(120deg, #02132f 0%, #022859 100%);
   border: none;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid rgba(96, 165, 250, 0.24);
   border-radius: 0;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 10px 30px rgba(2, 19, 47, 0.25);
 }
 
 .latest-banner-copy,
@@ -516,7 +524,7 @@ body {
 
 .latest-banner-copy h2 {
   max-width: 16ch;
-  color: #0f172a;
+  color: #fff;
   font-size: clamp(1.9rem, 3.6vw, 2.9rem);
   font-weight: 800;
   line-height: 1.08;
@@ -526,7 +534,7 @@ body {
 
 .latest-banner-copy p {
   margin-top: 0.75rem;
-  color: #2563eb;
+  color: #93c5fd;
   font-size: clamp(0.95rem, 1.4vw, 1.15rem);
   font-weight: 700;
   text-transform: none;
@@ -536,7 +544,7 @@ body {
   display: block;
   max-width: 36rem;
   margin-top: 0.3rem;
-  color: #475569;
+  color: #cbd5e1;
   font-weight: 500;
   font-size: 0.98rem;
 }
@@ -621,12 +629,12 @@ body {
   width: 2rem;
   height: 0.26rem;
   border-radius: 999px;
-  background: #cbd5e1;
+  background: rgba(255, 255, 255, 0.32);
   transition: background 180ms ease, transform 180ms ease;
 }
 
 .latest-banner-dots button.is-active {
-  background: #2563eb;
+  background: #60a5fa;
   transform: scaleX(1.2);
 }
 

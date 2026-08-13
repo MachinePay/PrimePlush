@@ -16,15 +16,6 @@ const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
 
-  const isBrandRoute =
-    location.pathname === "/" ||
-    location.pathname === "/login" ||
-    location.pathname === "/register";
-
-  const isAdminThemeRoute =
-    location.pathname.startsWith("/admin") ||
-    location.pathname.startsWith("/superadmin");
-
   const isCustomerRole =
     !!currentUser && (!currentUser.role || currentUser.role === "customer");
 
@@ -80,15 +71,7 @@ const Header: React.FC = () => {
 
   return (
     <>
-      <header
-        className={`site-header sticky top-0 z-50 ${
-          isAdminThemeRoute
-            ? "site-header-dark"
-            : isBrandRoute
-              ? "site-header-brand-route"
-              : ""
-        }`}
-      >
+      <header className="site-header site-header-dark sticky top-0 z-50">
         <div className="site-header-row container mx-auto px-3 sm:px-4 min-w-0">
           {/* Logo */}
           <NavLink
@@ -343,11 +326,7 @@ const Header: React.FC = () => {
       </header>
 
       {isMenuOpen && (
-        <div
-          className={`site-header-mobile min-[1101px]:hidden ${
-            isAdminThemeRoute ? "site-header-dark" : ""
-          }`}
-        >
+        <div className="site-header-mobile site-header-dark min-[1101px]:hidden">
           <div className="container mx-auto px-4 py-4 flex flex-col gap-3">
             {isCustomerRole && (
               <form

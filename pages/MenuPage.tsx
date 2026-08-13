@@ -691,7 +691,7 @@ const MenuPage: React.FC = () => {
     : "";
 
   return (
-    <div className="monster-shell flex h-screen w-full overflow-hidden font-sans">
+    <div className="monster-shell flex w-full font-sans">
       {/* 1. SIDEBAR ESQUERDA */}
       {false && (
       <CategorySidebar
@@ -703,7 +703,7 @@ const MenuPage: React.FC = () => {
       )}
 
       {/* 2. ÁREA CENTRAL */}
-      <main className="monster-content flex-1 flex flex-col h-full relative overflow-hidden">
+      <main className="monster-content flex-1 flex flex-col relative">
         <div className="catalog-subnav">
           <button
             type="button"
@@ -728,8 +728,8 @@ const MenuPage: React.FC = () => {
             </button>
           ))}
         </div>
-        {/* Scroll Container */}
-        <div className="flex-1 overflow-y-auto pb-48 md:pb-8 scroll-smooth">
+        {/* Conteúdo (flui normalmente com o restante da página, sem scroll próprio) */}
+        <div className="pb-48 md:pb-8">
           {searchResults === null &&
             selectedCategory === null &&
             currentBannerProduct && (
