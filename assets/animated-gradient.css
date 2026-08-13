@@ -1,9 +1,10 @@
 /* Animacao de gradiente em movimento para tela de login */
 .animated-gradient {
   background:
-    radial-gradient(circle at 18% 22%, rgba(191, 219, 254, 0.7), transparent 24rem),
-    radial-gradient(circle at 84% 18%, rgba(147, 197, 253, 0.5), transparent 28rem),
-    linear-gradient(135deg, #ffffff 0%, #f5f9ff 45%, #e3eeff 100%);
+    radial-gradient(circle at 18% 22%, rgba(147, 197, 253, 0.85), transparent 26rem),
+    radial-gradient(circle at 84% 18%, rgba(96, 165, 250, 0.7), transparent 30rem),
+    radial-gradient(circle at 50% 100%, rgba(191, 219, 254, 0.6), transparent 32rem),
+    linear-gradient(135deg, #ffffff 0%, #eaf3ff 40%, #cfe3ff 100%);
   background-size: 400% 400%;
   animation: gradientMove 14s ease-in-out infinite;
   position: relative;
@@ -20,21 +21,21 @@
 
 .animated-gradient::before {
   background-image:
-    linear-gradient(rgba(37, 99, 235, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(37, 99, 235, 0.06) 1px, transparent 1px);
+    linear-gradient(rgba(37, 99, 235, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.1) 1px, transparent 1px);
   background-size: 54px 54px;
   transform: rotate(-8deg);
   animation: gridDrift 18s linear infinite;
-  opacity: 0.5;
+  opacity: 0.75;
 }
 
 .animated-gradient::after {
   background:
-    radial-gradient(circle, rgba(37, 99, 235, 0.16) 0 2px, transparent 3px),
-    radial-gradient(circle, rgba(96, 165, 250, 0.22) 0 1px, transparent 2px);
+    radial-gradient(circle, rgba(37, 99, 235, 0.26) 0 2px, transparent 3px),
+    radial-gradient(circle, rgba(96, 165, 250, 0.34) 0 1px, transparent 2px);
   background-size: 120px 120px, 78px 78px;
   animation: particleFloat 16s ease-in-out infinite alternate;
-  opacity: 0.55;
+  opacity: 0.8;
 }
 
 @keyframes gradientMove {
@@ -51,6 +52,45 @@
 @keyframes particleFloat {
   from { transform: translate3d(-2%, 1%, 0) scale(1); }
   to { transform: translate3d(2%, -2%, 0) scale(1.04); }
+}
+
+.login-orbit-wrap {
+  position: relative;
+}
+
+.login-plush-ring {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.login-plush-ring span {
+  --login-orbit-radius: clamp(130px, 30vw, 300px);
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(2.4rem, 4vw, 3rem);
+  height: clamp(2.4rem, 4vw, 3rem);
+  border-radius: 999px;
+  background: radial-gradient(circle at 32% 30%, #eff6ff, #bfdbfe 75%);
+  border: 1px solid rgba(147, 197, 253, 0.7);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
+  font-size: clamp(1.2rem, 2.2vw, 1.5rem);
+  animation: loginPlushOrbit 26s linear infinite;
+}
+
+@keyframes loginPlushOrbit {
+  from {
+    transform: rotate(0deg) translateX(var(--login-orbit-radius)) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateX(var(--login-orbit-radius)) rotate(-360deg);
+  }
 }
 
 .login-glass-card {

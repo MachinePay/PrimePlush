@@ -6,6 +6,9 @@ import { useCart } from "../contexts/CartContext";
 
 import type { User } from "../types";
 
+const LOGIN_PLUSH_RING = ["🧸", "🐻", "🐰", "🐼", "🦊", "🐨", "🐹", "🦁"];
+const LOGIN_PLUSH_RING_DURATION = 26;
+
 // --- Componente WelcomeScreen (Mantido conforme original) ---
 interface WelcomeScreenProps {
   onNameSubmit: (name: string) => void;
@@ -193,6 +196,22 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen animated-gradient p-4">
+      <div className="login-orbit-wrap w-full max-w-md">
+        <div className="login-plush-ring" aria-hidden="true">
+          {LOGIN_PLUSH_RING.map((emoji, index) => (
+            <span
+              key={emoji}
+              style={{
+                animationDelay: `${-(
+                  index *
+                  (LOGIN_PLUSH_RING_DURATION / LOGIN_PLUSH_RING.length)
+                )}s`,
+              }}
+            >
+              {emoji}
+            </span>
+          ))}
+        </div>
       <div className="login-glass-card w-full max-w-md rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">
@@ -257,6 +276,7 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
             <button type="button" onClick={() => setRequiresRegistration(false)} className="w-full text-sm text-blue-100 hover:text-white">Voltar</button>
           </form>
         )}
+      </div>
       </div>
     </div>
   );
