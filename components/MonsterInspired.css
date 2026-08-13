@@ -477,7 +477,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: stretch;
-  height: 250px;
+  height: 400px;
   margin: 0;
   overflow: hidden;
   background: linear-gradient(120deg, #eff6ff 0%, #f8fafc 55%, #ffffff 100%);
@@ -498,26 +498,26 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: clamp(1rem, 2.4vw, 1.75rem) clamp(1rem, 2.4vw, 1.75rem) clamp(1rem, 2.4vw, 1.75rem) clamp(3.1rem, 6vw, 3.7rem);
+  padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1.5rem, 3vw, 2.5rem) clamp(1.5rem, 3vw, 2.5rem) clamp(3.4rem, 6.5vw, 4.2rem);
 }
 
 .latest-banner-copy span {
   display: inline-flex;
-  padding: 0.28rem 0.7rem;
-  margin-bottom: 0.5rem;
+  padding: 0.4rem 0.9rem;
+  margin-bottom: 0.9rem;
   border-radius: 999px;
   background: #dbeafe;
   color: #1d4ed8;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 800;
   text-transform: none;
   width: fit-content;
 }
 
 .latest-banner-copy h2 {
-  max-width: 20ch;
+  max-width: 16ch;
   color: #0f172a;
-  font-size: clamp(1.3rem, 2.6vw, 2rem);
+  font-size: clamp(1.9rem, 3.6vw, 2.9rem);
   font-weight: 800;
   line-height: 1.08;
   text-transform: none;
@@ -525,9 +525,9 @@ body {
 }
 
 .latest-banner-copy p {
-  margin-top: 0.4rem;
+  margin-top: 0.75rem;
   color: #2563eb;
-  font-size: clamp(0.8rem, 1.1vw, 0.95rem);
+  font-size: clamp(0.95rem, 1.4vw, 1.15rem);
   font-weight: 700;
   text-transform: none;
 }
@@ -535,20 +535,20 @@ body {
 .latest-banner-copy strong {
   display: block;
   max-width: 36rem;
-  margin-top: 0.2rem;
+  margin-top: 0.3rem;
   color: #475569;
   font-weight: 500;
-  font-size: 0.85rem;
+  font-size: 0.98rem;
 }
 
 .latest-banner-copy button {
-  margin-top: 0.65rem;
-  padding: 0.5rem 1.1rem;
+  margin-top: 1.15rem;
+  padding: 0.75rem 1.5rem;
   border-radius: 999px;
   background: #2563eb;
   color: #fff;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   text-transform: none;
   box-shadow: 0 8px 22px rgba(37, 99, 235, 0.3);
   transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
@@ -564,14 +564,14 @@ body {
   display: flex;
   justify-content: center;
   align-items: stretch;
-  height: 250px;
+  height: 400px;
   padding: 0;
 }
 
 .latest-banner-stage img {
   display: block;
   width: 100%;
-  height: 250px;
+  height: 400px;
   object-fit: cover;
   object-position: center;
 }
@@ -584,12 +584,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.92);
   color: #1d4ed8;
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   line-height: 1;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.14);
   transition: background 160ms ease, color 160ms ease, transform 160ms ease;
@@ -602,24 +602,24 @@ body {
 }
 
 .latest-banner-arrow-prev {
-  left: clamp(0.75rem, 2vw, 1.5rem);
+  left: clamp(0.85rem, 2vw, 1.4rem);
 }
 
 .latest-banner-arrow-next {
-  right: clamp(0.75rem, 2vw, 1.5rem);
+  right: clamp(0.85rem, 2vw, 1.4rem);
 }
 
 .latest-banner-dots {
   position: absolute;
-  left: clamp(3.1rem, 6vw, 3.7rem);
-  bottom: 0.8rem;
+  left: clamp(3.4rem, 6.5vw, 4.2rem);
+  bottom: 1.3rem;
   display: flex;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
 .latest-banner-dots button {
-  width: 1.8rem;
-  height: 0.24rem;
+  width: 2rem;
+  height: 0.26rem;
   border-radius: 999px;
   background: #cbd5e1;
   transition: background 180ms ease, transform 180ms ease;
@@ -1126,29 +1126,29 @@ body {
   }
 
   .latest-banner-copy {
-    padding: 1.1rem 1.1rem 0.6rem;
+    padding: 1.25rem 1.25rem 0.75rem;
   }
 
   .latest-banner-copy h2 {
     max-width: 20ch;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
   }
 
   .latest-banner-copy p {
-    font-size: 0.88rem;
+    font-size: 1rem;
   }
 
   .latest-banner-copy strong {
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     overflow-wrap: anywhere;
   }
 
   .latest-banner-stage {
-    height: 170px;
+    height: 240px;
   }
 
   .latest-banner-stage img {
-    height: 170px;
+    height: 240px;
   }
 
   .latest-banner-arrow {
