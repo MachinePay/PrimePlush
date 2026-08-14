@@ -78,6 +78,20 @@ const RoleProtectedRoute: React.FC<{
   return <>{children}</>;
 };
 
+// Leva a visão para o topo sempre que o usuário navega para uma página
+// diferente (filtros por query string, como busca/categoria no catálogo,
+// não disparam o reset). Sem isso, o SPA mantém o scroll de onde o link
+// foi clicado, dando a impressão de que a navegação não aconteceu.
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+};
+
 const App: React.FC = () => {
   // Configurar Point Smart 2 na inicialização do sistema
 
@@ -91,6 +105,7 @@ const App: React.FC = () => {
           <CartProvider>
             <FavoritesProvider>
               <HashRouter>
+                <ScrollToTop />
                 <RouterBody />
                 <Footer />
               </HashRouter>
