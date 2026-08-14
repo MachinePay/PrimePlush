@@ -31,6 +31,7 @@ import type { UserRole } from "./types";
 import OrderDetailPage from "./pages/OrderDetailPage";
 import CustomerOrdersPage from "./pages/CustomerOrdersPage";
 import FavoritesPage from "./pages/FavoritesPage";
+import InfoPage from "./pages/InfoPage";
 import AdminLayout from "./components/admin/AdminLayout";
 
 // 1. Configuração do Cliente React Query
@@ -169,6 +170,9 @@ const RouterBody: React.FC = () => {
           <Route path="/" element={<LoginPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+
+          {/* Páginas institucionais (rodapé) */}
+          <Route path="/pagina/:slug" element={<InfoPage />} />
 
           {/* Rota protegida para clientes */}
           <Route

@@ -1,17 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./Footer.css";
-
-const CATEGORY_LINKS = [
-  "Ursos",
-  "Personagens",
-  "Animais",
-  "Fantasia",
-  "Colecionáveis",
-  "Presentes",
-  "Lançamentos",
-  "Ofertas",
-];
+import { getCategories } from "../services/categoryService";
 
 const PAYMENT_BADGES: { name: string; src: string }[] = [
   { name: "Visa", src: "/payment-logos/visa.svg" },
@@ -38,6 +28,22 @@ const SocialIcon: React.FC<{ label: string; children: React.ReactNode }> = ({
 const Footer: React.FC = () => {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [categoryNames, setCategoryNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCategories().then((categories) => {
+      if (cancelled) return;
+      setCategoryNames(
+        [...categories]
+          .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+          .map((category) => category.name),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,19 +136,28 @@ const Footer: React.FC = () => {
           <div className="footer-col">
             <h3>Institucional</h3>
             <ul>
-              <li><button type="button">Quem somos</button></li>
-              <li><button type="button">Nossa história</button></li>
-              <li><button type="button">Política de qualidade</button></li>
-              <li><button type="button">Trabalhe conosco</button></li>
+              <li><Link to="/pagina/quem-somos">Quem somos</Link></li>
+              <li><Link to="/pagina/nossa-historia">Nossa história</Link></li>
+              <li>
+                <Link to="/pagina/politica-de-qualidade">
+                  Política de qualidade
+                </Link>
+              </li>
+              <li>
+                <Link to="/pagina/trabalhe-conosco">Trabalhe conosco</Link>
+              </li>
             </ul>
           </div>
 
           <div className="footer-col">
             <h3>Ajuda</h3>
             <ul>
-              <li><button type="button">Central de ajuda</button></li>
-              <li><button type="button">Trocas e devoluções</button></li>
-              <li><button type="button">Entrega e prazos</button></li>
+              <li>
+                <Link to="/pagina/central-de-ajuda">Central de ajuda</Link>
+              </li>
+              <li>
+                <Link to="/pagina/entrega-e-prazos">Entrega e prazos</Link>
+              </li>
               <li>
                 <a href="mailto:orcamento@girakids.com">Fale conosco</a>
               </li>
@@ -161,11 +176,19 @@ const Footer: React.FC = () => {
           <div className="footer-col">
             <h3>Categorias</h3>
             <ul>
-              {CATEGORY_LINKS.map((category) => (
-                <li key={category}>
-                  <Link to="/menu">{category}</Link>
+              {categoryNames.length > 0 ? (
+                categoryNames.map((category) => (
+                  <li key={category}>
+                    <Link to={`/menu?cat=${encodeURIComponent(category)}`}>
+                      {category}
+                    </Link>
+                  </li>
+                ))
+              ) : (
+                <li>
+                  <Link to="/menu">Ver catálogo</Link>
                 </li>
-              ))}
+              )}
             </ul>
           </div>
 
@@ -207,8 +230,10 @@ const Footer: React.FC = () => {
             reservados.
           </span>
           <div className="footer-bottom-links">
-            <button type="button">Política de Privacidade</button>
-            <button type="button">Termos de Uso</button>
+            <Link to="/pagina/politica-de-privacidade">
+              Política de Privacidade
+            </Link>
+            <Link to="/pagina/termos-de-uso">Termos de Uso</Link>
           </div>
         </div>
       </div>

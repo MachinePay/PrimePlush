@@ -449,13 +449,13 @@
   gap: 1.25rem;
 }
 
-.footer-bottom-links button {
+.footer-bottom-links a {
   color: rgba(234, 242, 255, 0.6);
   font-size: 0.78rem;
   transition: color 160ms ease;
 }
 
-.footer-bottom-links button:hover {
+.footer-bottom-links a:hover {
   color: #fbbf24;
 }
 
