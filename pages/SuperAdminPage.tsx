@@ -28,9 +28,13 @@ interface StatsData {
     alreadyReceived: number;
   };
   history: Array<{
-    id: number;
-    amount: number;
-    date: string;
+    repasseId: number;
+    pedidoId: string;
+    cliente: string;
+    valorTotal: number;
+    dataPedido: string;
+    dataRepasse: string;
+    valorRecebido: number;
   }>;
   orders: OrderDetail[];
 }
@@ -189,6 +193,7 @@ const SuperAdminPage: React.FC = () => {
       }
       const result = await response.json();
       setReceivedOrderIds(result.receivedOrderIds || []);
+      setSelectedOrderIds([]);
       // Atualiza os valores recebidos detalhados no frontend
       if (data && result.valorRecebidoDetalhado) {
         // Atualiza os pedidos para incluir valorRecebido
@@ -257,7 +262,7 @@ const SuperAdminPage: React.FC = () => {
                       <tr className="bg-green-100">
                         <th className="py-1 px-2 text-left">Pedido</th>
                         <th className="py-1 px-2 text-left">Cliente</th>
-                        <th className="py-1 px-2 text-left">Valor Total</th>
+                        <th className="py-1 px-2 text-left">Valor Repassado</th>
                         <th className="py-1 px-2 text-left">Data do Pedido</th>
                         <th className="py-1 px-2 text-left">Data do Repasse</th>
                       </tr>
@@ -271,7 +276,7 @@ const SuperAdminPage: React.FC = () => {
                           <td className="py-1 px-2">{h.pedidoId}</td>
                           <td className="py-1 px-2">{h.cliente || "-"}</td>
                           <td className="py-1 px-2">
-                            R$ {(Number(h.valorTotal) || 0).toFixed(2)}
+                            R$ {(Number(h.valorRecebido) || 0).toFixed(2)}
                           </td>
                           <td className="py-1 px-2">
                             {h.dataPedido && h.dataPedido !== "-"
