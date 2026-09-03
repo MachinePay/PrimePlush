@@ -9,11 +9,11 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 
-const INACTIVITY_MS = 30_000; // 30 seconds
-const COUNTDOWN_SECONDS = 10; // 10 seconds grace period
+const INACTIVITY_MS = 60_000; // 1 minuto sem interação
+const COUNTDOWN_SECONDS = 30; // 30 segundos de contagem regressiva antes do logout
 
 const InactivityGuard: React.FC = () => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, purchaseJustCompleted } = useAuth();
   const { clearCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,16 +28,19 @@ const InactivityGuard: React.FC = () => {
   const isScreensaver = location.pathname === "/";
   const isKitchen = location.pathname.startsWith("/cozinha");
   const isAdmin = location.pathname.startsWith("/admin");
-  const isPayment = location.pathname === "/payment";
-  const isLogin = location.pathname === "/login";
 
-  // O guard deve funcionar em:
-  // 1. Todas as páginas EXCETO: screensaver, cozinha e admin
-  // 2. Página de login TAMBÉM tem guard (para voltar ao vídeo após inatividade)
-  // 3. Página de pagamento NÃO tem guard (não pode interromper pagamento)
+  // O guard só entra em ação depois que uma compra é aprovada (ver
+  // PaymentPage -> markPurchaseCompleted). Antes disso, o cliente pode
+  // navegar pelo catálogo livremente sem risco de ser deslogado.
+  // Continua desativado em telas de tela de espera, cozinha e admin.
   const guardEnabled = useMemo(
-    () => !isScreensaver && !isKitchen && !isAdmin && !isPayment,
-    [isScreensaver, isKitchen, isAdmin, isPayment]
+    () =>
+      !!currentUser &&
+      purchaseJustCompleted &&
+      !isScreensaver &&
+      !isKitchen &&
+      !isAdmin,
+    [currentUser, purchaseJustCompleted, isScreensaver, isKitchen, isAdmin]
   );
 
   const clearInactivityTimer = () => {
@@ -144,7 +147,8 @@ const InactivityGuard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-xl p-6 w-[90vw] max-w-sm text-center">
             <div className="text-2xl font-semibold mb-2">Ainda está aí?</div>
             <div className="text-stone-600 mb-4">
-              Voltaremos ao início em {countdown}s se não houver interação.
+              Por segurança, sua conta será desconectada em {countdown}s por
+              inatividade.
             </div>
             <button
               onClick={resetActivity}

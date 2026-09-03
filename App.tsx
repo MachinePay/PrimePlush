@@ -25,7 +25,7 @@ import AdminManagementReportPage from "./pages/AdminManagementReportPage";
 import AdminCategoriesPage from "./pages/AdminCategoriesPage"; // 🆕
 import Header from "./components/Header";
 import Chatbot from "./components/Chatbot";
-// import InactivityGuard from "./components/InactivityGuard";
+import InactivityGuard from "./components/InactivityGuard";
 import type { UserRole } from "./types";
 
 import OrderDetailPage from "./pages/OrderDetailPage";
@@ -158,7 +158,7 @@ const RouterBody: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-100 text-stone-800">
-      {/* <InactivityGuard /> */}
+      <InactivityGuard />
       <Header />
       <main
         className={mainClassName}
@@ -189,15 +189,10 @@ const RouterBody: React.FC = () => {
           {/* Páginas institucionais (rodapé) */}
           <Route path="/pagina/:slug" element={<InfoPage />} />
 
-          {/* Rota protegida para clientes */}
-          <Route
-            path="/menu"
-            element={
-              <ProtectedRoute>
-                <MenuPage />
-              </ProtectedRoute>
-            }
-          />
+          {/* Catálogo é público: navegar e ver produtos não exige login.
+              O login só é solicitado ao tentar adicionar um item ao carrinho
+              (ver MenuPage -> handleAddToCart). */}
+          <Route path="/menu" element={<MenuPage />} />
 
           {/* Rota protegida para pagamento */}
           <Route

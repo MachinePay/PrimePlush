@@ -8,6 +8,9 @@ interface AuthContextType {
   login: (user: User) => void; // função para setar o usuário como logado
   logout: () => Promise<void>; // função para deslogar (limpar o usuário e pagamentos)
   addOrderToHistory: (order: Order) => void; // adiciona um pedido ao histórico do usuário
+  purchaseJustCompleted: boolean; // true logo após uma compra ser aprovada, até o logout automático por inatividade
+  markPurchaseCompleted: () => void; // sinaliza que uma compra acabou de ser aprovada
+  clearPurchaseCompleted: () => void; // limpa o sinal de compra recém-concluída
 }
 
 // Cria o contexto com um valor inicial indefinido; será provido pelo AuthProvider
@@ -28,9 +31,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   });
 
+  // Sinaliza que uma compra acabou de ser aprovada, para o InactivityGuard
+  // iniciar a contagem que leva ao logout automático por inatividade.
+  const [purchaseJustCompleted, setPurchaseJustCompleted] = useState(false);
+  const markPurchaseCompleted = () => setPurchaseJustCompleted(true);
+  const clearPurchaseCompleted = () => setPurchaseJustCompleted(false);
+
   // Função para realizar o login: recebe um usuário e atualiza o estado
   const login = (user: User) => {
     setCurrentUser(user);
+    setPurchaseJustCompleted(false);
     try {
       localStorage.setItem("currentUser", JSON.stringify(user));
     } catch (e) {
@@ -38,34 +48,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // Função para realizar logout: limpa pagamentos pendentes e depois deslogar
+  // Função para realizar logout: limpa o token e o usuário da sessão
   const logout = async () => {
+    apiLogout();
+    setCurrentUser(null);
+    setPurchaseJustCompleted(false);
     try {
-      // --- INTEGRAÇÃO POINT SMART 2 DESATIVADA ---
-      // Limpar qualquer pagamento pendente na fila
-      // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-      // console.log("🧼 Limpando pagamentos pendentes antes de logout...");
-      // const response = await fetch(`${API_URL}/api/payment/clear-queue`, {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //   },
-      // });
-      // if (response.ok) {
-      //   const data = await response.json();
-      //   console.log(`✅ ${data.cleared || 0} pagamento(s) limpo(s)`);
-      // }
-      console.warn("⚠️ Erro ao limpar pagamentos (continua logout):", error);
-    } finally {
-      // Limpar token JWT
-      apiLogout();
-      // Limpar usuário
-      setCurrentUser(null);
-      try {
-        localStorage.removeItem("currentUser");
-      } catch (e) {
-        // ignore
-      }
+      localStorage.removeItem("currentUser");
+    } catch (e) {
+      // ignore
     }
   };
 
@@ -91,7 +82,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   // Providencia os valores/funções do contexto para os componentes filhos
   return (
     <AuthContext.Provider
-      value={{ currentUser, login, logout, addOrderToHistory }}
+      value={{
+        currentUser,
+        login,
+        logout,
+        addOrderToHistory,
+        purchaseJustCompleted,
+        markPurchaseCompleted,
+        clearPurchaseCompleted,
+      }}
     >
       {children}
     </AuthContext.Provider>

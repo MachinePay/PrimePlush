@@ -684,6 +684,16 @@ const MenuPage: React.FC = () => {
     navigate("/payment");
   };
 
+  // Navegar pelo catálogo não exige login; só ao adicionar um item ao
+  // carrinho o cliente é obrigado a se identificar.
+  const handleAddToCart = (product: Product) => {
+    if (!currentUser) {
+      navigate("/login");
+      return;
+    }
+    addToCart(product);
+  };
+
   // Produtos em destaque, ordenados (esgotados por último). Dividido em
   // duas partes para encaixar o banner de quebra de linha no meio da
   // grade, como um intervalo promocional entre os produtos.
@@ -878,7 +888,7 @@ const MenuPage: React.FC = () => {
                     <ProductCard
                       key={product.id}
                       product={product}
-                      onAddToCart={addToCart}
+                      onAddToCart={handleAddToCart}
                       onOpenImage={openImageViewer}
                       quantityInCart={
                         cartItems.find((i) => i.id === product.id)
@@ -896,7 +906,7 @@ const MenuPage: React.FC = () => {
                     <ProductCard
                       key={product.id}
                       product={product}
-                      onAddToCart={addToCart}
+                      onAddToCart={handleAddToCart}
                       onOpenImage={openImageViewer}
                       quantityInCart={
                         cartItems.find((i) => i.id === product.id)
@@ -920,7 +930,7 @@ const MenuPage: React.FC = () => {
                         <ProductCard
                           key={product.id}
                           product={product}
-                          onAddToCart={addToCart}
+                          onAddToCart={handleAddToCart}
                           onOpenImage={openImageViewer}
                           quantityInCart={
                             cartItems.find((i) => i.id === product.id)
@@ -948,7 +958,7 @@ const MenuPage: React.FC = () => {
                       <ProductCard
                         key={product.id}
                         product={product}
-                        onAddToCart={addToCart}
+                        onAddToCart={handleAddToCart}
                         onOpenImage={openImageViewer}
                         quantityInCart={
                           cartItems.find((i) => i.id === product.id)
@@ -1001,7 +1011,7 @@ const MenuPage: React.FC = () => {
             isPlacingOrder={isPlacingOrder}
             cartSuggestion={cartSuggestion}
             menu={menu}
-            onAddToCart={addToCart}
+            onAddToCart={handleAddToCart}
             observation={observation}
             setObservation={setObservation}
             currentUser={currentUser}

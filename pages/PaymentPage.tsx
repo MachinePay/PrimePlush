@@ -45,7 +45,13 @@ type ActivePaymentState = {
 
 const PaymentPage: React.FC = () => {
   const { cartItems, cartTotal, clearCart, observation } = useCart();
-  const { currentUser, addOrderToHistory, logout } = useAuth();
+  const {
+    currentUser,
+    addOrderToHistory,
+    logout,
+    markPurchaseCompleted,
+    clearPurchaseCompleted,
+  } = useAuth();
   const navigate = useNavigate();
   const isAdminSale =
     currentUser?.role === "admin" || currentUser?.role === "admincustomer";
@@ -301,6 +307,9 @@ const PaymentPage: React.FC = () => {
       setStatus("success");
       clearCart();
       setQrCodeBase64(null);
+      // Sinaliza a compra aprovada: o InactivityGuard cuida do logout
+      // automático após 1 minuto de inatividade (com 30s de contagem).
+      markPurchaseCompleted();
 
       // Baixa o PDF automaticamente após sucesso
       const pdfUrl = `${BACKEND_URL}/api/orders/${orderId}/receipt-pdf`;
@@ -325,12 +334,6 @@ const PaymentPage: React.FC = () => {
       const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMsg}`;
       // Abre WhatsApp em nova aba (opcional: pode exibir botão/link na tela de sucesso)
       window.open(whatsappLink, "_blank");
-
-      // Redireciona para a página inicial após 5 segundos
-      setTimeout(async () => {
-        await logout();
-        navigate("/", { replace: true });
-      }, 5000);
     } catch (error) {
       console.error("Erro ao finalizar:", error);
       setErrorMessage(
@@ -481,30 +484,41 @@ const PaymentPage: React.FC = () => {
               Comprovante enviado para seu e-mail!
             </span>
           </p>
-          <p className="text-sm text-stone-400 mb-4">Redirecionando...</p>
-          <button
-            onClick={async () => {
-              await logout();
-              navigate("/", { replace: true });
-            }}
-            className="inline-flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          <p className="text-sm text-stone-400 mb-4">
+            Por segurança, sua conta será desconectada automaticamente após
+            um período de inatividade.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => navigate("/menu")}
+              className="inline-flex items-center justify-center gap-2 bg-stone-100 text-stone-700 font-bold py-2 px-5 rounded-lg hover:bg-stone-200 transition-colors"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
-            Sair da conta
-          </button>
+              Continuar comprando
+            </button>
+            <button
+              onClick={async () => {
+                await logout();
+                navigate("/", { replace: true });
+              }}
+              className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+              Sair da conta
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -607,14 +621,22 @@ const PaymentPage: React.FC = () => {
               </h2>
               <button
                 className="p-4 rounded-xl border-2 border-green-500 bg-green-50 text-green-900 font-bold text-lg hover:bg-green-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => setPaymentType("online")}
+                onClick={() => {
+                  // Uma nova tentativa de pagamento começou: pausa o
+                  // InactivityGuard para não deslogar no meio do checkout.
+                  clearPurchaseCompleted();
+                  setPaymentType("online");
+                }}
                 disabled={canSelectCustomer && !checkoutUser}
               >
                 💻 Pagamento Online (Mercado Pago)
               </button>
               <button
                 className="p-4 rounded-xl border-2 border-blue-500 bg-blue-50 text-blue-900 font-bold text-lg hover:bg-blue-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => setPaymentType("presencial")}
+                onClick={() => {
+                  clearPurchaseCompleted();
+                  setPaymentType("presencial");
+                }}
                 disabled={canSelectCustomer && !checkoutUser}
               >
                 🏪 Pagar na Loja Girakids
@@ -675,6 +697,9 @@ const PaymentPage: React.FC = () => {
                       clearCart();
                       setOnlineOrderId(null);
                       setPaymentType(null);
+                      // Sinaliza a compra aprovada para o InactivityGuard
+                      // iniciar a contagem de logout automático.
+                      markPurchaseCompleted();
                       navigate("/menu");
                     });
                   }}
