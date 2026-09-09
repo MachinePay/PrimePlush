@@ -8,6 +8,7 @@ import {
   getChefMessage,
 } from "../services/geminiService";
 import { getProducts } from "../services/apiService";
+import { getBanners, type Banner } from "../services/bannerService";
 import ProductCard from "../components/ProductCard";
 import type { Product, CartItem } from "../types";
 
@@ -20,56 +21,12 @@ const getAvailableStock = (product: Product | CartItem): number | null => {
   return null;
 };
 
-// Banners promocionais fixos (imagens já prontas, sem texto/botão
-// desenhados na arte). O botão real é desenhado por cima e navega para a
-// coleção correspondente: "category" usa uma categoria já cadastrada
-// (seleciona a aba certa em /menu); "query" é um fallback por busca de
-// texto para coleções que ainda não têm categoria própria cadastrada.
-interface PromoBanner {
-  image: string;
-  alt: string;
-  buttonLabel: string;
-  category?: string;
-  query?: string;
-}
-
-const PROMO_BANNERS: PromoBanner[] = [
-  {
-    image: "/1.jpg",
-    alt: "Fofo, macio e feito para encantar",
-    buttonLabel: "Ver catálogo",
-  },
-  {
-    image: "/2.jpg",
-    alt: "Coleção Pokémon GG",
-    buttonLabel: "Ver coleção",
-    category: "Pokémon",
-  },
-  {
-    image: "/3.jpg",
-    alt: "Coleção Stitch GG",
-    buttonLabel: "Ver coleção",
-    category: "Stich",
-  },
-  {
-    image: "/4.jpg",
-    alt: "Coleção Capitão América",
-    buttonLabel: "Ver coleção",
-    query: "Capitão América",
-  },
-  {
-    image: "/5.jpg",
-    alt: "Pelúcias Premium",
-    buttonLabel: "Ver coleção",
-    category: "Pelúcias Prime",
-  },
-  {
-    image: "/6.jpg",
-    alt: "Coleção Charming",
-    buttonLabel: "Ver coleção",
-    query: "Charming",
-  },
-];
+// Banners promocionais (imagens já prontas, sem texto/botão desenhados na
+// arte). São cadastrados pelo admin em /admin/banners. O botão real é
+// desenhado por cima e navega para a coleção correspondente: "category" usa
+// uma categoria já cadastrada (seleciona a aba certa em /menu); "query" é um
+// fallback por busca de texto para coleções que ainda não têm categoria
+// própria cadastrada.
 
 // ==========================================
 // 2. COMPONENTE: CART SIDEBAR (Letras e Botões Grandes + Observação)
@@ -417,6 +374,7 @@ const MenuPage: React.FC = () => {
   const [isChefLoading, setIsChefLoading] = useState<boolean>(false);
   const [isSuggestionLoading, setIsSuggestionLoading] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [promoBanners, setPromoBanners] = useState<Banner[]>([]);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [imageViewer, setImageViewer] = useState<{
     isOpen: boolean;
@@ -589,9 +547,17 @@ const MenuPage: React.FC = () => {
     }
   };
 
+  // 🆕 Busca os banners cadastrados pelo admin
+  const fetchBanners = async () => {
+    const data = await getBanners();
+    setPromoBanners(data);
+    setCurrentBannerIndex(0);
+  };
+
   useEffect(() => {
     fetchMenuData();
     fetchCategories(); // 🆕 Carrega categorias
+    fetchBanners(); // 🆕 Carrega banners
   }, []);
 
   useEffect(() => {
@@ -648,27 +614,26 @@ const MenuPage: React.FC = () => {
   }, [cartItems, menu, currentUser]);
 
   useEffect(() => {
-    if (PROMO_BANNERS.length <= 1) return;
+    if (promoBanners.length <= 1) return;
 
     const interval = window.setInterval(() => {
-      setCurrentBannerIndex((current) => (current + 1) % PROMO_BANNERS.length);
+      setCurrentBannerIndex((current) => (current + 1) % promoBanners.length);
     }, 10000);
 
     return () => window.clearInterval(interval);
-  }, []);
+  }, [promoBanners]);
 
   const showNextBanner = () => {
-    setCurrentBannerIndex((current) => (current + 1) % PROMO_BANNERS.length);
+    setCurrentBannerIndex((current) => (current + 1) % promoBanners.length);
   };
 
   const showPreviousBanner = () => {
     setCurrentBannerIndex(
-      (current) =>
-        (current - 1 + PROMO_BANNERS.length) % PROMO_BANNERS.length,
+      (current) => (current - 1 + promoBanners.length) % promoBanners.length,
     );
   };
 
-  const handleBannerClick = (banner: PromoBanner) => {
+  const handleBannerClick = (banner: Banner) => {
     if (banner.category) {
       navigate(`/menu?cat=${encodeURIComponent(banner.category)}`);
     } else if (banner.query) {
@@ -777,7 +742,10 @@ const MenuPage: React.FC = () => {
       ? ((imageViewer.currentIndex % totalViewerImages) + totalViewerImages) %
         totalViewerImages
       : 0;
-  const currentBanner = PROMO_BANNERS[currentBannerIndex % PROMO_BANNERS.length];
+  const currentBanner =
+    promoBanners.length > 0
+      ? promoBanners[currentBannerIndex % promoBanners.length]
+      : null;
 
   return (
     <div className="monster-shell flex w-full font-sans">
@@ -819,60 +787,62 @@ const MenuPage: React.FC = () => {
         </div>
         {/* Conteúdo (flui normalmente com o restante da página, sem scroll próprio) */}
         <div className="pb-48 md:pb-8">
-          {searchResults === null && selectedCategory === null && (
-            <section className="latest-banner" aria-label="Destaques">
-              {PROMO_BANNERS.length > 1 && (
-                <button
-                  type="button"
-                  className="latest-banner-arrow latest-banner-arrow-prev"
-                  onClick={showPreviousBanner}
-                  aria-label="Destaque anterior"
-                >
-                  ‹
-                </button>
-              )}
-              <div className="latest-banner-slide">
-                <img
-                  src={currentBanner.image}
-                  alt={currentBanner.alt}
-                  loading="eager"
-                />
-                <button
-                  type="button"
-                  className="latest-banner-cta"
-                  onClick={() => handleBannerClick(currentBanner)}
-                >
-                  {currentBanner.buttonLabel}
-                  <span aria-hidden="true">›</span>
-                </button>
-              </div>
-              {PROMO_BANNERS.length > 1 && (
-                <button
-                  type="button"
-                  className="latest-banner-arrow latest-banner-arrow-next"
-                  onClick={showNextBanner}
-                  aria-label="Próximo destaque"
-                >
-                  ›
-                </button>
-              )}
-              {PROMO_BANNERS.length > 1 && (
-                <div className="latest-banner-dots">
-                  {PROMO_BANNERS.map((banner, index) => (
-                    <button
-                      type="button"
-                      key={`banner-dot-${banner.image}`}
-                      aria-label={`Ver destaque ${index + 1}`}
-                      className={
-                        index === currentBannerIndex ? "is-active" : ""
-                      }
-                      onClick={() => setCurrentBannerIndex(index)}
-                    />
-                  ))}
+          {searchResults === null &&
+            selectedCategory === null &&
+            currentBanner && (
+              <section className="latest-banner" aria-label="Destaques">
+                {promoBanners.length > 1 && (
+                  <button
+                    type="button"
+                    className="latest-banner-arrow latest-banner-arrow-prev"
+                    onClick={showPreviousBanner}
+                    aria-label="Destaque anterior"
+                  >
+                    ‹
+                  </button>
+                )}
+                <div className="latest-banner-slide">
+                  <img
+                    src={currentBanner.image}
+                    alt={currentBanner.alt}
+                    loading="eager"
+                  />
+                  <button
+                    type="button"
+                    className="latest-banner-cta"
+                    onClick={() => handleBannerClick(currentBanner)}
+                  >
+                    {currentBanner.buttonLabel}
+                    <span aria-hidden="true">›</span>
+                  </button>
                 </div>
-              )}
-            </section>
-          )}
+                {promoBanners.length > 1 && (
+                  <button
+                    type="button"
+                    className="latest-banner-arrow latest-banner-arrow-next"
+                    onClick={showNextBanner}
+                    aria-label="Próximo destaque"
+                  >
+                    ›
+                  </button>
+                )}
+                {promoBanners.length > 1 && (
+                  <div className="latest-banner-dots">
+                    {promoBanners.map((banner, index) => (
+                      <button
+                        type="button"
+                        key={`banner-dot-${banner.id}`}
+                        aria-label={`Ver destaque ${index + 1}`}
+                        className={
+                          index === currentBannerIndex ? "is-active" : ""
+                        }
+                        onClick={() => setCurrentBannerIndex(index)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
           {/* Grid de Produtos */}
           <div className="max-w-7xl mx-auto min-h-[101%] p-4 md:p-8 pt-6">

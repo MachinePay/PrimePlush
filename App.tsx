@@ -23,6 +23,7 @@ import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminReportsPage from "./pages/AdminReportsPage";
 import AdminManagementReportPage from "./pages/AdminManagementReportPage";
 import AdminCategoriesPage from "./pages/AdminCategoriesPage"; // 🆕
+import AdminBannersPage from "./pages/AdminBannersPage"; // 🆕
 import Header from "./components/Header";
 import Chatbot from "./components/Chatbot";
 import InactivityGuard from "./components/InactivityGuard";
@@ -279,6 +280,21 @@ const RouterBody: React.FC = () => {
               >
                 <AdminLayout>
                   <AdminCategoriesPage />
+                </AdminLayout>
+              </RoleProtectedRoute>
+            }
+          />
+
+          {/* 🆕 Rota protegida para gerenciar banners da home */}
+          <Route
+            path="/admin/banners"
+            element={
+              <RoleProtectedRoute
+                allowedRoles={["admin"]}
+                redirectTo="/admin/login"
+              >
+                <AdminLayout>
+                  <AdminBannersPage />
                 </AdminLayout>
               </RoleProtectedRoute>
             }

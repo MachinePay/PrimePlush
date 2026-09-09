@@ -37,6 +37,14 @@ const ClockIcon: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
+const ImageIcon: React.FC<IconProps> = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+    <rect x="3" y="4.5" width="18" height="15" rx="2" />
+    <circle cx="8.5" cy="9.5" r="1.5" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="m4 17 4.5-4.5 3 3L15 12l5 5" />
+  </svg>
+);
+
 const LogoutIcon: React.FC<IconProps> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0-4-4m4 4H7m6 4v1a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v1" />
@@ -52,6 +60,7 @@ interface AdminNavItem {
 const NAV_ITEMS: AdminNavItem[] = [
   { to: "/admin", label: "Painel", icon: HomeIcon },
   { to: "/admin/categories", label: "Categorias", icon: TagIcon },
+  { to: "/admin/banners", label: "Banners", icon: ImageIcon },
   { to: "/admin/reports", label: "Relatórios", icon: ChartIcon },
   { to: "/admin/management-report", label: "Gestão", icon: BriefcaseIcon },
   { to: "/historico", label: "Histórico de Pedidos", icon: ClockIcon },
