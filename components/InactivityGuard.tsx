@@ -9,8 +9,13 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 
-const INACTIVITY_MS = 60_000; // 1 minuto sem interação
-const COUNTDOWN_SECONDS = 30; // 30 segundos de contagem regressiva antes do logout
+// Sessão geral: desloga após 20s sem interação (15s de espera + 5s de contagem).
+const GENERAL_INACTIVITY_MS = 15_000;
+const GENERAL_COUNTDOWN_SECONDS = 5;
+
+// Pós-compra (handback do kiosk): janela maior, 1 minuto + 30s de contagem.
+const PURCHASE_INACTIVITY_MS = 60_000;
+const PURCHASE_COUNTDOWN_SECONDS = 30;
 
 const InactivityGuard: React.FC = () => {
   const { currentUser, logout, purchaseJustCompleted } = useAuth();
@@ -18,8 +23,18 @@ const InactivityGuard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Após uma compra aprovada usamos a janela maior (dá tempo do cliente
+  // sair do balcão); nos demais casos, com usuário logado, vale a janela
+  // geral de 20s pedida para encerrar sessões esquecidas.
+  const inactivityMs = purchaseJustCompleted
+    ? PURCHASE_INACTIVITY_MS
+    : GENERAL_INACTIVITY_MS;
+  const countdownSeconds = purchaseJustCompleted
+    ? PURCHASE_COUNTDOWN_SECONDS
+    : GENERAL_COUNTDOWN_SECONDS;
+
   const [showPrompt, setShowPrompt] = useState(false);
-  const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
+  const [countdown, setCountdown] = useState(countdownSeconds);
 
   const inactivityTimerRef = useRef<number | null>(null);
   const countdownTimerRef = useRef<number | null>(null);
@@ -29,18 +44,11 @@ const InactivityGuard: React.FC = () => {
   const isKitchen = location.pathname.startsWith("/cozinha");
   const isAdmin = location.pathname.startsWith("/admin");
 
-  // O guard só entra em ação depois que uma compra é aprovada (ver
-  // PaymentPage -> markPurchaseCompleted). Antes disso, o cliente pode
-  // navegar pelo catálogo livremente sem risco de ser deslogado.
-  // Continua desativado em telas de tela de espera, cozinha e admin.
+  // Ativo sempre que houver alguém logado, fora da tela de espera, cozinha
+  // e admin (onde funcionários podem ficar parados por mais tempo).
   const guardEnabled = useMemo(
-    () =>
-      !!currentUser &&
-      purchaseJustCompleted &&
-      !isScreensaver &&
-      !isKitchen &&
-      !isAdmin,
-    [currentUser, purchaseJustCompleted, isScreensaver, isKitchen, isAdmin]
+    () => !!currentUser && !isScreensaver && !isKitchen && !isAdmin,
+    [currentUser, isScreensaver, isKitchen, isAdmin]
   );
 
   const clearInactivityTimer = () => {
@@ -62,7 +70,7 @@ const InactivityGuard: React.FC = () => {
     inactivityTimerRef.current = window.setTimeout(() => {
       // Show prompt after inactivity
       setShowPrompt(true);
-      setCountdown(COUNTDOWN_SECONDS);
+      setCountdown(countdownSeconds);
       // Start countdown
       clearCountdownTimer();
       countdownTimerRef.current = window.setInterval(() => {
@@ -91,8 +99,8 @@ const InactivityGuard: React.FC = () => {
           return prev - 1;
         });
       }, 1000);
-    }, INACTIVITY_MS);
-  }, [logout, clearCart, navigate, currentUser]);
+    }, inactivityMs);
+  }, [logout, clearCart, navigate, currentUser, inactivityMs, countdownSeconds]);
 
   const resetActivity = useCallback(() => {
     if (!guardEnabled) return;
@@ -100,11 +108,11 @@ const InactivityGuard: React.FC = () => {
     if (showPrompt) {
       setShowPrompt(false);
       clearCountdownTimer();
-      setCountdown(COUNTDOWN_SECONDS);
+      setCountdown(countdownSeconds);
     }
     // Restart inactivity timer
     startInactivityTimer();
-  }, [guardEnabled, showPrompt, startInactivityTimer]);
+  }, [guardEnabled, showPrompt, startInactivityTimer, countdownSeconds]);
 
   useEffect(() => {
     if (!guardEnabled) {
@@ -112,7 +120,7 @@ const InactivityGuard: React.FC = () => {
       clearInactivityTimer();
       clearCountdownTimer();
       setShowPrompt(false);
-      setCountdown(COUNTDOWN_SECONDS);
+      setCountdown(countdownSeconds);
       return;
     }
 
@@ -125,14 +133,22 @@ const InactivityGuard: React.FC = () => {
       "mousemove",
       "touchstart",
       "wheel",
+      "scroll",
     ];
     const handler = () => resetActivity();
     events.forEach((evt) =>
-      window.addEventListener(evt, handler, { passive: true } as any)
+      window.addEventListener(evt, handler, {
+        passive: true,
+        capture: true,
+      } as any)
     );
 
     return () => {
-      events.forEach((evt) => window.removeEventListener(evt, handler as any));
+      events.forEach((evt) =>
+        window.removeEventListener(evt, handler as any, {
+          capture: true,
+        } as any)
+      );
       clearInactivityTimer();
       clearCountdownTimer();
     };
