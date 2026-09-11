@@ -65,9 +65,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNameSubmit, isLoading =
 interface CPFLoginProps {
   onBack: () => void;
   onLoginSuccess: (user: User) => void;
+  onSkip: () => void;
 }
 
-const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
+const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess, onSkip }) => {
   const navigate = useNavigate();
   
   // Estados do Formulário
@@ -239,6 +240,9 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess }) => {
             <button type="submit" disabled={isLoading} className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-950/40">
               {isLoading ? "Verificando..." : "Continuar"}
             </button>
+            <button type="button" onClick={onSkip} className="w-full text-sm text-blue-100 hover:text-white underline">
+              Entrar sem cadastro
+            </button>
           </form>
         )}
 
@@ -298,7 +302,11 @@ const LoginPage: React.FC = () => {
     navigate("/menu");
   };
 
-  return <CPFLogin onBack={() => {}} onLoginSuccess={handleLoginSuccess} />;
+  const handleSkip = () => {
+    navigate("/menu");
+  };
+
+  return <CPFLogin onBack={() => {}} onLoginSuccess={handleLoginSuccess} onSkip={handleSkip} />;
 };
 
 export default LoginPage;
