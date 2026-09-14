@@ -9,8 +9,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 
-// Sessão geral: desloga após 20s sem interação (15s de espera + 5s de contagem).
-const GENERAL_INACTIVITY_MS = 15_000;
+// Sessão geral: desloga após 2min30s sem interação (2min25s de espera + 5s de contagem).
+const GENERAL_INACTIVITY_MS = 145_000;
 const GENERAL_COUNTDOWN_SECONDS = 5;
 
 // Pós-compra (handback do kiosk): janela maior, 1 minuto + 30s de contagem.
