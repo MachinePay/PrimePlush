@@ -76,4 +76,7 @@ export interface User {
 
 export interface CartItem extends Product {
   quantity: number;
+  // Item liberado via PIN de balcão mesmo sem estoque suficiente.
+  forceOverride?: boolean;
+  overrideToken?: string;
 }

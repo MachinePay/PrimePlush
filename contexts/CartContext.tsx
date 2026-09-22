@@ -19,7 +19,10 @@ import type { CartItem, Product } from "../types";
 */
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: Product) => void;
+  addToCart: (
+    product: Product,
+    override?: { forceOverride: boolean; overrideToken: string },
+  ) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -99,10 +102,14 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     Usa a função de atualização baseada no estado anterior para evitar condições de corrida.
   */
   const { currentUser } = useAuth();
-  const addToCart = (product: Product) => {
+  const addToCart = (
+    product: Product,
+    override?: { forceOverride: boolean; overrideToken: string },
+  ) => {
     const availableStock = getAvailableStock(product);
-    // Validação de estoque
-    if (availableStock === 0) {
+    const isOverridden = Boolean(override?.forceOverride && override?.overrideToken);
+    // Validação de estoque (pulada quando liberado via PIN de balcão)
+    if (availableStock === 0 && !isOverridden) {
       alert("Produto esgotado!");
       return;
     }
@@ -114,17 +121,36 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       const addQuantidade = isAdminCustomer ? 1 : quantidadeVenda;
       if (existingItem) {
         const novaQuantidade = existingItem.quantity + addQuantidade;
-        if (availableStock !== null && novaQuantidade > availableStock) {
+        if (
+          !isOverridden &&
+          availableStock !== null &&
+          novaQuantidade > availableStock
+        ) {
           alert(
             `Estoque limitado! Maximo de ${availableStock} unidades disponiveis.`,
           );
           return prevItems;
         }
         return prevItems.map((item) =>
-          item.id === product.id ? { ...item, quantity: novaQuantidade } : item,
+          item.id === product.id
+            ? {
+                ...item,
+                quantity: novaQuantidade,
+                forceOverride: item.forceOverride || isOverridden,
+                overrideToken: override?.overrideToken || item.overrideToken,
+              }
+            : item,
         );
       }
-      return [...prevItems, { ...product, quantity: addQuantidade }];
+      return [
+        ...prevItems,
+        {
+          ...product,
+          quantity: addQuantidade,
+          forceOverride: isOverridden,
+          overrideToken: override?.overrideToken,
+        },
+      ];
     });
   };
 
@@ -152,13 +178,15 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       const quantidadeVenda = item.quantidadeVenda ?? 1;
       const availableStock = getAvailableStock(item);
       let novaQuantidade = Math.max(quantity, 0);
-      if (!isAdminCustomer && novaQuantidade > 0) {
+      // Item liberado via PIN de balcão não trava na quantidade disponível.
+      if (!item.forceOverride && !isAdminCustomer && novaQuantidade > 0) {
         novaQuantidade =
           Math.round(novaQuantidade / quantidadeVenda) * quantidadeVenda;
         if (availableStock !== null && novaQuantidade > availableStock) {
           novaQuantidade = availableStock;
         }
       } else if (
+        !item.forceOverride &&
         isAdminCustomer &&
         availableStock !== null &&
         novaQuantidade > availableStock

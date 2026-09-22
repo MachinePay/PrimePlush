@@ -356,6 +356,8 @@ const PaymentPage: React.FC = () => {
           name: i.name,
           quantity: i.quantity,
           price: i.price,
+          forceOverride: i.forceOverride,
+          overrideToken: i.overrideToken,
         })),
         total:
           paymentType === "presencial" &&

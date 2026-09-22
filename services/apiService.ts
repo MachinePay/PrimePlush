@@ -273,3 +273,24 @@ export async function getUsers() {
   const response = await authenticatedFetch(`${API_URL}/users`);
   return response.json();
 }
+
+/**
+ * Verifica o PIN de liberação de pedido sem estoque (uso interno/balcão).
+ * Retorna um token de curta duração que autoriza aquele item a ir para o
+ * carrinho mesmo esgotado; o PIN nunca é validado no frontend.
+ */
+export async function verifyStockOverridePin(
+  pin: string,
+): Promise<{ success: boolean; token?: string; message?: string }> {
+  try {
+    const response = await publicFetch(`${API_URL}/stock-override/verify`, {
+      method: "POST",
+      body: JSON.stringify({ pin }),
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Erro ao verificar PIN de liberação de estoque:", error);
+    return { success: false, message: "Erro de conexão" };
+  }
+}
