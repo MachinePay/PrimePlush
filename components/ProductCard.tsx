@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { useFavorites } from "../contexts/FavoritesContext";
+import { verifyStockOverridePin } from "../services/apiService";
 import type { Product } from "../types";
 
 const getAvailableStock = (product: Product): number | null => {
@@ -8,9 +9,14 @@ const getAvailableStock = (product: Product): number | null => {
   return null;
 };
 
+const LONG_PRESS_MS = 3000;
+
 interface ProductCardProps {
   product: Product;
-  onAddToCart: (product: Product) => void;
+  onAddToCart: (
+    product: Product,
+    override?: { forceOverride: boolean; overrideToken: string },
+  ) => void;
   quantityInCart?: number;
   onOpenImage: (product: Product) => void;
 }
@@ -26,11 +32,59 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const primaryImage = product.images?.[0] || product.imageUrl;
   const favorited = isFavorite(product.id);
 
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [verifying, setVerifying] = useState(false);
+
+  const startLongPress = () => {
+    if (!isOutOfStock) return;
+    pressTimerRef.current = setTimeout(() => {
+      setPinError("");
+      setPin("");
+      setShowPinModal(true);
+    }, LONG_PRESS_MS);
+  };
+
+  const cancelLongPress = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  };
+
+  const closePinModal = () => {
+    setShowPinModal(false);
+    setPin("");
+    setPinError("");
+  };
+
+  const handleConfirmPin = async () => {
+    setVerifying(true);
+    setPinError("");
+    const result = await verifyStockOverridePin(pin);
+    setVerifying(false);
+    if (result.success && result.token) {
+      onAddToCart(product, {
+        forceOverride: true,
+        overrideToken: result.token,
+      });
+      closePinModal();
+    } else {
+      setPinError(result.message || "PIN inválido");
+    }
+  };
+
   return (
     <div
       className={`monster-product-card bg-white w-60 rounded-2xl shadow-md overflow-hidden flex flex-col relative h-full transition-transform hover:shadow-xl ${
         isOutOfStock ? "opacity-60 grayscale" : ""
       }`}
+      onPointerDown={startLongPress}
+      onPointerUp={cancelLongPress}
+      onPointerLeave={cancelLongPress}
+      onPointerCancel={cancelLongPress}
     >
       {/* Badges - Apenas ESGOTADO agora */}
       {isOutOfStock && (
@@ -118,6 +172,59 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
       </div>
+
+      {showPinModal && (
+        <div
+          className="fixed inset-0 z-[300] bg-black/60 flex items-center justify-center p-4"
+          onClick={closePinModal}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-xs"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-lg text-stone-800 mb-1">
+              Liberar sem estoque
+            </h3>
+            <p className="text-sm text-stone-500 mb-4">
+              Digite o PIN para adicionar "{product.name}" mesmo esgotado.
+            </p>
+            <input
+              type="password"
+              inputMode="numeric"
+              autoFocus
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !verifying) handleConfirmPin();
+              }}
+              placeholder="PIN"
+              className="w-full p-3 border border-stone-300 rounded-lg text-center text-lg tracking-widest mb-2 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/30"
+            />
+            {pinError && (
+              <p className="text-sm text-red-600 font-semibold mb-2">
+                {pinError}
+              </p>
+            )}
+            <div className="flex gap-2 mt-3">
+              <button
+                type="button"
+                onClick={closePinModal}
+                className="flex-1 py-2 rounded-lg font-bold text-stone-600 bg-stone-100 hover:bg-stone-200"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPin}
+                disabled={verifying || !pin}
+                className="flex-1 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-stone-300"
+              >
+                {verifying ? "..." : "Liberar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

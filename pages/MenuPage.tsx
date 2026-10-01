@@ -41,7 +41,10 @@ interface CartSidebarProps {
   isMobile?: boolean;
   onClose?: () => void;
   menu: Product[];
-  onAddToCart: (product: Product) => void;
+  onAddToCart: (
+    product: Product,
+    override?: { forceOverride: boolean; overrideToken: string },
+  ) => void;
   observation: string; // <--- Recebe a observação
   setObservation: (obs: string) => void; // <--- Recebe a função para alterar
   currentUser?: any; // <--- Recebe o usuário atual
@@ -148,7 +151,12 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
         ) : (
           <>
             {/* ITENS DO CARRINHO (BOTÕES GRANDES) */}
-            {cartItems.map((item) => (
+            {cartItems.map((item) => {
+              const liveProduct = menu.find((p) => p.id === item.id) || item;
+              const liveStock = getAvailableStock(liveProduct);
+              const remaining =
+                liveStock === null ? null : liveStock - item.quantity;
+              return (
               <div
                 key={item.id}
                 className="monster-cart-item flex bg-white p-3 rounded-lg shadow-sm border border-stone-200 items-center justify-between"
@@ -160,6 +168,15 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                   <p className="text-sm md:text-base font-semibold text-blue-600">
                     R$ {item.price.toFixed(2)}
                   </p>
+                  {remaining !== null && (
+                    <p
+                      className={`text-xs font-semibold mt-0.5 ${
+                        remaining < 0 ? "text-red-600" : "text-stone-400"
+                      }`}
+                    >
+                      Restam no estoque: {remaining}
+                    </p>
+                  )}
                 </div>
 
                 {/* CONTROLES DE QUANTIDADE GRANDES */}
@@ -202,7 +219,8 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </>
         )}
       </div>
@@ -651,12 +669,15 @@ const MenuPage: React.FC = () => {
 
   // Navegar pelo catálogo não exige login; só ao adicionar um item ao
   // carrinho o cliente é obrigado a se identificar.
-  const handleAddToCart = (product: Product) => {
+  const handleAddToCart = (
+    product: Product,
+    override?: { forceOverride: boolean; overrideToken: string },
+  ) => {
     if (!currentUser) {
       navigate("/login");
       return;
     }
-    addToCart(product);
+    addToCart(product, override);
   };
 
   // Produtos em destaque, ordenados (esgotados por último). Dividido em
