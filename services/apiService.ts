@@ -9,6 +9,10 @@ export async function updateUser(userId: string, userData: any) {
 // Serviço de API com autenticação JWT e Multi-tenant
 
 import api from "./api";
+import {
+  ADMIN_LOGIN_EXPIRED_PATH,
+  ADMIN_SESSION_EXPIRED_EVENT,
+} from "../utils/adminSession";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const API_URL = `${BASE_URL}/api`;
@@ -164,9 +168,13 @@ export async function authenticatedFetch(
   if (response.status === 401 || response.status === 403) {
     console.error("Acesso negado. Token inválido ou expirado.");
     logout();
-    // Redireciona para a página de login (se necessário)
-    if (window.location.pathname.includes("/admin")) {
-      window.location.href = "/admin/login";
+    // Avisa a UI para pedir novo acesso à aba admin (o usuário segue logado
+    // no sistema; só o token de admin precisa ser renovado).
+    window.dispatchEvent(new Event(ADMIN_SESSION_EXPIRED_EVENT));
+    // O app usa HashRouter, então a rota atual fica no hash, não no pathname.
+    const route = window.location.hash.replace(/^#/, "") || window.location.pathname;
+    if (route.startsWith("/admin")) {
+      window.location.hash = `#${ADMIN_LOGIN_EXPIRED_PATH}`;
     } else if (window.location.pathname.includes("/kitchen")) {
       window.location.href = "/kitchen/login";
     }

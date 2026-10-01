@@ -12,6 +12,10 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CartProvider } from "./contexts/CartContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
 import { StoreProvider, useStore } from "./contexts/StoreContext"; // 🏪 MULTI-TENANT
+import {
+  ADMIN_LOGIN_EXPIRED_PATH,
+  isAdminSessionValid,
+} from "./utils/adminSession";
 import LoginPage from "./pages/LoginPage";
 import StoreNotFound from "./pages/StoreNotFound";
 import MenuPage from "./pages/MenuPage";
@@ -74,6 +78,13 @@ const RoleProtectedRoute: React.FC<{
   const userRole = currentUser.role || "customer";
   if (!allowedRoles.includes(userRole)) {
     return <Navigate to={redirectTo} replace />;
+  }
+
+  // Admin continua logado no sistema, mas o token de admin vence (8h). Sem
+  // token válido as telas abrem vazias/sem permissão, então pede a senha de
+  // novo na aba admin.
+  if (userRole === "admin" && !isAdminSessionValid()) {
+    return <Navigate to={ADMIN_LOGIN_EXPIRED_PATH} replace />;
   }
 
   return <>{children}</>;

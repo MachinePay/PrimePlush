@@ -14,6 +14,7 @@ import {
 import { getUsers } from "../services/apiService";
 import type { Order, CartItem, User } from "../types";
 import PaymentOnline from "../components/PaymentOnline";
+import { isAdminSessionValid } from "../utils/adminSession";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -56,6 +57,11 @@ const PaymentPage: React.FC = () => {
   const isAdminSale =
     currentUser?.role === "admin" || currentUser?.role === "admincustomer";
   const canSelectCustomer = currentUser?.role === "admin";
+  // Usar dados de outro cliente exige o token de admin válido. Vale tanto para
+  // o admin que entrou pelo login comum (admincustomer) quanto para o admin
+  // cujo token venceu depois de muito tempo logado.
+  const needsAdminLogin =
+    isAdminSale && !(canSelectCustomer && isAdminSessionValid());
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -123,7 +129,7 @@ const PaymentPage: React.FC = () => {
   const [creatingOnlineOrder, setCreatingOnlineOrder] = useState(false);
 
   useEffect(() => {
-    if (!canSelectCustomer) return;
+    if (!canSelectCustomer || needsAdminLogin) return;
 
     const loadUsers = async () => {
       setIsLoadingUsers(true);
@@ -143,7 +149,7 @@ const PaymentPage: React.FC = () => {
     };
 
     loadUsers();
-  }, [canSelectCustomer]);
+  }, [canSelectCustomer, needsAdminLogin]);
 
   useEffect(() => {
     setOnlineOrderId(null);
@@ -537,7 +543,30 @@ const PaymentPage: React.FC = () => {
         Finalizar Pagamento
       </h1>
 
-      {canSelectCustomer && (
+      {needsAdminLogin && (
+        <div className="bg-amber-50 p-5 rounded-xl shadow-lg border border-amber-300 mb-6">
+          <p className="font-bold text-amber-900 mb-1">
+            Você é administrador
+          </p>
+          <p className="text-sm text-amber-800 mb-3">
+            {canSelectCustomer
+              ? "Sua sessão de admin expirou. Para finalizar a compra usando os dados de outro cliente, entre no admin novamente."
+              : "Você pode finalizar esta compra usando os dados de outro cliente, mas para isso precisa fazer login na aba admin."}
+          </p>
+          <button
+            type="button"
+            onClick={() =>
+              navigate("/admin/login", { state: { from: "/payment" } })
+            }
+            disabled={status === "processing"}
+            className="inline-flex items-center gap-2 bg-purple-700 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-800 transition-colors disabled:opacity-50"
+          >
+            Entrar no admin
+          </button>
+        </div>
+      )}
+
+      {canSelectCustomer && !needsAdminLogin && (
         <div className="bg-white p-5 rounded-xl shadow-lg border border-blue-100 mb-6">
           <label
             htmlFor="admin-customer"

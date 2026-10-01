@@ -43,12 +43,17 @@ const InactivityGuard: React.FC = () => {
   const isScreensaver = location.pathname === "/";
   const isKitchen = location.pathname.startsWith("/cozinha");
   const isAdmin = location.pathname.startsWith("/admin");
+  // Usuário admin (com ou sem a aba admin aberta) nunca é deslogado por
+  // inatividade: depois de entrar uma vez, permanece no sistema.
+  const isAdminUser =
+    currentUser?.role === "admin" || currentUser?.role === "admincustomer";
 
   // Ativo sempre que houver alguém logado, fora da tela de espera, cozinha
   // e admin (onde funcionários podem ficar parados por mais tempo).
   const guardEnabled = useMemo(
-    () => !!currentUser && !isScreensaver && !isKitchen && !isAdmin,
-    [currentUser, isScreensaver, isKitchen, isAdmin]
+    () =>
+      !!currentUser && !isAdminUser && !isScreensaver && !isKitchen && !isAdmin,
+    [currentUser, isAdminUser, isScreensaver, isKitchen, isAdmin]
   );
 
   const clearInactivityTimer = () => {

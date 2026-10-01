@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { login as apiLogin, isAuthenticated } from "../services/apiService";
+import { login as apiLogin } from "../services/apiService";
+import { isAdminSessionValid } from "../utils/adminSession";
 
 const AdminLoginPage: React.FC = () => {
   const [password, setPassword] = useState("");
@@ -9,13 +10,23 @@ const AdminLoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { login, currentUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Para onde voltar após entrar (ex.: checkout que pediu acesso de admin).
+  const returnTo =
+    (location.state as { from?: string } | null)?.from || "/admin";
+  // Admin ainda logado no sistema, mas com o token de admin vencido.
+  const sessionExpired =
+    new URLSearchParams(location.search).get("expired") === "1" ||
+    currentUser?.role === "admin";
 
   useEffect(() => {
-    // Se já está logado como admin, redirecionar
-    if (currentUser?.role === "admin" || isAuthenticated()) {
-      navigate("/admin");
+    // Só pula a senha se o token de admin ainda for válido; com o token
+    // vencido, redirecionar para /admin deixaria as telas sem permissão.
+    if (isAdminSessionValid()) {
+      navigate(returnTo, { replace: true });
     }
-  }, [currentUser, navigate]);
+  }, [navigate, returnTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +46,7 @@ const AdminLoginPage: React.FC = () => {
           role: "admin" as const,
         };
         login(adminUser);
-        navigate("/admin");
+        navigate(returnTo, { replace: true });
       } else {
         setError("Senha incorreta");
         setPassword("");
@@ -62,6 +73,14 @@ const AdminLoginPage: React.FC = () => {
           <p className="text-slate-600">Digite a senha para acessar</p>
           {/* Loja: single-tenant, não exibe mais storeId */}
         </div>
+
+        {sessionExpired && (
+          <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Sua sessão de administrador expirou. Você continua logado no
+            sistema, mas precisa digitar a senha para acessar a aba admin
+            novamente.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>

@@ -1,6 +1,14 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import {
+  ADMIN_LOGIN_EXPIRED_PATH,
+  ADMIN_SESSION_EXPIRED_EVENT,
+  isAdminSessionValid,
+} from "../../utils/adminSession";
+
+// Intervalo para conferir se o token de admin ainda vale com a aba aberta.
+const ADMIN_SESSION_CHECK_MS = 60_000;
 
 type IconProps = { className?: string };
 
@@ -76,6 +84,26 @@ const navLinkClasses = (isActive: boolean) =>
 const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
+
+  // Com a aba admin aberta por muito tempo o token vence e as ações param de
+  // funcionar sem aviso. Confere periodicamente (e ao voltar para a janela)
+  // e, se vencido, pede a senha do admin de novo sem deslogar do sistema.
+  useEffect(() => {
+    const requireAdminLogin = () =>
+      navigate(ADMIN_LOGIN_EXPIRED_PATH, { replace: true });
+    const check = () => {
+      if (!isAdminSessionValid()) requireAdminLogin();
+    };
+
+    const intervalId = window.setInterval(check, ADMIN_SESSION_CHECK_MS);
+    window.addEventListener("focus", check);
+    window.addEventListener(ADMIN_SESSION_EXPIRED_EVENT, requireAdminLogin);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", check);
+      window.removeEventListener(ADMIN_SESSION_EXPIRED_EVENT, requireAdminLogin);
+    };
+  }, [navigate]);
 
   const handleLogout = async () => {
     if (!window.confirm("Deseja realmente sair?")) return;
