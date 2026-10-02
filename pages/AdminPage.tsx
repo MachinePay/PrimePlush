@@ -5,46 +5,16 @@
 
 import React, { useState, useEffect } from "react";
 import { type StockMovement } from "../utils/stockMovements";
-import {
-  getStockCarts,
-  registerStockCartUsage,
-  undoStockCartUsage,
-  type StockCart,
-} from "../services/cartStockService";
 
-// Modal de movimentação de estoque para múltiplos produtos.
-// Sem carrinho: entrada no estoque. Com carrinho: uso do carrinho (saída que
-// conta como usada por ele desde a sua última atualização).
+// Modal de movimentação de estoque para múltiplos produtos
 const StockMovementModal: React.FC<{
   products: Product[];
-  carts: StockCart[];
   onClose: () => void;
-  onMovement: (
-    movements: { productId: string; quantity: number }[],
-    cartId: number | null,
-  ) => void;
-}> = ({ products, carts, onClose, onMovement }) => {
-  const [cartId, setCartId] = useState<number | null>(null);
-  const selectedCart = carts.find((c) => c.id === cartId) || null;
-  const productOptions = selectedCart
-    ? selectedCart.items
-        .filter((i) => i.expected > 0)
-        .map((i) => ({ id: i.productId, name: i.productName }))
-    : products.map((p) => ({ id: p.id, name: p.name }));
-
+  onMovement: (movements: { productId: string; quantity: number }[]) => void;
+}> = ({ products, onClose, onMovement }) => {
   const [rows, setRows] = useState([
     { productId: products[0]?.id || "", quantity: 1 },
   ]);
-
-  const handleCartChange = (value: string) => {
-    const next = value ? Number(value) : null;
-    setCartId(next);
-    const cart = carts.find((c) => c.id === next);
-    const firstId = cart
-      ? cart.items.find((i) => i.expected > 0)?.productId || ""
-      : products[0]?.id || "";
-    setRows([{ productId: firstId, quantity: 1 }]);
-  };
 
   const handleRowChange = (
     idx: number,
@@ -63,7 +33,7 @@ const StockMovementModal: React.FC<{
   const addRow = () =>
     setRows((prev) => [
       ...prev,
-      { productId: productOptions[0]?.id || "", quantity: 1 },
+      { productId: products[0]?.id || "", quantity: 1 },
     ]);
   const removeRow = (idx: number) =>
     setRows((prev) =>
@@ -79,42 +49,11 @@ const StockMovementModal: React.FC<{
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            onMovement(
-              rows.filter((r) => r.productId && r.quantity > 0),
-              cartId,
-            );
+            onMovement(rows.filter((r) => r.productId && r.quantity > 0));
           }}
         >
-          {carts.length > 0 && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Tipo</label>
-              <select
-                className="w-full border rounded-lg px-3 py-2"
-                value={cartId ?? ""}
-                onChange={(e) => handleCartChange(e.target.value)}
-              >
-                <option value="">Entrada no estoque</option>
-                {carts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    Uso do {c.name}
-                    {c.responsible ? ` (${c.responsible})` : ""}
-                  </option>
-                ))}
-              </select>
-              {selectedCart && productOptions.length === 0 && (
-                <p className="mt-2 text-xs text-amber-700">
-                  Este carrinho não tem produtos a devolver. Abasteça-o na aba
-                  Carrinhos.
-                </p>
-              )}
-            </div>
-          )}
           <div className="space-y-4 mb-6 max-h-60 overflow-y-auto">
-            {rows.map((row, idx) => {
-              const inCart = selectedCart?.items.find(
-                (i) => i.productId === row.productId,
-              );
-              return (
+            {rows.map((row, idx) => (
               <div key={idx} className="flex gap-2 items-end border-b pb-2">
                 <div className="flex-1">
                   <label className="block text-sm font-medium mb-1">
@@ -127,18 +66,12 @@ const StockMovementModal: React.FC<{
                       handleRowChange(idx, "productId", e.target.value)
                     }
                   >
-                    {productOptions.map((p) => (
+                    {products.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
                       </option>
                     ))}
                   </select>
-                  {inCart && (
-                    <div className="mt-1 text-xs text-stone-500">
-                      Carregado: {inCart.loaded} · Usado: {inCart.used} · Deve
-                      devolver: {inCart.expected}
-                    </div>
-                  )}
                 </div>
                 <div className="w-24">
                   <label className="block text-sm font-medium mb-1">Qtd</label>
@@ -161,8 +94,7 @@ const StockMovementModal: React.FC<{
                   ✕
                 </button>
               </div>
-              );
-            })}
+            ))}
           </div>
           <button
             type="button"
@@ -181,10 +113,9 @@ const StockMovementModal: React.FC<{
             </button>
             <button
               type="submit"
-              disabled={!!selectedCart && productOptions.length === 0}
-              className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 disabled:bg-emerald-300"
+              className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
             >
-              {selectedCart ? "Registrar uso" : "Adicionar"}
+              Adicionar
             </button>
           </div>
         </form>
@@ -594,8 +525,6 @@ const AdminPage: React.FC = () => {
   const [filterStart, setFilterStart] = useState("");
   const [filterEnd, setFilterEnd] = useState("");
   const [filterProductId, setFilterProductId] = useState("");
-  // Carrinhos (para lançar uso de carrinho na movimentação)
-  const [stockCarts, setStockCarts] = useState<StockCart[]>([]);
 
   // Busca histórico do backend
   const loadStockMovements = async (
@@ -627,7 +556,6 @@ const AdminPage: React.FC = () => {
               stock_before?: number | null;
               stock_after?: number | null;
               created_at: string;
-              cartName?: string | null;
             }) => ({
               id: String(m.id),
               productId: m.productId,
@@ -638,7 +566,6 @@ const AdminPage: React.FC = () => {
               orderId: m.orderId,
               stockBefore: m.stock_before ?? null,
               stockAfter: m.stock_after ?? null,
-              cartName: m.cartName ?? null,
             }),
           ),
         );
@@ -651,29 +578,13 @@ const AdminPage: React.FC = () => {
   // Atualiza histórico ao abrir página ou movimentar
   useEffect(() => {
     loadStockMovements();
-    getStockCarts()
-      .then(setStockCarts)
-      .catch((e) => console.error("Erro ao carregar carrinhos:", e));
   }, [isStockModalOpen]);
 
   // Lida com movimentação de estoque
   const handleStockMovement = async (
     movements: { productId: string; quantity: number }[],
-    cartId: number | null,
   ) => {
     const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-
-    if (cartId !== null) {
-      try {
-        await registerStockCartUsage(cartId, movements);
-        await loadProducts();
-        await loadStockMovements();
-        setIsStockModalOpen(false);
-      } catch (err: any) {
-        alert(err?.message || "Erro ao registrar uso do carrinho");
-      }
-      return;
-    }
 
     try {
       for (const move of movements) {
@@ -911,18 +822,6 @@ const AdminPage: React.FC = () => {
   // Deleta movimentação e reverte estoque (apenas ajustes manuais)
   const handleDeleteMovement = async (movement: StockMovement) => {
     const movType = (movement as StockMovement & { type?: string }).type;
-    if (movType === "cart_usage") {
-      if (!window.confirm("Desfazer este uso de carrinho e devolver ao estoque?"))
-        return;
-      try {
-        await undoStockCartUsage(movement.id);
-        await loadProducts();
-        await loadStockMovements();
-      } catch (err: any) {
-        alert(err?.message || "Erro ao desfazer uso do carrinho");
-      }
-      return;
-    }
     if (movType === "sale") {
       alert(
         "Não é possível excluir movimentações de venda. Cancele o pedido correspondente.",
@@ -986,7 +885,6 @@ const AdminPage: React.FC = () => {
           {isStockModalOpen && (
             <StockMovementModal
               products={menu}
-              carts={stockCarts}
               onClose={() => setIsStockModalOpen(false)}
               onMovement={handleStockMovement}
             />
@@ -1328,9 +1226,7 @@ const AdminPage: React.FC = () => {
                         ? "Cancelamento"
                         : movType === "return"
                           ? "Devolução"
-                          : movType === "cart_usage"
-                            ? `Uso do ${m.cartName || "carrinho"}`
-                            : "Ajuste manual";
+                          : "Ajuste manual";
                   return (
                     <tr key={m.id}>
                       <td className="p-3 text-xs">
@@ -1355,7 +1251,7 @@ const AdminPage: React.FC = () => {
                         {stockAfter === null ? "-" : stockAfter}
                       </td>
                       <td className="p-3 text-xs text-right">
-                        {(movType === "manual" || movType === "cart_usage") && (
+                        {movType === "manual" && (
                           <button
                             className="text-red-500 hover:underline text-xs"
                             onClick={() => handleDeleteMovement(m)}

@@ -25,14 +25,6 @@ const TagIcon: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-const CartIcon: React.FC<IconProps> = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.76L20.5 8H6.2" />
-    <circle cx="9.5" cy="19.5" r="1.3" />
-    <circle cx="17" cy="19.5" r="1.3" />
-  </svg>
-);
-
 const ChartIcon: React.FC<IconProps> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M4 20V10m6 10V4m6 16v-7" />
@@ -77,7 +69,6 @@ const NAV_ITEMS: AdminNavItem[] = [
   { to: "/admin", label: "Painel", icon: HomeIcon },
   { to: "/admin/categories", label: "Categorias", icon: TagIcon },
   { to: "/admin/banners", label: "Banners", icon: ImageIcon },
-  { to: "/admin/carts", label: "Carrinhos", icon: CartIcon },
   { to: "/admin/reports", label: "Relatórios", icon: ChartIcon },
   { to: "/admin/management-report", label: "Gestão", icon: BriefcaseIcon },
   { to: "/historico", label: "Histórico de Pedidos", icon: ClockIcon },
