@@ -28,6 +28,7 @@ import AdminReportsPage from "./pages/AdminReportsPage";
 import AdminManagementReportPage from "./pages/AdminManagementReportPage";
 import AdminCategoriesPage from "./pages/AdminCategoriesPage"; // 🆕
 import AdminBannersPage from "./pages/AdminBannersPage"; // 🆕
+import AdminCartsPage from "./pages/AdminCartsPage";
 import Header from "./components/Header";
 import Chatbot from "./components/Chatbot";
 import InactivityGuard from "./components/InactivityGuard";
@@ -276,6 +277,21 @@ const RouterBody: React.FC = () => {
               >
                 <AdminLayout>
                   <AdminPage />
+                </AdminLayout>
+              </RoleProtectedRoute>
+            }
+          />
+
+          {/* Rota protegida para carrinhos de estoque (uso e devolução) */}
+          <Route
+            path="/admin/carts"
+            element={
+              <RoleProtectedRoute
+                allowedRoles={["admin"]}
+                redirectTo="/admin/login"
+              >
+                <AdminLayout>
+                  <AdminCartsPage />
                 </AdminLayout>
               </RoleProtectedRoute>
             }

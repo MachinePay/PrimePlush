@@ -9,6 +9,7 @@ export interface StockMovement {
   orderId?: string;
   stockBefore?: number | null;
   stockAfter?: number | null;
+  cartName?: string | null;
 }
 
 // Utilitário para salvar e buscar do localStorage
