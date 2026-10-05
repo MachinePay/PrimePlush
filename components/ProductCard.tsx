@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useFavorites } from "../contexts/FavoritesContext";
 import { verifyStockOverridePin } from "../services/apiService";
 import type { Product } from "../types";
@@ -28,19 +29,30 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onOpenImage,
 }) => {
   const { isFavorite, toggleFavorite } = useFavorites();
-  const isOutOfStock = getAvailableStock(product) === 0;
+  const availableStock = getAvailableStock(product);
+  const isOutOfStock = availableStock === 0;
   const primaryImage = product.images?.[0] || product.imageUrl;
   const favorited = isFavorite(product.id);
 
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressStartRef = useRef<{ x: number; y: number } | null>(null);
+  // Evita que o "click" disparado ao soltar o dedo depois do long press
+  // adicione o item de novo pelo botão normal.
+  const longPressFiredRef = useRef(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
   const [verifying, setVerifying] = useState(false);
 
-  const startLongPress = () => {
-    if (!isOutOfStock) return;
+  const startLongPress = (e: React.PointerEvent) => {
+    // Liberação vale para qualquer produto com estoque controlado (esgotado
+    // ou não), para permitir pedir acima do disponível.
+    if (availableStock === null || showPinModal) return;
+    longPressFiredRef.current = false;
+    pressStartRef.current = { x: e.clientX, y: e.clientY };
     pressTimerRef.current = setTimeout(() => {
+      pressTimerRef.current = null;
+      longPressFiredRef.current = true;
       setPinError("");
       setPin("");
       setShowPinModal(true);
@@ -52,6 +64,25 @@ const ProductCard: React.FC<ProductCardProps> = ({
       clearTimeout(pressTimerRef.current);
       pressTimerRef.current = null;
     }
+    pressStartRef.current = null;
+  };
+
+  // No toque o dedo sempre treme um pouco; só cancela se arrastar de verdade
+  // (ex.: rolando a lista).
+  const handlePointerMove = (e: React.PointerEvent) => {
+    const start = pressStartRef.current;
+    if (!start) return;
+    if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) {
+      cancelLongPress();
+    }
+  };
+
+  const handleAddClick = () => {
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false;
+      return;
+    }
+    onAddToCart(product);
   };
 
   const closePinModal = () => {
@@ -78,13 +109,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <div
-      className={`monster-product-card bg-white w-60 rounded-2xl shadow-md overflow-hidden flex flex-col relative h-full transition-transform hover:shadow-xl ${
+      className={`monster-product-card bg-white w-60 rounded-2xl shadow-md overflow-hidden flex flex-col relative h-full transition-transform hover:shadow-xl select-none ${
         isOutOfStock ? "opacity-60 grayscale" : ""
       }`}
+      style={{ WebkitTouchCallout: "none" }}
       onPointerDown={startLongPress}
+      onPointerMove={handlePointerMove}
       onPointerUp={cancelLongPress}
       onPointerLeave={cancelLongPress}
       onPointerCancel={cancelLongPress}
+      // Segurar o dedo abre o menu nativo (salvar imagem/selecionar texto),
+      // que cancela o pointer e mata o long press.
+      onContextMenu={(e) => e.preventDefault()}
     >
       {/* Badges - Apenas ESGOTADO agora */}
       {isOutOfStock && (
@@ -125,6 +161,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           <img
             src={primaryImage}
             alt={product.name}
+            draggable={false}
             className="w-full h-full object-cover hover:scale-105 transition-transform cursor-zoom-in"
             loading="lazy"
             onClick={() => onOpenImage(product)}
@@ -157,7 +194,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               </span>
             )}
             <button
-              onClick={() => onAddToCart(product)}
+              onClick={handleAddClick}
               disabled={isOutOfStock}
               className={`monster-buy-button w-full font-bold py-3 px-4 rounded-xl text-base md:text-lg transition-colors shadow-sm ${
                 isOutOfStock
@@ -173,58 +210,67 @@ const ProductCard: React.FC<ProductCardProps> = ({
         </div>
       </div>
 
-      {showPinModal && (
-        <div
-          className="fixed inset-0 z-[300] bg-black/60 flex items-center justify-center p-4"
-          onClick={closePinModal}
-        >
+      {/* Portal: o card tem transform/filter, que prenderia o "fixed" dentro
+          dele (cortado pelo overflow-hidden e com grayscale/opacity). */}
+      {showPinModal &&
+        createPortal(
           <div
-            className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-xs"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[300] bg-black/60 flex items-center justify-center p-4"
+            onClick={closePinModal}
+            // Eventos de portal sobem pela árvore React até o card.
+            onPointerDown={(e) => e.stopPropagation()}
           >
-            <h3 className="font-bold text-lg text-stone-800 mb-1">
-              Liberar sem estoque
-            </h3>
-            <p className="text-sm text-stone-500 mb-4">
-              Digite o PIN para adicionar "{product.name}" mesmo esgotado.
-            </p>
-            <input
-              type="password"
-              inputMode="numeric"
-              autoFocus
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !verifying) handleConfirmPin();
-              }}
-              placeholder="PIN"
-              className="w-full p-3 border border-stone-300 rounded-lg text-center text-lg tracking-widest mb-2 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/30"
-            />
-            {pinError && (
-              <p className="text-sm text-red-600 font-semibold mb-2">
-                {pinError}
+            <div
+              className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="font-bold text-lg text-stone-800 mb-1">
+                Liberar sem estoque
+              </h3>
+              <p className="text-sm text-stone-500 mb-4">
+                Digite o PIN para adicionar "{product.name}"{" "}
+                {isOutOfStock
+                  ? "mesmo esgotado."
+                  : `acima do estoque disponível (${availableStock}).`}
               </p>
-            )}
-            <div className="flex gap-2 mt-3">
-              <button
-                type="button"
-                onClick={closePinModal}
-                className="flex-1 py-2 rounded-lg font-bold text-stone-600 bg-stone-100 hover:bg-stone-200"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmPin}
-                disabled={verifying || !pin}
-                className="flex-1 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-stone-300"
-              >
-                {verifying ? "..." : "Liberar"}
-              </button>
+              <input
+                type="password"
+                inputMode="numeric"
+                autoFocus
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !verifying) handleConfirmPin();
+                }}
+                placeholder="PIN"
+                className="w-full p-3 border border-stone-300 rounded-lg text-center text-lg tracking-widest mb-2 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/30"
+              />
+              {pinError && (
+                <p className="text-sm text-red-600 font-semibold mb-2">
+                  {pinError}
+                </p>
+              )}
+              <div className="flex gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={closePinModal}
+                  className="flex-1 py-2 rounded-lg font-bold text-stone-600 bg-stone-100 hover:bg-stone-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmPin}
+                  disabled={verifying || !pin}
+                  className="flex-1 py-2 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-stone-300"
+                >
+                  {verifying ? "..." : "Liberar"}
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };

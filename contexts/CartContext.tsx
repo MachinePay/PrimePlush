@@ -107,7 +107,14 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     override?: { forceOverride: boolean; overrideToken: string },
   ) => {
     const availableStock = getAvailableStock(product);
-    const isOverridden = Boolean(override?.forceOverride && override?.overrideToken);
+    // Item já liberado via PIN no carrinho continua liberado nas próximas
+    // adições pelo botão normal.
+    const alreadyOverridden = cartItems.some(
+      (item) => item.id === product.id && item.forceOverride,
+    );
+    const isOverridden =
+      Boolean(override?.forceOverride && override?.overrideToken) ||
+      alreadyOverridden;
     // Validação de estoque (pulada quando liberado via PIN de balcão)
     if (availableStock === 0 && !isOverridden) {
       alert("Produto esgotado!");
