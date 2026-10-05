@@ -283,9 +283,9 @@ export async function getUsers() {
 }
 
 /**
- * Verifica o PIN de liberação de pedido sem estoque (uso interno/balcão).
+ * Verifica a senha de admin para liberar pedido sem estoque (uso interno/balcão).
  * Retorna um token de curta duração que autoriza aquele item a ir para o
- * carrinho mesmo esgotado; o PIN nunca é validado no frontend.
+ * carrinho mesmo esgotado; a senha nunca é validada no frontend.
  */
 export async function verifyStockOverridePin(
   pin: string,

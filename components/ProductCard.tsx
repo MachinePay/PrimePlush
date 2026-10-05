@@ -103,7 +103,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       });
       closePinModal();
     } else {
-      setPinError(result.message || "PIN inválido");
+      setPinError(result.message || "Senha de admin inválida");
     }
   };
 
@@ -228,22 +228,21 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 Liberar sem estoque
               </h3>
               <p className="text-sm text-stone-500 mb-4">
-                Digite o PIN para adicionar "{product.name}"{" "}
+                Digite a senha de admin para adicionar "{product.name}"{" "}
                 {isOutOfStock
                   ? "mesmo esgotado."
                   : `acima do estoque disponível (${availableStock}).`}
               </p>
               <input
                 type="password"
-                inputMode="numeric"
                 autoFocus
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !verifying) handleConfirmPin();
                 }}
-                placeholder="PIN"
-                className="w-full p-3 border border-stone-300 rounded-lg text-center text-lg tracking-widest mb-2 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/30"
+                placeholder="Senha de admin"
+                className="w-full p-3 border border-stone-300 rounded-lg text-center text-lg mb-2 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/30"
               />
               {pinError && (
                 <p className="text-sm text-red-600 font-semibold mb-2">
