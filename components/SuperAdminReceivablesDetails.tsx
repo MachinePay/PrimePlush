@@ -1,4 +1,5 @@
 import React from "react";
+import { getPaymentMethodLabel } from "../utils/paymentLabels";
 
 interface ItemDetail {
   name: string;
@@ -125,7 +126,7 @@ const SuperAdminReceivablesDetails: React.FC<
                 {order.paymentMethod && (
                   <div>
                     <span className="font-semibold">Tipo de Pagamento:</span>{" "}
-                    {order.paymentMethod}
+                    {getPaymentMethodLabel(order.paymentMethod)}
                   </div>
                 )}
               </div>

@@ -1,6 +1,7 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { Order } from "../types";
+import { getPaymentMethodLabel } from "../utils/paymentLabels";
 
 const OrderDetailPage: React.FC = () => {
   const location = useLocation();
@@ -58,7 +59,9 @@ const OrderDetailPage: React.FC = () => {
           {(() => {
             if (!order.paymentType) return "-";
             if (order.paymentType === "presencial") {
-              return "Presencial";
+              return order.paymentMethod
+                ? `${getPaymentMethodLabel(order.paymentMethod)} (Loja Girakids)`
+                : "Presencial";
             }
             if (order.paymentType === "online") {
               if (order.paymentMethod === "credit")
@@ -71,6 +74,16 @@ const OrderDetailPage: React.FC = () => {
             return order.paymentType;
           })()}
         </div>
+        {order.paymentMethod === "cash" &&
+          order.cashReceived !== null &&
+          order.cashReceived !== undefined && (
+            <div className="mb-2 text-stone-700">
+              <span className="font-semibold">Valor recebido:</span> R$
+              {Number(order.cashReceived).toFixed(2)}
+              <span className="font-semibold ml-4">Troco:</span> R$
+              {Number(order.cashChange || 0).toFixed(2)}
+            </div>
+          )}
         <div className="mb-2 text-stone-700">
           <span className="font-semibold">Status do Pagamento:</span>{" "}
           {order.paymentStatus || "-"}

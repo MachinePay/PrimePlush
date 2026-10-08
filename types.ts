@@ -49,9 +49,19 @@ export interface Order {
   observation?: string;
   // Novos campos para pagamento
   paymentType?: "online" | "presencial";
-  paymentMethod?: "credit" | "debit" | "pix" | "cheque" | "boleto";
+  paymentMethod?:
+    | "credit"
+    | "debit"
+    | "pix"
+    | "cash"
+    | "cheque"
+    | "boleto";
   installments?: number;
   fee?: number;
+  /** Pagamento em dinheiro: valor entregue pelo cliente */
+  cashReceived?: number | null;
+  /** Pagamento em dinheiro: troco devolvido */
+  cashChange?: number | null;
   paymentStatus?: "pending" | "paid" | "authorized" | "canceled";
   entregueCliente?: boolean; // Indica se o pedido foi entregue ao cliente
 }

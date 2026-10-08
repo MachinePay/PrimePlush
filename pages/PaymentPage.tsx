@@ -93,7 +93,7 @@ const PaymentPage: React.FC = () => {
   >(null);
 
   const [paymentMethod, setPaymentMethod] = useState<
-    "credit" | "debit" | "pix" | "cheque" | "boleto" | null
+    "credit" | "debit" | "pix" | "cash" | "cheque" | "boleto" | null
   >(null);
 
   const [status, setStatus] = useState<
@@ -117,6 +117,23 @@ const PaymentPage: React.FC = () => {
   const totalComTaxa = Number(
     (cartTotal * (1 + (taxaSelecionada || 0) / 100)).toFixed(2),
   );
+
+  // Pagamento em dinheiro: valor entregue pelo cliente (aceita vírgula)
+  const [cashReceivedInput, setCashReceivedInput] = useState("");
+  const cashReceived = cashReceivedInput
+    ? Number(
+        cashReceivedInput.includes(",")
+          ? cashReceivedInput.replace(/\./g, "").replace(",", ".")
+          : cashReceivedInput,
+      )
+    : null;
+  const cashReceivedValid =
+    cashReceived !== null &&
+    Number.isFinite(cashReceived) &&
+    cashReceived >= cartTotal;
+  const cashChange = cashReceivedValid
+    ? Number((cashReceived! - cartTotal).toFixed(2))
+    : 0;
 
   // Estados para PIX
   const [qrCodeBase64, setQrCodeBase64] = useState<string | null>(null);
@@ -377,6 +394,8 @@ const PaymentPage: React.FC = () => {
         paymentMethod: paymentMethod,
         installments: paymentMethod === "credit" ? selectedInstallments : 1,
         fee: paymentMethod === "credit" ? taxaSelecionada : 0,
+        cashReceived:
+          paymentMethod === "cash" && cashReceivedValid ? cashReceived : null,
       }),
     });
     if (!orderResp.ok) throw new Error("Erro ao criar pedido");
@@ -798,6 +817,20 @@ const PaymentPage: React.FC = () => {
                   >
                     PIX
                   </button>
+                  <button
+                    className={`px-6 py-3 rounded font-bold text-lg transition-all ${
+                      paymentMethod === "cash"
+                        ? "bg-emerald-600 text-white"
+                        : "bg-white text-emerald-700 border border-emerald-600"
+                    }`}
+                    onClick={() => {
+                      setPaymentMethod("cash");
+                      setCashReceivedInput("");
+                      setPresencialStep("finalize");
+                    }}
+                  >
+                    Dinheiro
+                  </button>
                   {/* Opções extras para admin */}
                   {isAdminSale && (
                     <>
@@ -862,10 +895,59 @@ const PaymentPage: React.FC = () => {
                   </div>
                 )}
 
+              {/* Step 3 (dinheiro): valor recebido e troco */}
+              {presencialStep === "finalize" && paymentMethod === "cash" && (
+                <div className="mt-2 bg-white rounded-lg border border-emerald-300 p-4 text-left text-stone-700">
+                  <span className="block text-lg font-bold text-emerald-700 mb-2">
+                    💵 Pagamento em Dinheiro
+                  </span>
+                  <label
+                    htmlFor="cash-received"
+                    className="block text-sm font-semibold mb-1"
+                  >
+                    Valor recebido (opcional, para calcular o troco)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold">R$</span>
+                    <input
+                      id="cash-received"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder={cartTotal.toFixed(2).replace(".", ",")}
+                      value={cashReceivedInput}
+                      onChange={(e) =>
+                        setCashReceivedInput(
+                          e.target.value.replace(/[^\d.,]/g, ""),
+                        )
+                      }
+                      disabled={status === "processing"}
+                      className="flex-1 border-2 border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  {cashReceivedInput && !cashReceivedValid && (
+                    <p className="mt-2 text-sm font-semibold text-red-600">
+                      Valor recebido menor que o total (R${" "}
+                      {cartTotal.toFixed(2)}).
+                    </p>
+                  )}
+                  {cashReceivedValid && (
+                    <p className="mt-2 text-lg font-bold text-emerald-700">
+                      Troco: R$ {cashChange.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Step 3: Finalizar pedido */}
               {presencialStep === "finalize" && (
                 <button
-                  className="mt-4 px-6 py-3 rounded bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 transition-all"
+                  className="mt-4 px-6 py-3 rounded bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={
+                    status === "processing" ||
+                    (paymentMethod === "cash" &&
+                      !!cashReceivedInput &&
+                      !cashReceivedValid)
+                  }
                   onClick={async () => {
                     setStatus("processing");
                     setErrorMessage("");
@@ -904,6 +986,7 @@ const PaymentPage: React.FC = () => {
                   setPaymentType(null);
                   setPresencialStep(null);
                   setPaymentMethod(null);
+                  setCashReceivedInput("");
                 }}
               >
                 Voltar
