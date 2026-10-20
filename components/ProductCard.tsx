@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useAuth } from "../contexts/AuthContext";
 import { useFavorites } from "../contexts/FavoritesContext";
 import { verifyStockOverridePin } from "../services/apiService";
 import type { Product } from "../types";
@@ -29,8 +30,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onOpenImage,
 }) => {
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { currentUser } = useAuth();
+  const isAdminUser =
+    currentUser?.role === "admincustomer" || currentUser?.role === "admin";
   const availableStock = getAvailableStock(product);
   const isOutOfStock = availableStock === 0;
+  // Admin pode adicionar mesmo esgotado (o carrinho só avisa).
+  const isAddDisabled = isOutOfStock && !isAdminUser;
   const primaryImage = product.images?.[0] || product.imageUrl;
   const favorited = isFavorite(product.id);
 
@@ -195,9 +201,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
             )}
             <button
               onClick={handleAddClick}
-              disabled={isOutOfStock}
+              disabled={isAddDisabled}
               className={`monster-buy-button w-full font-bold py-3 px-4 rounded-xl text-base md:text-lg transition-colors shadow-sm ${
-                isOutOfStock
+                isAddDisabled
                   ? "bg-stone-300 text-stone-500 cursor-not-allowed"
                   : "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800"
               }`}

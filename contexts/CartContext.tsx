@@ -103,6 +103,25 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     Usa a função de atualização baseada no estado anterior para evitar condições de corrida.
   */
   const { currentUser } = useAuth();
+  const isAdminUser =
+    currentUser?.role === "admincustomer" || currentUser?.role === "admin";
+
+  // Admin pode pedir acima do estoque: só avisa quando a quantidade passa do
+  // disponível (o estoque fica negativo quando o item for entregue).
+  const warnAboveStock = (
+    name: string,
+    availableStock: number | null,
+    before: number,
+    after: number,
+  ) => {
+    if (availableStock === null) return;
+    if (before <= availableStock && after > availableStock) {
+      alert(
+        `Atenção: "${name}" tem só ${availableStock} unidade(s) disponível(is). O pedido vai passar do estoque.`,
+      );
+    }
+  };
+
   const addToCart = (
     product: Product,
     override?: { forceOverride: boolean; overrideToken: string },
@@ -116,21 +135,25 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     const isOverridden =
       Boolean(override?.forceOverride && override?.overrideToken) ||
       alreadyOverridden;
-    // Validação de estoque (pulada quando liberado via PIN de balcão)
-    if (availableStock === 0 && !isOverridden) {
+    // Validação de estoque (pulada quando liberado via PIN de balcão ou admin)
+    if (availableStock === 0 && !isOverridden && !isAdminUser) {
       alert("Produto esgotado!");
       return;
     }
+    if (isAdminUser && !isOverridden) {
+      const currentQty =
+        cartItems.find((item) => item.id === product.id)?.quantity ?? 0;
+      warnAboveStock(product.name, availableStock, currentQty, currentQty + 1);
+    }
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id);
-      const isAdminCustomer =
-        currentUser?.role === "admincustomer" || currentUser?.role === "admin";
       const quantidadeVenda = product.quantidadeVenda ?? 1;
-      const addQuantidade = isAdminCustomer ? 1 : quantidadeVenda;
+      const addQuantidade = isAdminUser ? 1 : quantidadeVenda;
       if (existingItem) {
         const novaQuantidade = existingItem.quantity + addQuantidade;
         if (
           !isOverridden &&
+          !isAdminUser &&
           availableStock !== null &&
           novaQuantidade > availableStock
         ) {
@@ -178,28 +201,29 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     - Caso contrário, mapeia os itens e atualiza a quantidade do item correspondente.
   */
   const updateQuantity = (productId: string, quantity: number) => {
+    const current = cartItems.find((i) => i.id === productId);
+    if (current && isAdminUser && !current.forceOverride) {
+      warnAboveStock(
+        current.name,
+        getAvailableStock(current),
+        current.quantity,
+        quantity,
+      );
+    }
     setCartItems((prevItems) => {
       const item = prevItems.find((i) => i.id === productId);
       if (!item) return prevItems;
-      const isAdminCustomer =
-        currentUser?.role === "admincustomer" || currentUser?.role === "admin";
       const quantidadeVenda = item.quantidadeVenda ?? 1;
       const availableStock = getAvailableStock(item);
       let novaQuantidade = Math.max(quantity, 0);
-      // Item liberado via PIN de balcão não trava na quantidade disponível.
-      if (!item.forceOverride && !isAdminCustomer && novaQuantidade > 0) {
+      // Admin e item liberado via PIN de balcão não travam na quantidade
+      // disponível.
+      if (!item.forceOverride && !isAdminUser && novaQuantidade > 0) {
         novaQuantidade =
           Math.round(novaQuantidade / quantidadeVenda) * quantidadeVenda;
         if (availableStock !== null && novaQuantidade > availableStock) {
           novaQuantidade = availableStock;
         }
-      } else if (
-        !item.forceOverride &&
-        isAdminCustomer &&
-        availableStock !== null &&
-        novaQuantidade > availableStock
-      ) {
-        novaQuantidade = availableStock;
       }
       if (novaQuantidade <= 0) {
         return prevItems.filter((i) => i.id !== productId);

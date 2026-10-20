@@ -174,7 +174,9 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                         remaining < 0 ? "text-red-600" : "text-stone-400"
                       }`}
                     >
-                      Restam no estoque: {remaining}
+                      {remaining < 0
+                        ? `⚠️ Acima do estoque: faltam ${-remaining}`
+                        : `Restam no estoque: ${remaining}`}
                     </p>
                   )}
                 </div>
@@ -195,7 +197,6 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                     <input
                       type="number"
                       min={1}
-                      max={getAvailableStock(item) ?? 99}
                       value={item.quantity}
                       onChange={(e) => {
                         const q = parseInt(e.target.value);
