@@ -11,7 +11,7 @@ import {
   cancelPayment,
   clearPaymentQueue,
 } from "../services/paymentService";
-import { getUsers } from "../services/apiService";
+import { getUsers, getToken } from "../services/apiService";
 import type { Order, CartItem, User } from "../types";
 import PaymentOnline from "../components/PaymentOnline";
 import { isAdminSessionValid } from "../utils/adminSession";
@@ -37,6 +37,52 @@ const getCreditFeeByInstallments = (installments: number): number => {
   return 0;
 };
 
+// Converte "12,50" / "1.234,50" / "12.5" em número
+const parseMoneyInput = (value: string): number =>
+  Number(
+    value.includes(",") ? value.replace(/\./g, "").replace(",", ".") : value,
+  );
+
+// Campo de valor unitário editável (venda do admin para outro cliente)
+const UnitPriceInput: React.FC<{
+  item: CartItem;
+  onChange: (price: number) => void;
+}> = ({ item, onChange }) => {
+  const [text, setText] = useState(item.price.toFixed(2).replace(".", ","));
+  const parsed = parseMoneyInput(text);
+  const isValid = text !== "" && Number.isFinite(parsed) && parsed >= 0;
+
+  return (
+    <div className="flex items-center gap-1 text-sm">
+      <span className="text-stone-500">R$</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        aria-label={`Valor unitário de ${item.name}`}
+        value={text}
+        onChange={(e) => {
+          const next = e.target.value.replace(/[^\d.,]/g, "");
+          setText(next);
+          const value = parseMoneyInput(next);
+          if (next !== "" && Number.isFinite(value) && value >= 0) {
+            onChange(Number(value.toFixed(2)));
+          }
+        }}
+        onBlur={() => {
+          if (isValid) setText(parsed.toFixed(2).replace(".", ","));
+          else setText(item.price.toFixed(2).replace(".", ","));
+        }}
+        className={`w-24 border-2 rounded px-2 py-1 text-right text-stone-800 focus:outline-none ${
+          isValid
+            ? "border-stone-200 focus:border-blue-500"
+            : "border-red-400"
+        }`}
+      />
+      <span className="text-stone-500">/un</span>
+    </div>
+  );
+};
+
 // Tipo para controlar o pagamento ativo
 type ActivePaymentState = {
   id: string;
@@ -45,7 +91,8 @@ type ActivePaymentState = {
 } | null;
 
 const PaymentPage: React.FC = () => {
-  const { cartItems, cartTotal, clearCart, observation } = useCart();
+  const { cartItems, cartTotal, clearCart, observation, updatePrice } =
+    useCart();
   const {
     currentUser,
     addOrderToHistory,
@@ -82,6 +129,9 @@ const PaymentPage: React.FC = () => {
     ? customerUsers.find((user) => user.id === selectedUserId) || null
     : currentUser;
 
+  // Admin com sessão válida comprando para outro cliente
+  const isAdminCheckout = canSelectCustomer && !needsAdminLogin;
+
   // Estados de UI
   const [paymentType, setPaymentType] = useState<
     "online" | "presencial" | null
@@ -113,6 +163,11 @@ const PaymentPage: React.FC = () => {
     }
     setTaxaSelecionada(0);
   }, [paymentType, paymentMethod, selectedInstallments]);
+
+  // Preço só pode mudar antes de escolher a forma de pagamento, para o valor
+  // cobrado não divergir do pedido já criado.
+  const canEditPrices =
+    isAdminCheckout && paymentType === null && status !== "processing";
 
   const totalComTaxa = Number(
     (cartTotal * (1 + (taxaSelecionada || 0) / 100)).toFixed(2),
@@ -368,8 +423,12 @@ const PaymentPage: React.FC = () => {
 
   const createOrder = async () => {
     const buyer = requireCheckoutUser();
+    // Com o token de admin o backend registra a venda como "desconta na
+    // entrega": o estoque sai conforme os itens forem entregues.
+    const adminToken = isAdminCheckout ? getToken() : null;
     const orderResp = await fetchStandard(`${BACKEND_URL}/api/orders`, {
       method: "POST",
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
       body: JSON.stringify({
         userId: buyer.id,
         userName: buyer.name,
@@ -379,6 +438,7 @@ const PaymentPage: React.FC = () => {
           name: i.name,
           quantity: i.quantity,
           price: i.price,
+          originalPrice: i.originalPrice,
           forceOverride: i.forceOverride,
           overrideToken: i.overrideToken,
         })),
@@ -632,15 +692,37 @@ const PaymentPage: React.FC = () => {
           <h2 className="text-xl font-bold text-stone-800 mb-4 border-b pb-2">
             Resumo do Pedido
           </h2>
+          {canEditPrices && (
+            <p className="text-xs text-stone-500 mb-3">
+              Como admin, você pode alterar o valor unitário de cada produto
+              antes de escolher a forma de pagamento.
+            </p>
+          )}
           <ul className="space-y-3 max-h-64 overflow-y-auto mb-4">
             {cartItems.map((item) => (
-              <li key={item.id} className="flex justify-between text-stone-600">
-                <span>
-                  {item.quantity}x {item.name}
-                </span>
-                <span className="font-semibold">
-                  R$ {(item.price * item.quantity).toFixed(2)}
-                </span>
+              <li key={item.id} className="text-stone-600">
+                <div className="flex justify-between gap-2">
+                  <span>
+                    {item.quantity}x {item.name}
+                  </span>
+                  <span className="font-semibold whitespace-nowrap">
+                    R$ {(item.price * item.quantity).toFixed(2)}
+                  </span>
+                </div>
+                {canEditPrices && (
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <UnitPriceInput
+                      item={item}
+                      onChange={(price) => updatePrice(item.id, price)}
+                    />
+                    {item.originalPrice !== undefined &&
+                      item.originalPrice !== item.price && (
+                        <span className="text-xs text-stone-400 line-through">
+                          R$ {item.originalPrice.toFixed(2)}
+                        </span>
+                      )}
+                  </div>
+                )}
               </li>
             ))}
           </ul>

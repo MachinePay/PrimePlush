@@ -2,6 +2,10 @@ import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { Order } from "../types";
 import { getPaymentMethodLabel } from "../utils/paymentLabels";
+import {
+  getDeliveredQuantity,
+  getRemainingQuantity,
+} from "../utils/orderDelivery";
 
 const OrderDetailPage: React.FC = () => {
   const location = useLocation();
@@ -95,11 +99,21 @@ const OrderDetailPage: React.FC = () => {
         <div className="mb-2 text-stone-700">
           <span className="font-semibold">Itens:</span>
           <ul className="list-disc ml-6">
-            {order.items.map((item, idx) => (
-              <li key={idx}>
-                {item.quantity}x {item.name}
-              </li>
-            ))}
+            {order.items.map((item, idx) => {
+              const delivered = getDeliveredQuantity(order, item);
+              const remaining = getRemainingQuantity(order, item);
+              return (
+                <li key={idx}>
+                  {item.quantity}x {item.name} — R$
+                  {Number(item.price).toFixed(2)}/un
+                  <span
+                    className={`ml-2 text-sm font-semibold ${remaining > 0 ? "text-amber-700" : "text-green-700"}`}
+                  >
+                    (entregue {delivered} · falta {remaining})
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </div>
         {order.observation && (

@@ -8,6 +8,12 @@ import {
   getToken,
 } from "../services/apiService";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  getDeliveredQuantity,
+  getItemProductId,
+  getRemainingQuantity,
+  isPartiallyDelivered,
+} from "../utils/orderDelivery";
 
 // Página de Histórico de Pedidos com filtro por data
 // (OrderHistoryPage)
@@ -24,9 +30,67 @@ const OrderHistoryPage: React.FC = () => {
   const [showUndeliveredOnly, setShowUndeliveredOnly] = useState(false);
   const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  // Entrega parcial (apenas admin): pedido aberto no modal e quanto entregar
+  // agora de cada produto
+  const [deliveryOrder, setDeliveryOrder] = useState<Order | null>(null);
+  const [deliveryQty, setDeliveryQty] = useState<Record<string, number>>({});
+  const [isSubmittingDelivery, setIsSubmittingDelivery] = useState(false);
 
   const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
   const isAdmin = currentUser?.role === "admin";
+
+  const openPartialDelivery = (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeliveryOrder(order);
+    setDeliveryQty({});
+  };
+
+  const handlePartialDelivery = async () => {
+    if (!deliveryOrder) return;
+    const items = Object.entries(deliveryQty)
+      .filter(([, quantity]) => quantity > 0)
+      .map(([id, quantity]) => ({ id, quantity }));
+    if (items.length === 0) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Informe o quanto está sendo entregue",
+        confirmButtonText: "OK",
+      });
+      return;
+    }
+
+    setIsSubmittingDelivery(true);
+    try {
+      const resp = await authenticatedFetch(
+        `${BACKEND_URL}/api/orders/${deliveryOrder.id}/mark-delivered`,
+        { method: "PUT", body: JSON.stringify({ items }) },
+      );
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(data.message || data.error || "Erro ao registrar entrega");
+      }
+      setDeliveryOrder(null);
+      fetchOrders();
+      await Swal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "success",
+        title: data.message || "Entrega registrada",
+        showConfirmButton: false,
+        timer: 2200,
+        timerProgressBar: true,
+      });
+    } catch (error: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "Falha ao registrar entrega",
+        text: error?.message || "Tente novamente.",
+        confirmButtonText: "OK",
+      });
+    } finally {
+      setIsSubmittingDelivery(false);
+    }
+  };
 
   const getErrorMessageByStatus = (status?: number) => {
     if (status === 401 || status === 403) {
@@ -283,13 +347,29 @@ const OrderHistoryPage: React.FC = () => {
                 {order.userName || "-"}
               </div>
               <ul className="mb-2">
-                {order.items.map((item, idx) => (
-                  <li key={idx} className="text-stone-800">
-                    <span className="font-semibold">{item.quantity}x</span>{" "}
-                    {item.name}
-                  </li>
-                ))}
+                {order.items.map((item, idx) => {
+                  const delivered = getDeliveredQuantity(order, item);
+                  const remaining = getRemainingQuantity(order, item);
+                  return (
+                    <li key={idx} className="text-stone-800">
+                      <span className="font-semibold">{item.quantity}x</span>{" "}
+                      {item.name}
+                      {!order.entregueCliente && (
+                        <span
+                          className={`ml-2 text-xs font-semibold ${remaining > 0 ? "text-amber-700" : "text-green-700"}`}
+                        >
+                          entregue {delivered} · falta {remaining}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
+              {isPartiallyDelivered(order) && (
+                <div className="mb-2 inline-block rounded bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800">
+                  ENTREGA PARCIAL
+                </div>
+              )}
               {order.observation && (
                 <div className="mb-2 text-yellow-800 bg-yellow-100 rounded p-2">
                   <span className="font-semibold">Observação:</span>{" "}
@@ -349,8 +429,19 @@ const OrderHistoryPage: React.FC = () => {
                 >
                   {order.entregueCliente
                     ? "Entregue ao Cliente ✔"
-                    : "Entregar ao Cliente"}
+                    : isPartiallyDelivered(order)
+                      ? "Entregar Restante"
+                      : "Entregar ao Cliente"}
                 </button>
+                {isAdmin && !order.entregueCliente && (
+                  <button
+                    className="px-3 py-1 rounded bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 transition"
+                    onClick={(e) => openPartialDelivery(order, e)}
+                    title="Escolher quanto de cada produto está sendo entregue"
+                  >
+                    Entregar Parte
+                  </button>
+                )}
                 {isAdmin && (
                   <button
                     className="px-3 py-1 rounded bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition disabled:bg-red-300 disabled:cursor-not-allowed"
@@ -364,6 +455,106 @@ const OrderHistoryPage: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Modal de entrega parcial (apenas admin) */}
+      {deliveryOrder && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => !isSubmittingDelivery && setDeliveryOrder(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="mb-1 text-xl font-bold text-stone-800">
+              Entregar parte do pedido #{deliveryOrder.id.slice(-4)}
+            </h2>
+            <p className="mb-4 text-sm text-stone-500">
+              Informe quanto de cada produto está sendo entregue agora. Só
+              essa quantidade é descontada do estoque.
+            </p>
+            <ul className="mb-4 max-h-80 space-y-3 overflow-y-auto">
+              {deliveryOrder.items.map((item, idx) => {
+                const productId = getItemProductId(item);
+                const delivered = getDeliveredQuantity(deliveryOrder, item);
+                const remaining = getRemainingQuantity(deliveryOrder, item);
+                const value = deliveryQty[productId] ?? 0;
+                return (
+                  <li
+                    key={idx}
+                    className="flex items-center justify-between gap-3 border-b border-stone-100 pb-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-stone-800">
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-stone-500">
+                        Pedido {item.quantity} · entregue {delivered} · falta{" "}
+                        {remaining}
+                      </p>
+                    </div>
+                    {remaining > 0 ? (
+                      <div className="flex shrink-0 items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={remaining}
+                          value={value}
+                          aria-label={`Quantidade de ${item.name} entregue agora`}
+                          onChange={(e) => {
+                            const q = parseInt(e.target.value, 10);
+                            setDeliveryQty((prev) => ({
+                              ...prev,
+                              [productId]: Number.isNaN(q)
+                                ? 0
+                                : Math.min(remaining, Math.max(0, q)),
+                            }));
+                          }}
+                          className="w-20 rounded border-2 border-stone-200 px-2 py-1 text-center font-bold focus:border-blue-500 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDeliveryQty((prev) => ({
+                              ...prev,
+                              [productId]: remaining,
+                            }))
+                          }
+                          className="rounded bg-stone-200 px-2 py-1 text-xs font-bold text-stone-700 hover:bg-stone-300"
+                        >
+                          Tudo
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="shrink-0 text-xs font-bold text-green-700">
+                        Entregue ✔
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeliveryOrder(null)}
+                disabled={isSubmittingDelivery}
+                className="rounded-lg bg-stone-200 px-4 py-2 font-bold text-stone-700 hover:bg-stone-300 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handlePartialDelivery}
+                disabled={isSubmittingDelivery}
+                className="rounded-lg bg-amber-500 px-4 py-2 font-bold text-white hover:bg-amber-600 disabled:opacity-50"
+              >
+                {isSubmittingDelivery ? "Registrando..." : "Confirmar Entrega"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

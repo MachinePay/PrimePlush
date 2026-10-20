@@ -25,6 +25,7 @@ interface CartContextType {
   ) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
+  updatePrice: (productId: string, price: number) => void;
   clearCart: () => void;
   cartTotal: number;
   observation: string;
@@ -209,6 +210,21 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     });
   };
 
+  /*
+    Altera o valor unitário de um item (venda do admin para outro cliente).
+    Guarda o preço de tabela em originalPrice na primeira alteração.
+  */
+  const updatePrice = (productId: string, price: number) => {
+    if (!Number.isFinite(price) || price < 0) return;
+    setCartItems((prevItems) =>
+      prevItems.map((i) =>
+        i.id === productId
+          ? { ...i, originalPrice: i.originalPrice ?? i.price, price }
+          : i,
+      ),
+    );
+  };
+
   // Limpa o carrinho, definindo a lista de itens como vazia
   // O useEffect atualizará o localStorage automaticamente
   const clearCart = () => {
@@ -230,6 +246,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
         addToCart,
         removeFromCart,
         updateQuantity,
+        updatePrice,
         clearCart,
         cartTotal,
         observation,

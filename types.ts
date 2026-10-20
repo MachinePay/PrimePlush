@@ -32,9 +32,15 @@ export interface Product {
 
 export interface OrderItem {
   productId: string;
+  /** Id do produto como salvo pelo backend nos itens do pedido */
+  id?: string;
   name: string;
   quantity: number;
   price: number;
+  /** Preço de tabela quando o admin alterou o valor unitário na venda */
+  originalPrice?: number;
+  /** Quanto deste item já foi entregue ao cliente */
+  deliveredQuantity?: number;
 }
 
 export interface Order {
@@ -64,6 +70,8 @@ export interface Order {
   cashChange?: number | null;
   paymentStatus?: "pending" | "paid" | "authorized" | "canceled";
   entregueCliente?: boolean; // Indica se o pedido foi entregue ao cliente
+  /** Venda do admin: o estoque é descontado conforme a entrega */
+  deductOnDelivery?: boolean;
 }
 
 export type UserRole =
@@ -89,4 +97,6 @@ export interface CartItem extends Product {
   // Item liberado via PIN de balcão mesmo sem estoque suficiente.
   forceOverride?: boolean;
   overrideToken?: string;
+  // Preço de tabela, guardado quando o admin altera o valor unitário.
+  originalPrice?: number;
 }
