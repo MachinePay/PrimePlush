@@ -458,7 +458,10 @@ const PaymentPage: React.FC = () => {
           paymentMethod === "cash" && cashReceivedValid ? cashReceived : null,
       }),
     });
-    if (!orderResp.ok) throw new Error("Erro ao criar pedido");
+    if (!orderResp.ok) {
+      const errorData = await orderResp.json().catch(() => null);
+      throw new Error(errorData?.error || "Erro ao criar pedido");
+    }
     const data = await orderResp.json();
     return data.id;
   };
