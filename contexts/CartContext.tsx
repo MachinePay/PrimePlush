@@ -6,6 +6,7 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
+import Swal from "sweetalert2";
 import type { CartItem, Product } from "../types";
 
 /*
@@ -116,9 +117,13 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
   ) => {
     if (availableStock === null) return;
     if (before <= availableStock && after > availableStock) {
-      alert(
-        `Atenção: "${name}" tem só ${availableStock} unidade(s) disponível(is). O pedido vai passar do estoque.`,
-      );
+      Swal.fire({
+        icon: "warning",
+        title: "Acima do estoque",
+        text: `"${name}" tem só ${availableStock} unidade(s) disponível(is). O pedido vai passar do estoque.`,
+        confirmButtonText: "Ok, continuar",
+        confirmButtonColor: "#2563eb",
+      });
     }
   };
 
@@ -137,7 +142,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       alreadyOverridden;
     // Validação de estoque (pulada quando liberado via PIN de balcão ou admin)
     if (availableStock === 0 && !isOverridden && !isAdminUser) {
-      alert("Produto esgotado!");
+      Swal.fire({
+        icon: "error",
+        title: "Produto esgotado!",
+        confirmButtonColor: "#2563eb",
+      });
       return;
     }
     if (isAdminUser && !isOverridden) {
@@ -157,9 +166,12 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
           availableStock !== null &&
           novaQuantidade > availableStock
         ) {
-          alert(
-            `Estoque limitado! Maximo de ${availableStock} unidades disponiveis.`,
-          );
+          Swal.fire({
+            icon: "warning",
+            title: "Estoque limitado!",
+            text: `Máximo de ${availableStock} unidades disponíveis.`,
+            confirmButtonColor: "#2563eb",
+          });
           return prevItems;
         }
         return prevItems.map((item) =>
