@@ -92,6 +92,53 @@ const OrderHistoryPage: React.FC = () => {
     }
   };
 
+  const handleReleaseReservation = async (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const confirm = await Swal.fire({
+      title: "Liberar reserva do pedido?",
+      text: "O que falta entregar deixa de ficar reservado e volta a aparecer disponível na loja. O estoque continua sendo descontado na entrega.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sim, liberar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const resp = await authenticatedFetch(
+        `${BACKEND_URL}/api/admin/orders/${order.id}/release-reservation`,
+        { method: "POST" },
+      );
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(data.message || data.error || "Erro ao liberar reserva");
+      }
+      fetchOrders();
+      const total = (data.released || []).reduce(
+        (sum: number, item: { quantity: number }) => sum + item.quantity,
+        0,
+      );
+      await Swal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "success",
+        title: `Reserva liberada: ${total} unidade(s)`,
+        showConfirmButton: false,
+        timer: 2200,
+        timerProgressBar: true,
+      });
+    } catch (error: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "Falha ao liberar reserva",
+        text: error?.message || "Tente novamente.",
+        confirmButtonText: "OK",
+      });
+    }
+  };
+
   const getErrorMessageByStatus = (status?: number) => {
     if (status === 401 || status === 403) {
       return "Permissão negada ou sessão expirada. Faça login novamente.";
@@ -442,6 +489,21 @@ const OrderHistoryPage: React.FC = () => {
                     Entregar Parte
                   </button>
                 )}
+                {isAdmin &&
+                  !order.entregueCliente &&
+                  order.items.some(
+                    (item) =>
+                      item.reserved !== false &&
+                      getRemainingQuantity(order, item) > 0,
+                  ) && (
+                    <button
+                      className="px-3 py-1 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition"
+                      onClick={(e) => handleReleaseReservation(order, e)}
+                      title="Tirar da reserva o que falta entregar"
+                    >
+                      Liberar Reserva
+                    </button>
+                  )}
                 {isAdmin && (
                   <button
                     className="px-3 py-1 rounded bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition disabled:bg-red-300 disabled:cursor-not-allowed"

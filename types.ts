@@ -41,6 +41,8 @@ export interface OrderItem {
   originalPrice?: number;
   /** Quanto deste item já foi entregue ao cliente */
   deliveredQuantity?: number;
+  /** false = item não segura reserva de estoque (pedido do admin ou liberado) */
+  reserved?: boolean;
 }
 
 export interface Order {
