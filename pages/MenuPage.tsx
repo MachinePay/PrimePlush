@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
@@ -963,7 +964,8 @@ const MenuPage: React.FC = () => {
             )}
           </div>
         </div>
-        {cartItems.length > 0 && !isCartOpen && (
+        {/* Portal: o .monster-shell usa isolation, o que deixaria o botão abaixo do footer */}
+        {cartItems.length > 0 && !isCartOpen && createPortal(
           <button
             type="button"
             className="plush-cart-orbit"
@@ -976,11 +978,12 @@ const MenuPage: React.FC = () => {
             <span className="plush-orbit plush-orbit-three">🐰</span>
             <strong>{cartItems.reduce((acc, i) => acc + i.quantity, 0)}</strong>
             <small>R$ {cartTotal.toFixed(2)}</small>
-          </button>
+          </button>,
+          document.body
         )}
       </main>
 
-      {isCartOpen && (
+      {isCartOpen && createPortal(
         <>
           <div
             className="fixed inset-0 z-40 bg-black/45 backdrop-blur-sm"
@@ -1009,7 +1012,8 @@ const MenuPage: React.FC = () => {
             currentUser={currentUser}
           />
           </div>
-        </>
+        </>,
+        document.body
       )}
 
       {imageViewer.isOpen && (
