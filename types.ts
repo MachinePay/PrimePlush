@@ -45,6 +45,14 @@ export interface OrderItem {
   reserved?: boolean;
 }
 
+export interface PaymentSplit {
+  method: "credit" | "debit" | "pix" | "cash" | "cheque" | "boleto";
+  amount: number;
+  installments?: number;
+  cashReceived?: number;
+  cashChange?: number;
+}
+
 export interface Order {
   id: string;
   userId: string;
@@ -63,7 +71,10 @@ export interface Order {
     | "pix"
     | "cash"
     | "cheque"
-    | "boleto";
+    | "boleto"
+    | "mixed";
+  /** Pagamento mesclado (paymentMethod "mixed"): valor de cada forma */
+  paymentSplits?: PaymentSplit[];
   installments?: number;
   fee?: number;
   /** Pagamento em dinheiro: valor entregue pelo cliente */

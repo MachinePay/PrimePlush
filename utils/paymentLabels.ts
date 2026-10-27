@@ -6,6 +6,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   cash: "Dinheiro",
   cheque: "Cheque",
   boleto: "Boleto",
+  mixed: "Misto",
   presencial: "Presencial",
   online: "Online",
 };

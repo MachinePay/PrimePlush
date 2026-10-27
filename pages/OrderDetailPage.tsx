@@ -78,6 +78,22 @@ const OrderDetailPage: React.FC = () => {
             return order.paymentType;
           })()}
         </div>
+        {order.paymentSplits && order.paymentSplits.length > 0 && (
+          <ul className="mb-2 ml-6 list-disc text-stone-700">
+            {order.paymentSplits.map((split, idx) => (
+              <li key={idx}>
+                {getPaymentMethodLabel(split.method)}: R$
+                {Number(split.amount).toFixed(2)}
+                {split.method === "credit" &&
+                  (split.installments || 1) > 1 &&
+                  ` (${split.installments}x)`}
+                {split.cashReceived !== undefined &&
+                  split.cashReceived !== null &&
+                  ` · recebido R$${Number(split.cashReceived).toFixed(2)} · troco R$${Number(split.cashChange || 0).toFixed(2)}`}
+              </li>
+            ))}
+          </ul>
+        )}
         {order.paymentMethod === "cash" &&
           order.cashReceived !== null &&
           order.cashReceived !== undefined && (

@@ -14,6 +14,7 @@ import {
   getRemainingQuantity,
   isPartiallyDelivered,
 } from "../utils/orderDelivery";
+import EditOrderModal from "../components/admin/EditOrderModal";
 
 // Página de Histórico de Pedidos com filtro por data
 // (OrderHistoryPage)
@@ -35,6 +36,8 @@ const OrderHistoryPage: React.FC = () => {
   const [deliveryOrder, setDeliveryOrder] = useState<Order | null>(null);
   const [deliveryQty, setDeliveryQty] = useState<Record<string, number>>({});
   const [isSubmittingDelivery, setIsSubmittingDelivery] = useState(false);
+  // Edição de pedido finalizado (apenas admin): cliente e pagamento
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
   const isAdmin = currentUser?.role === "admin";
@@ -506,6 +509,18 @@ const OrderHistoryPage: React.FC = () => {
                   )}
                 {isAdmin && (
                   <button
+                    className="px-3 py-1 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingOrder(order);
+                    }}
+                    title="Trocar cliente ou forma de pagamento"
+                  >
+                    Editar
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
                     className="px-3 py-1 rounded bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition disabled:bg-red-300 disabled:cursor-not-allowed"
                     onClick={(e) => handleDeleteFromHistory(order, e)}
                     disabled={deletingOrderId === order.id}
@@ -518,6 +533,18 @@ const OrderHistoryPage: React.FC = () => {
             </div>
           ))}
         </div>
+      )}
+
+      {editingOrder && (
+        <EditOrderModal
+          order={editingOrder}
+          backendUrl={BACKEND_URL}
+          onClose={() => setEditingOrder(null)}
+          onSaved={() => {
+            setEditingOrder(null);
+            fetchOrders();
+          }}
+        />
       )}
 
       {/* Modal de entrega parcial (apenas admin) */}
