@@ -204,7 +204,15 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({
         { method: "PUT", body: JSON.stringify(body) },
       );
       const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(data.error || "Erro ao editar pedido");
+      if (!resp.ok) {
+        // Sem JSON de erro: a rota não existe no servidor (backend desatualizado)
+        throw new Error(
+          data.error ||
+            (resp.status === 404
+              ? "O servidor ainda não tem a edição de pedidos. Atualize o backend."
+              : `Erro ao editar pedido (HTTP ${resp.status})`),
+        );
+      }
       onSaved();
       await Swal.fire({
         toast: true,

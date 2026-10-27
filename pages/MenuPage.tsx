@@ -29,6 +29,54 @@ const getAvailableStock = (product: Product | CartItem): number | null => {
 // fallback por busca de texto para coleções que ainda não têm categoria
 // própria cadastrada.
 
+// Quantidade digitada pelo admin no carrinho. Guarda o texto enquanto ele
+// digita (pode apagar tudo) e só aplica ao confirmar (Enter ou sair do campo).
+const AdminQuantityInput: React.FC<{
+  item: CartItem;
+  onCommit: (quantity: number) => void;
+}> = ({ item, onCommit }) => {
+  const [text, setText] = useState(String(item.quantity));
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) setText(String(item.quantity));
+  }, [item.quantity, isEditing]);
+
+  const commit = () => {
+    setIsEditing(false);
+    const q = parseInt(text, 10);
+    if (!Number.isNaN(q) && q > 0 && q !== item.quantity) {
+      onCommit(q);
+    } else {
+      setText(String(item.quantity));
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      aria-label={`Quantidade de ${item.name}`}
+      value={text}
+      onFocus={(e) => {
+        setIsEditing(true);
+        e.target.select();
+      }}
+      onChange={(e) => setText(e.target.value.replace(/\D/g, ""))}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        if (e.key === "Escape") {
+          setText(String(item.quantity));
+          setIsEditing(false);
+          e.currentTarget.blur();
+        }
+      }}
+      className="w-12 md:w-14 h-full text-base md:text-lg font-bold text-center bg-white text-stone-800 border-x border-stone-200"
+    />
+  );
+};
+
 // ==========================================
 // 2. COMPONENTE: CART SIDEBAR (Letras e Botões Grandes + Observação)
 // ==========================================
@@ -195,15 +243,9 @@ const CartSidebar: React.FC<CartSidebarProps> = ({
                   </button>
                   {currentUser?.role === "admincustomer" ||
                   currentUser?.role === "admin" ? (
-                    <input
-                      type="number"
-                      min={1}
-                      value={item.quantity}
-                      onChange={(e) => {
-                        const q = parseInt(e.target.value);
-                        if (!isNaN(q) && q > 0) updateQuantity(item.id, q);
-                      }}
-                      className="w-12 md:w-14 h-full text-base md:text-lg font-bold text-center bg-white text-stone-800 border-x border-stone-200"
+                    <AdminQuantityInput
+                      item={item}
+                      onCommit={(q) => updateQuantity(item.id, q)}
                     />
                   ) : (
                     <span className="w-9 md:w-10 h-full flex items-center justify-center text-base md:text-lg font-bold bg-white text-stone-800 border-x border-stone-200">

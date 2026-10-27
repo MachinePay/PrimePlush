@@ -14,6 +14,7 @@ import {
 import { getUsers, getToken } from "../services/apiService";
 import type { Order, CartItem, User } from "../types";
 import PaymentOnline from "../components/PaymentOnline";
+import NewCustomerForm from "../components/admin/NewCustomerForm";
 import { isAdminSessionValid } from "../utils/adminSession";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -35,6 +36,42 @@ const getCreditFeeByInstallments = (installments: number): number => {
   if (installments === 5) return 5.4;
   if (installments === 6) return 6.39;
   return 0;
+};
+
+// Taxa de débito da maquininha (%). Aplicada só na parte paga no débito.
+const DEBIT_FEE_PERCENT = 0;
+
+// Acréscimo (%) da maquininha para a forma de pagamento
+const getMachineFee = (method: string, installments: number): number => {
+  if (method === "credit") return getCreditFeeByInstallments(installments);
+  if (method === "debit") return DEBIT_FEE_PERCENT;
+  return 0;
+};
+
+const roundMoney = (value: number) => Math.round(value * 100) / 100;
+
+// Pagamento mesclado na loja: uma linha por forma de pagamento. "amount" é
+// quanto do pedido essa forma cobre (sem o acréscimo da maquininha).
+type MixedMethod = "credit" | "debit" | "pix" | "cash" | "cheque" | "boleto";
+interface MixedRow {
+  method: MixedMethod;
+  amount: string;
+  installments: number;
+  cashReceived: string;
+}
+const newMixedRow = (method: MixedMethod): MixedRow => ({
+  method,
+  amount: "",
+  installments: 1,
+  cashReceived: "",
+});
+const MIXED_METHOD_LABELS: Record<MixedMethod, string> = {
+  credit: "Crédito (maquininha)",
+  debit: "Débito (maquininha)",
+  pix: "PIX",
+  cash: "Dinheiro",
+  cheque: "Cheque",
+  boleto: "Boleto",
 };
 
 // Converte "12,50" / "1.234,50" / "12.5" em número
@@ -113,6 +150,7 @@ const PaymentPage: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState("");
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [usersError, setUsersError] = useState("");
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
 
   const customerUsers = useMemo(
     () =>
@@ -139,7 +177,7 @@ const PaymentPage: React.FC = () => {
 
   // --- CORREÇÃO: ADICIONADO O ESTADO QUE FALTAVA ---
   const [presencialStep, setPresencialStep] = useState<
-    "select-method" | "select-installments" | "finalize" | null
+    "select-method" | "select-installments" | "finalize" | "mixed" | null
   >(null);
 
   const [paymentMethod, setPaymentMethod] = useState<
@@ -157,8 +195,11 @@ const PaymentPage: React.FC = () => {
   const [taxaSelecionada, setTaxaSelecionada] = useState<number>(0); // Corrigido valor inicial para 0 se não tiver taxa padrão
 
   useEffect(() => {
-    if (paymentType === "presencial" && paymentMethod === "credit") {
-      setTaxaSelecionada(getCreditFeeByInstallments(selectedInstallments));
+    if (
+      paymentType === "presencial" &&
+      (paymentMethod === "credit" || paymentMethod === "debit")
+    ) {
+      setTaxaSelecionada(getMachineFee(paymentMethod, selectedInstallments));
       return;
     }
     setTaxaSelecionada(0);
@@ -189,6 +230,64 @@ const PaymentPage: React.FC = () => {
   const cashChange = cashReceivedValid
     ? Number((cashReceived! - cartTotal).toFixed(2))
     : 0;
+
+  // Pagamento mesclado (só na loja Girakids)
+  const isMixedPayment =
+    paymentType === "presencial" && presencialStep === "mixed";
+  const [mixedRows, setMixedRows] = useState<MixedRow[]>(() => [
+    newMixedRow("cash"),
+    newMixedRow("credit"),
+  ]);
+  const mixedParts = mixedRows.map((row) => {
+    const parsedBase = parseMoneyInput(row.amount);
+    const baseValid =
+      row.amount !== "" && Number.isFinite(parsedBase) && parsedBase > 0;
+    const base = baseValid ? roundMoney(parsedBase) : 0;
+    const fee = getMachineFee(row.method, row.installments);
+    // Acréscimo só na parte paga no cartão
+    const charged = roundMoney(base * (1 + fee / 100));
+    const received =
+      row.method === "cash" && row.cashReceived !== ""
+        ? parseMoneyInput(row.cashReceived)
+        : null;
+    const receivedValid =
+      received === null || (Number.isFinite(received) && received >= charged);
+    return { row, base, baseValid, fee, charged, received, receivedValid };
+  });
+  const mixedBaseTotal = roundMoney(
+    mixedParts.reduce((sum, part) => sum + part.base, 0),
+  );
+  const mixedTotal = roundMoney(
+    mixedParts.reduce((sum, part) => sum + part.charged, 0),
+  );
+  const mixedFeeTotal = roundMoney(mixedTotal - mixedBaseTotal);
+  const mixedRemaining = roundMoney(cartTotal - mixedBaseTotal);
+  const mixedValid =
+    mixedParts.every((part) => part.baseValid && part.receivedValid) &&
+    Math.abs(mixedRemaining) < 0.01;
+
+  const updateMixedRow = (index: number, changes: Partial<MixedRow>) =>
+    setMixedRows((prev) => {
+      const next = prev.map((row, i) =>
+        i === index ? { ...row, ...changes } : row,
+      );
+      // Com duas formas, a outra fica com o restante do pedido
+      if (changes.amount !== undefined && next.length === 2) {
+        const typed = parseMoneyInput(changes.amount);
+        const other = index === 0 ? 1 : 0;
+        if (changes.amount !== "" && Number.isFinite(typed)) {
+          const rest = roundMoney(cartTotal - typed);
+          next[other] = {
+            ...next[other],
+            amount: rest > 0 ? rest.toFixed(2).replace(".", ",") : "",
+          };
+        }
+      }
+      return next;
+    });
+
+  const resetMixedPayment = () =>
+    setMixedRows([newMixedRow("cash"), newMixedRow("credit")]);
 
   // Estados para PIX
   const [qrCodeBase64, setQrCodeBase64] = useState<string | null>(null);
@@ -442,20 +541,39 @@ const PaymentPage: React.FC = () => {
           forceOverride: i.forceOverride,
           overrideToken: i.overrideToken,
         })),
-        total:
-          paymentType === "presencial" &&
-          paymentMethod === "credit" &&
-          taxaSelecionada
-            ? totalComTaxa
-            : cartTotal,
         paymentId: null,
         observation: observation,
         paymentType: paymentType,
-        paymentMethod: paymentMethod,
-        installments: paymentMethod === "credit" ? selectedInstallments : 1,
-        fee: paymentMethod === "credit" ? taxaSelecionada : 0,
-        cashReceived:
-          paymentMethod === "cash" && cashReceivedValid ? cashReceived : null,
+        ...(isMixedPayment
+          ? {
+              total: mixedTotal,
+              paymentMethod: "mixed",
+              paymentSplits: mixedParts.map((part) => ({
+                method: part.row.method,
+                amount: part.charged,
+                baseAmount: part.base,
+                fee: part.fee,
+                installments:
+                  part.row.method === "credit"
+                    ? part.row.installments
+                    : undefined,
+                cashReceived: part.received ?? undefined,
+              })),
+            }
+          : {
+              total:
+                paymentType === "presencial" && taxaSelecionada
+                  ? totalComTaxa
+                  : cartTotal,
+              paymentMethod: paymentMethod,
+              installments:
+                paymentMethod === "credit" ? selectedInstallments : 1,
+              fee: taxaSelecionada,
+              cashReceived:
+                paymentMethod === "cash" && cashReceivedValid
+                  ? cashReceived
+                  : null,
+            }),
       }),
     });
     if (!orderResp.ok) {
@@ -464,6 +582,33 @@ const PaymentPage: React.FC = () => {
     }
     const data = await orderResp.json();
     return data.id;
+  };
+
+  // Cria o pedido "a pagar na loja", abre o PDF e volta ao catálogo
+  const finalizePresencialOrder = async () => {
+    setStatus("processing");
+    setErrorMessage("");
+    try {
+      const orderId = await createOrder();
+      setStatus("success");
+      clearCart();
+      setPresencialStep(null);
+      setPaymentType(null);
+
+      // Abrir PDF em nova aba se o pedido foi criado com sucesso
+      if (orderId) {
+        const pdfUrl = `${BACKEND_URL}/api/orders/${orderId}/receipt-pdf`;
+        window.open(pdfUrl, "_blank");
+      }
+
+      // Redirecionar para o catálogo após um pequeno delay
+      setTimeout(() => {
+        navigate("/");
+      }, 500);
+    } catch (err: any) {
+      setStatus("error");
+      setErrorMessage(err.message || "Erro ao salvar pedido presencial.");
+    }
   };
 
   const handlePixPayment = async () => {
@@ -681,6 +826,34 @@ const PaymentPage: React.FC = () => {
               {usersError}
             </p>
           )}
+          {!showNewCustomer && (
+            <button
+              type="button"
+              onClick={() => setShowNewCustomer(true)}
+              disabled={status === "processing"}
+              className="mt-3 text-sm font-bold text-blue-700 hover:underline disabled:opacity-50"
+            >
+              + Cliente não cadastrado? Cadastrar agora
+            </button>
+          )}
+          {showNewCustomer && (
+            <NewCustomerForm
+              onCancel={() => setShowNewCustomer(false)}
+              onCreated={(user) => {
+                setUsers((prev) => [...prev, user]);
+                setSelectedUserId(user.id);
+                setShowNewCustomer(false);
+                Swal.fire({
+                  toast: true,
+                  position: "top-end",
+                  icon: "success",
+                  title: `${user.name} cadastrado e selecionado`,
+                  showConfirmButton: false,
+                  timer: 2200,
+                });
+              }}
+            />
+          )}
           {checkoutUser && (
             <p className="mt-2 text-sm text-blue-700">
               Esta compra sera registrada na conta de {checkoutUser.name}.
@@ -732,17 +905,25 @@ const PaymentPage: React.FC = () => {
           <div className="border-t pt-4 flex justify-between items-center">
             <span className="text-lg text-stone-500">Total a pagar:</span>
             <span className="text-3xl font-bold text-blue-600">
-              {(paymentType === "presencial" || paymentType === "online") &&
-              paymentMethod === "credit" &&
-              taxaSelecionada
-                ? `R$ ${totalComTaxa.toFixed(2)}`
-                : `R$ ${cartTotal.toFixed(2)}`}
+              {isMixedPayment
+                ? `R$ ${mixedTotal.toFixed(2)}`
+                : paymentType === "presencial" && taxaSelecionada
+                  ? `R$ ${totalComTaxa.toFixed(2)}`
+                  : `R$ ${cartTotal.toFixed(2)}`}
             </span>
           </div>
-          {paymentType === "presencial" && paymentMethod === "credit" && (
+          {!isMixedPayment &&
+            paymentType === "presencial" &&
+            (paymentMethod === "credit" ||
+              (paymentMethod === "debit" && taxaSelecionada > 0)) && (
+              <div className="mt-2 text-sm text-blue-700 text-right">
+                Taxa: {taxaSelecionada.toFixed(2)}%
+                {paymentMethod === "credit" && ` (${selectedInstallments}x)`}
+              </div>
+            )}
+          {isMixedPayment && mixedFeeTotal > 0 && (
             <div className="mt-2 text-sm text-blue-700 text-right">
-              Taxa: {taxaSelecionada.toFixed(2)}% ({selectedInstallments}
-              x)
+              Acréscimo da maquininha: R$ {mixedFeeTotal.toFixed(2)}
             </div>
           )}
         </div>
@@ -947,8 +1128,216 @@ const PaymentPage: React.FC = () => {
                       </button>
                     </>
                   )}
+                  <button
+                    className="px-6 py-3 rounded font-bold text-lg transition-all bg-white text-indigo-700 border border-indigo-600 hover:bg-indigo-50"
+                    onClick={() => {
+                      setPaymentMethod(null);
+                      resetMixedPayment();
+                      setPresencialStep("mixed");
+                    }}
+                  >
+                    🔀 Mesclar formas de pagamento
+                  </button>
                 </div>
               ) : null}
+
+              {/* Pagamento mesclado: cada forma cobre uma parte do pedido */}
+              {presencialStep === "mixed" && (
+                <div className="mt-2 bg-white rounded-lg border border-indigo-300 p-4 text-left text-stone-700">
+                  <span className="block text-lg font-bold text-indigo-700 mb-1">
+                    🔀 Pagamento mesclado
+                  </span>
+                  <p className="text-sm font-normal text-stone-500 mb-3">
+                    Divida os R$ {cartTotal.toFixed(2)} do pedido entre as
+                    formas. Crédito e débito na maquininha têm acréscimo só
+                    na parte paga no cartão.
+                  </p>
+                  <div className="space-y-3">
+                    {mixedParts.map((part, index) => (
+                      <div
+                        key={index}
+                        className="rounded-lg border border-stone-200 p-3"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <select
+                            value={part.row.method}
+                            onChange={(e) =>
+                              updateMixedRow(index, {
+                                method: e.target.value as MixedMethod,
+                              })
+                            }
+                            disabled={status === "processing"}
+                            className="flex-1 min-w-[150px] border-2 border-stone-200 rounded-lg px-2 py-2 bg-white"
+                          >
+                            {(Object.keys(MIXED_METHOD_LABELS) as MixedMethod[])
+                              .filter(
+                                (method) =>
+                                  isAdminSale ||
+                                  (method !== "cheque" && method !== "boleto"),
+                              )
+                              .map((method) => (
+                                <option key={method} value={method}>
+                                  {MIXED_METHOD_LABELS[method]}
+                                </option>
+                              ))}
+                          </select>
+                          <span className="font-bold">R$</span>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="0,00"
+                            aria-label="Parte do pedido nesta forma"
+                            value={part.row.amount}
+                            onChange={(e) =>
+                              updateMixedRow(index, {
+                                amount: e.target.value.replace(/[^\d.,]/g, ""),
+                              })
+                            }
+                            disabled={status === "processing"}
+                            className="w-28 border-2 border-stone-200 rounded-lg px-2 py-2 text-right focus:outline-none focus:border-indigo-500"
+                          />
+                          {mixedRows.length > 2 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setMixedRows((prev) =>
+                                  prev.filter((_, i) => i !== index),
+                                )
+                              }
+                              className="rounded bg-red-100 px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-200"
+                              title="Remover forma"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                        {part.row.method === "credit" && (
+                          <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                            {[1, 2, 3, 4, 5, 6].map((parcelas) => (
+                              <button
+                                key={parcelas}
+                                type="button"
+                                onClick={() =>
+                                  updateMixedRow(index, {
+                                    installments: parcelas,
+                                  })
+                                }
+                                className={`px-2 py-1 rounded ${
+                                  part.row.installments === parcelas
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-white text-blue-700 border border-blue-600"
+                                }`}
+                              >
+                                {parcelas}x (
+                                {getCreditFeeByInstallments(parcelas).toFixed(
+                                  2,
+                                )}
+                                %)
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {(part.row.method === "credit" ||
+                          part.row.method === "debit") &&
+                          part.baseValid && (
+                            <p className="mt-2 text-sm font-bold text-blue-700">
+                              Passar na maquininha: R${" "}
+                              {part.charged.toFixed(2)}
+                              {part.fee > 0 &&
+                                ` (+${part.fee.toFixed(2)}% = R$ ${(part.charged - part.base).toFixed(2)})`}
+                              {part.row.method === "credit" &&
+                                part.row.installments > 1 &&
+                                ` em ${part.row.installments}x de R$ ${(part.charged / part.row.installments).toFixed(2)}`}
+                            </p>
+                          )}
+                        {part.row.method === "cash" && (
+                          <div className="mt-2 text-sm">
+                            <div className="flex items-center gap-2">
+                              <span>Valor recebido (opcional) R$</span>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="0,00"
+                                value={part.row.cashReceived}
+                                onChange={(e) =>
+                                  updateMixedRow(index, {
+                                    cashReceived: e.target.value.replace(
+                                      /[^\d.,]/g,
+                                      "",
+                                    ),
+                                  })
+                                }
+                                disabled={status === "processing"}
+                                className="w-28 border-2 border-stone-200 rounded-lg px-2 py-1 text-right focus:outline-none focus:border-emerald-500"
+                              />
+                            </div>
+                            {part.received !== null && !part.receivedValid && (
+                              <p className="mt-1 font-semibold text-red-600">
+                                Valor recebido menor que a parte em dinheiro.
+                              </p>
+                            )}
+                            {part.received !== null &&
+                              part.receivedValid &&
+                              part.baseValid && (
+                                <p className="mt-1 font-bold text-emerald-700">
+                                  Troco: R${" "}
+                                  {(part.received - part.charged).toFixed(2)}
+                                </p>
+                              )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {mixedRows.length < 4 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMixedRows((prev) => [
+                          ...prev,
+                          {
+                            ...newMixedRow("pix"),
+                            amount:
+                              mixedRemaining > 0
+                                ? mixedRemaining.toFixed(2).replace(".", ",")
+                                : "",
+                          },
+                        ])
+                      }
+                      className="mt-3 rounded bg-indigo-100 px-3 py-1 text-sm font-bold text-indigo-700 hover:bg-indigo-200"
+                    >
+                      + Adicionar outra forma
+                    </button>
+                  )}
+                  <div className="mt-3 border-t pt-3 text-sm">
+                    <p
+                      className={`font-semibold ${Math.abs(mixedRemaining) < 0.01 ? "text-green-700" : "text-red-600"}`}
+                    >
+                      Dividido: R$ {mixedBaseTotal.toFixed(2)} de R${" "}
+                      {cartTotal.toFixed(2)}
+                      {mixedRemaining >= 0.01 &&
+                        ` · faltam R$ ${mixedRemaining.toFixed(2)}`}
+                      {mixedRemaining <= -0.01 &&
+                        ` · passou R$ ${Math.abs(mixedRemaining).toFixed(2)}`}
+                    </p>
+                    {mixedFeeTotal > 0 && (
+                      <p className="text-blue-700">
+                        Acréscimo da maquininha: R$ {mixedFeeTotal.toFixed(2)}
+                      </p>
+                    )}
+                    <p className="text-lg font-bold text-stone-800">
+                      Total a cobrar: R$ {mixedTotal.toFixed(2)}
+                    </p>
+                  </div>
+                  <button
+                    className="mt-4 w-full px-6 py-3 rounded bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={status === "processing" || !mixedValid}
+                    onClick={finalizePresencialOrder}
+                  >
+                    Finalizar Pedido
+                  </button>
+                </div>
+              )}
 
               {/* Step 2: Seleção de parcelas para crédito */}
               {presencialStep === "select-installments" &&
@@ -1033,33 +1422,7 @@ const PaymentPage: React.FC = () => {
                       !!cashReceivedInput &&
                       !cashReceivedValid)
                   }
-                  onClick={async () => {
-                    setStatus("processing");
-                    setErrorMessage("");
-                    try {
-                      const orderId = await createOrder();
-                      setStatus("success");
-                      clearCart();
-                      setPresencialStep(null);
-                      setPaymentType(null);
-
-                      // Abrir PDF em nova aba se o pedido foi criado com sucesso
-                      if (orderId) {
-                        const pdfUrl = `${BACKEND_URL}/api/orders/${orderId}/receipt-pdf`;
-                        window.open(pdfUrl, "_blank");
-                      }
-
-                      // Redirecionar para o catálogo após um pequeno delay
-                      setTimeout(() => {
-                        navigate("/");
-                      }, 500);
-                    } catch (err: any) {
-                      setStatus("error");
-                      setErrorMessage(
-                        err.message || "Erro ao salvar pedido presencial.",
-                      );
-                    }
-                  }}
+                  onClick={finalizePresencialOrder}
                 >
                   Finalizar Pedido
                 </button>
@@ -1072,6 +1435,7 @@ const PaymentPage: React.FC = () => {
                   setPresencialStep(null);
                   setPaymentMethod(null);
                   setCashReceivedInput("");
+                  resetMixedPayment();
                 }}
               >
                 Voltar

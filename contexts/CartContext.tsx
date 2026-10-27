@@ -149,15 +149,20 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
       });
       return;
     }
+    // Admin e cliente adicionam a mesma quantidade: o pacote do produto
+    const addQuantidade = product.quantidadeVenda ?? 1;
     if (isAdminUser && !isOverridden) {
       const currentQty =
         cartItems.find((item) => item.id === product.id)?.quantity ?? 0;
-      warnAboveStock(product.name, availableStock, currentQty, currentQty + 1);
+      warnAboveStock(
+        product.name,
+        availableStock,
+        currentQty,
+        currentQty + addQuantidade,
+      );
     }
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id);
-      const quantidadeVenda = product.quantidadeVenda ?? 1;
-      const addQuantidade = isAdminUser ? 1 : quantidadeVenda;
       if (existingItem) {
         const novaQuantidade = existingItem.quantity + addQuantidade;
         if (
