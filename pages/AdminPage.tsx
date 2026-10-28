@@ -591,12 +591,15 @@ const AdminPage: React.FC = () => {
         const product = menu.find((p) => p.id === move.productId);
         if (!product) continue;
 
-        await authenticatedFetch(`${API_URL}/api/products/${move.productId}`, {
-          method: "PUT",
-          body: JSON.stringify({
-            stock: (product.stock || 0) + move.quantity,
-          }),
-        });
+        // Envia só a diferença: o backend soma ao estoque atual do banco
+        const resp = await authenticatedFetch(
+          `${API_URL}/api/products/${move.productId}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({ stockDelta: move.quantity }),
+          },
+        );
+        if (!resp.ok) throw new Error("Falha ao movimentar estoque");
       }
       await loadProducts();
       await loadStockMovements();
@@ -751,12 +754,22 @@ const AdminPage: React.FC = () => {
 
     try {
       if (editingProduct) {
-        // PUT para edição
+        // PUT para edição. O estoque vai como diferença do valor de quando o
+        // formulário abriu: mandar o número absoluto apagaria as vendas feitas
+        // enquanto o formulário estava aberto.
+        const { stock, ...rest } = product;
+        const before = editingProduct.stock;
+        const body: Record<string, unknown> = { ...rest };
+        if (stock === null || stock === undefined || before === null || before === undefined) {
+          if (stock !== before) body.stock = stock ?? null;
+        } else if (Number(stock) !== Number(before)) {
+          body.stockDelta = Number(stock) - Number(before);
+        }
         const response = await authenticatedFetch(
           `${API_URL}/api/products/${product.id}`,
           {
             method: "PUT",
-            body: JSON.stringify(product),
+            body: JSON.stringify(body),
           },
         );
 
@@ -839,9 +852,7 @@ const AdminPage: React.FC = () => {
       `${API_URL}/api/products/${movement.productId}`,
       {
         method: "PUT",
-        body: JSON.stringify({
-          stock: (product.stock || 0) - movement.quantity,
-        }),
+        body: JSON.stringify({ stockDelta: -movement.quantity }),
       },
     );
     if (response.ok) {
