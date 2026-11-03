@@ -4,6 +4,7 @@
 // Comentários em português explicam cada parte do código.
 
 import React, { useState, useEffect } from "react";
+import { getYouTubeId, getYouTubeThumbnail } from "../utils/youtube";
 import { type StockMovement } from "../utils/stockMovements";
 
 // Modal de movimentação de estoque para múltiplos produtos
@@ -155,6 +156,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     quantidadeVenda: 1,
   });
   const [imageUrls, setImageUrls] = useState<string[]>([""]);
+  const [videoUrls, setVideoUrls] = useState<string[]>([""]);
 
   // 🆕 Estado para categorias dinâmicas
   const [categories, setCategories] = useState<Array<{ name: string }>>([]);
@@ -214,6 +216,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
         quantidadeVenda: product.quantidadeVenda ?? 1,
       }); // preenche com dados existentes
       setImageUrls(existingImages);
+      setVideoUrls(
+        Array.isArray(product.videos) && product.videos.length > 0
+          ? product.videos
+          : product.videoUrl
+            ? [product.videoUrl]
+            : [""],
+      );
     } else {
       // limpa para novo produto
       setFormData({
@@ -227,6 +236,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
         quantidadeVenda: 1,
       });
       setImageUrls([""]);
+      setVideoUrls([""]);
     }
   }, [product, categories]);
 
@@ -262,11 +272,20 @@ const ProductForm: React.FC<ProductFormProps> = ({
       formData.imageUrl ||
       "https://picsum.photos/400/300";
 
+    const normalizedVideos = videoUrls
+      .map((url) => url.trim())
+      .filter((url) => url.length > 0);
+    if (normalizedVideos.some((url) => !getYouTubeId(url))) {
+      alert("Há um link de vídeo que não é do YouTube. Corrija ou remova.");
+      return;
+    }
+
     const finalProduct: Product = {
       ...formData,
       id: formData.id || "",
       imageUrl: primaryImage,
       images: normalizedImages.length > 0 ? normalizedImages : [primaryImage],
+      videos: normalizedVideos,
     };
     onSave(finalProduct); // informa o componente pai sobre o produto salvo
   };
@@ -443,6 +462,79 @@ const ProductForm: React.FC<ProductFormProps> = ({
             </button>
             <p className="mt-1 text-xs text-stone-500">
               A primeira URL será a imagem principal do produto.
+            </p>
+          </div>
+          <div>
+            <label
+              htmlFor="videoUrl-0"
+              className="block text-sm font-medium text-stone-700"
+            >
+              Vídeos do YouTube
+            </label>
+            <div className="mt-1 space-y-2">
+              {videoUrls.map((url, index) => {
+                const videoId = getYouTubeId(url);
+                const isInvalid = url.trim() !== "" && !videoId;
+                return (
+                  <div key={`video-${index}`}>
+                    <div className="flex items-center gap-2">
+                      {videoId && (
+                        <img
+                          src={getYouTubeThumbnail(videoId)}
+                          alt=""
+                          className="h-10 w-16 shrink-0 rounded object-cover"
+                        />
+                      )}
+                      <input
+                        type="url"
+                        id={`videoUrl-${index}`}
+                        value={url}
+                        onChange={(e) =>
+                          setVideoUrls((prev) =>
+                            prev.map((v, i) =>
+                              i === index ? e.target.value : v,
+                            ),
+                          )
+                        }
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        className={`block w-full rounded-md shadow-sm focus:border-amber-500 focus:ring-amber-500 ${
+                          isInvalid ? "border-red-400" : "border-stone-300"
+                        }`}
+                      />
+                      {(videoUrls.length > 1 || url !== "") && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVideoUrls((prev) => {
+                              const next = prev.filter((_, i) => i !== index);
+                              return next.length > 0 ? next : [""];
+                            })
+                          }
+                          className="px-3 py-2 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-semibold"
+                        >
+                          Remover
+                        </button>
+                      )}
+                    </div>
+                    {isInvalid && (
+                      <p className="mt-1 text-xs font-semibold text-red-600">
+                        Link do YouTube não reconhecido.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => setVideoUrls((prev) => [...prev, ""])}
+              className="mt-2 text-sm font-semibold text-blue-700 hover:text-blue-800"
+            >
+              + Adicionar outro vídeo
+            </button>
+            <p className="mt-1 text-xs text-stone-500">
+              Cole o link do vídeo no YouTube (inclusive Shorts). No catálogo o
+              vídeo toca dentro do site, junto com as fotos.
             </p>
           </div>
           <div>

@@ -4,6 +4,8 @@ import { useCart } from "../contexts/CartContext";
 import { useFavorites } from "../contexts/FavoritesContext";
 import { getProducts } from "../services/apiService";
 import ProductCard from "../components/ProductCard";
+import YouTubePlayer from "../components/YouTubePlayer";
+import { getProductVideoIds } from "../utils/youtube";
 import type { Product } from "../types";
 
 const FavoritesPage: React.FC = () => {
@@ -11,6 +13,10 @@ const FavoritesPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [previewImage, setPreviewImage] = useState<{
     src: string;
+    name: string;
+  } | null>(null);
+  const [previewVideo, setPreviewVideo] = useState<{
+    id: string;
     name: string;
   } | null>(null);
 
@@ -41,6 +47,11 @@ const FavoritesPage: React.FC = () => {
     const image = product.images?.[0] || product.imageUrl;
     if (!image) return;
     setPreviewImage({ src: image, name: product.name });
+  };
+
+  const openVideo = (product: Product) => {
+    const [id] = getProductVideoIds(product);
+    if (id) setPreviewVideo({ id, name: product.name });
   };
 
   return (
@@ -76,11 +87,31 @@ const FavoritesPage: React.FC = () => {
               product={product}
               onAddToCart={addToCart}
               onOpenImage={openImage}
+              onOpenVideo={openVideo}
               quantityInCart={
                 cartItems.find((i) => i.id === product.id)?.quantity || 0
               }
             />
           ))}
+        </div>
+      )}
+
+      {previewVideo && (
+        <div
+          className="fixed inset-0 z-[300] bg-black/75 flex items-center justify-center p-4"
+          onClick={() => setPreviewVideo(null)}
+        >
+          <div className="w-full flex justify-center" onClick={(e) => e.stopPropagation()}>
+            <YouTubePlayer videoId={previewVideo.id} title={previewVideo.name} />
+          </div>
+          <button
+            type="button"
+            onClick={() => setPreviewVideo(null)}
+            aria-label="Fechar vídeo"
+            className="absolute top-4 right-4 h-10 w-10 rounded-full bg-black/60 text-white text-2xl font-bold hover:bg-black/80"
+          >
+            ×
+          </button>
         </div>
       )}
 

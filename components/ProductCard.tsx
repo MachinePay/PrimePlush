@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useFavorites } from "../contexts/FavoritesContext";
 import { verifyStockOverridePin } from "../services/apiService";
 import type { Product } from "../types";
+import { getProductVideoIds, getYouTubeThumbnail } from "../utils/youtube";
 
 const getAvailableStock = (product: Product): number | null => {
   if (product.stock_available !== undefined) return product.stock_available;
@@ -21,6 +22,8 @@ interface ProductCardProps {
   ) => void;
   quantityInCart?: number;
   onOpenImage: (product: Product) => void;
+  /** Abre o vídeo do produto no site (só aparece se houver vídeo) */
+  onOpenVideo?: (product: Product) => void;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -28,6 +31,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onAddToCart,
   quantityInCart = 0,
   onOpenImage,
+  onOpenVideo,
 }) => {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { currentUser } = useAuth();
@@ -37,7 +41,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const isOutOfStock = availableStock === 0;
   // Admin pode adicionar mesmo esgotado (o carrinho só avisa).
   const isAddDisabled = isOutOfStock && !isAdminUser;
-  const primaryImage = product.images?.[0] || product.imageUrl;
+  const videoIds = getProductVideoIds(product);
+  // Sem foto, a capa do vídeo serve de imagem do card
+  const primaryImage =
+    product.images?.[0] ||
+    product.imageUrl ||
+    (videoIds[0] ? getYouTubeThumbnail(videoIds[0]) : undefined);
   const favorited = isFavorite(product.id);
 
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -173,6 +182,20 @@ const ProductCard: React.FC<ProductCardProps> = ({
             onClick={() => onOpenImage(product)}
           />
         ) : null}
+        {videoIds.length > 0 && onOpenVideo && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenVideo(product);
+            }}
+            aria-label={`Ver vídeo de ${product.name}`}
+            className="absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold text-white shadow hover:bg-red-600 transition-colors"
+          >
+            <span aria-hidden="true">▶</span>
+            {videoIds.length > 1 ? `Vídeos (${videoIds.length})` : "Vídeo"}
+          </button>
+        )}
       </div>
 
       {/* Conteúdo */}

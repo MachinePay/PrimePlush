@@ -11,6 +11,8 @@ import {
 import { getProducts } from "../services/apiService";
 import { getBanners, type Banner } from "../services/bannerService";
 import ProductCard from "../components/ProductCard";
+import YouTubePlayer from "../components/YouTubePlayer";
+import { getProductVideoIds } from "../utils/youtube";
 import type { Product, CartItem } from "../types";
 
 // URL da API
@@ -438,14 +440,18 @@ const MenuPage: React.FC = () => {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [promoBanners, setPromoBanners] = useState<Banner[]>([]);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+  // Visualizador de mídia do produto: fotos primeiro, depois os vídeos
+  // (ids do YouTube), num único carrossel.
   const [imageViewer, setImageViewer] = useState<{
     isOpen: boolean;
     images: string[];
+    videos: string[];
     currentIndex: number;
     productName: string;
   }>({
     isOpen: false,
     images: [],
+    videos: [],
     currentIndex: 0,
     productName: "",
   });
@@ -498,17 +504,22 @@ const MenuPage: React.FC = () => {
     return "🧸";
   };
 
-  const openImageViewer = (product: Product) => {
+  // startAtVideo: abre direto no primeiro vídeo
+  const openImageViewer = (product: Product, startAtVideo = false) => {
     const images = getProductImages(product);
-    if (images.length === 0) return;
+    const videos = getProductVideoIds(product);
+    if (images.length + videos.length === 0) return;
     setIsImageZoomed(false);
     setImageViewer({
       isOpen: true,
       images,
-      currentIndex: 0,
+      videos,
+      currentIndex: startAtVideo && videos.length > 0 ? images.length : 0,
       productName: product.name,
     });
   };
+
+  const openVideoViewer = (product: Product) => openImageViewer(product, true);
 
   const closeImageViewer = () => {
     setIsImageZoomed(false);
@@ -518,10 +529,11 @@ const MenuPage: React.FC = () => {
   const showNextImage = () => {
     setIsImageZoomed(false);
     setImageViewer((prev) => {
-      if (prev.images.length <= 1) return prev;
+      const total = prev.images.length + prev.videos.length;
+      if (total <= 1) return prev;
       return {
         ...prev,
-        currentIndex: (prev.currentIndex + 1) % prev.images.length,
+        currentIndex: (prev.currentIndex + 1) % total,
       };
     });
   };
@@ -529,11 +541,11 @@ const MenuPage: React.FC = () => {
   const showPreviousImage = () => {
     setIsImageZoomed(false);
     setImageViewer((prev) => {
-      if (prev.images.length <= 1) return prev;
+      const total = prev.images.length + prev.videos.length;
+      if (total <= 1) return prev;
       return {
         ...prev,
-        currentIndex:
-          (prev.currentIndex - 1 + prev.images.length) % prev.images.length,
+        currentIndex: (prev.currentIndex - 1 + total) % total,
       };
     });
   };
@@ -801,7 +813,8 @@ const MenuPage: React.FC = () => {
     });
   }, [menu, searchTerm]);
 
-  const totalViewerImages = imageViewer.images.length;
+  const totalViewerImages =
+    imageViewer.images.length + imageViewer.videos.length;
   const normalizedViewerIndex =
     totalViewerImages > 0
       ? ((imageViewer.currentIndex % totalViewerImages) + totalViewerImages) %
@@ -925,6 +938,7 @@ const MenuPage: React.FC = () => {
                       product={product}
                       onAddToCart={handleAddToCart}
                       onOpenImage={openImageViewer}
+                      onOpenVideo={openVideoViewer}
                       quantityInCart={
                         cartItems.find((i) => i.id === product.id)
                           ?.quantity || 0
@@ -943,6 +957,7 @@ const MenuPage: React.FC = () => {
                       product={product}
                       onAddToCart={handleAddToCart}
                       onOpenImage={openImageViewer}
+                      onOpenVideo={openVideoViewer}
                       quantityInCart={
                         cartItems.find((i) => i.id === product.id)
                           ?.quantity || 0
@@ -967,6 +982,7 @@ const MenuPage: React.FC = () => {
                           product={product}
                           onAddToCart={handleAddToCart}
                           onOpenImage={openImageViewer}
+                          onOpenVideo={openVideoViewer}
                           quantityInCart={
                             cartItems.find((i) => i.id === product.id)
                               ?.quantity || 0
@@ -995,6 +1011,7 @@ const MenuPage: React.FC = () => {
                         product={product}
                         onAddToCart={handleAddToCart}
                         onOpenImage={openImageViewer}
+                        onOpenVideo={openVideoViewer}
                         quantityInCart={
                           cartItems.find((i) => i.id === product.id)
                             ?.quantity || 0
@@ -1067,7 +1084,7 @@ const MenuPage: React.FC = () => {
             className="max-w-4xl max-h-[90vh] w-full flex flex-col items-center relative"
             onClick={(e) => e.stopPropagation()}
           >
-            {imageViewer.images.length > 1 && (
+            {totalViewerImages > 1 && (
               <>
                 <button
                   type="button"
@@ -1102,6 +1119,17 @@ const MenuPage: React.FC = () => {
               </>
             )}
 
+            {normalizedViewerIndex >= imageViewer.images.length ? (
+              <YouTubePlayer
+                key={imageViewer.videos[normalizedViewerIndex - imageViewer.images.length]}
+                videoId={
+                  imageViewer.videos[
+                    normalizedViewerIndex - imageViewer.images.length
+                  ]
+                }
+                title={`${imageViewer.productName} - vídeo`}
+              />
+            ) : (
             <img
               src={imageViewer.images[normalizedViewerIndex]}
               alt={`${imageViewer.productName} - imagem ${normalizedViewerIndex + 1}`}
@@ -1112,13 +1140,16 @@ const MenuPage: React.FC = () => {
               onTouchStart={handleImageTouchStart}
               onTouchEnd={handleImageTouchEnd}
             />
+            )}
             <p className="mt-3 text-white text-sm md:text-base font-medium">
-              Toque para dar zoom ({normalizedViewerIndex + 1}/
-              {totalViewerImages})
+              {normalizedViewerIndex >= imageViewer.images.length
+                ? "Vídeo"
+                : "Toque para dar zoom"}{" "}
+              ({normalizedViewerIndex + 1}/{totalViewerImages})
             </p>
-            {imageViewer.images.length > 1 && (
+            {totalViewerImages > 1 && (
               <div className="mt-3 flex items-center gap-2">
-                {imageViewer.images.map((_, index) => (
+                {Array.from({ length: totalViewerImages }, (_, index) => (
                   <button
                     key={`viewer-dot-${index}`}
                     type="button"

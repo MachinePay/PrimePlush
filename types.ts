@@ -21,6 +21,8 @@ export interface Product {
   imageUrl?: string;
   images?: string[];
   videoUrl: string;
+  /** Links de vídeos do YouTube do produto */
+  videos?: string[];
   popular?: boolean;
   stock?: number | null;
   stock_reserved?: number;
