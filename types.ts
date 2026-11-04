@@ -12,6 +12,12 @@
  * @property {string[]} images - Lista de URLs de imagens do produto.
  * @property {string} videoUrl - A URL do vídeo do produto.
  */
+/** Item do carrossel do produto: foto (URL) ou vídeo (link do YouTube) */
+export interface ProductMedia {
+  type: "image" | "video";
+  url: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -23,6 +29,8 @@ export interface Product {
   videoUrl: string;
   /** Links de vídeos do YouTube do produto */
   videos?: string[];
+  /** Ordem do carrossel: fotos e vídeos intercalados */
+  media?: ProductMedia[];
   popular?: boolean;
   stock?: number | null;
   stock_reserved?: number;

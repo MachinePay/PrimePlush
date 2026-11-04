@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from "react";
 import { getYouTubeId, getYouTubeThumbnail } from "../utils/youtube";
+import { getProductMedia } from "../utils/productMedia";
 import { type StockMovement } from "../utils/stockMovements";
 
 // Modal de movimentação de estoque para múltiplos produtos
@@ -125,7 +126,7 @@ const StockMovementModal: React.FC<{
   );
 };
 import { useNavigate } from "react-router-dom";
-import type { Product } from "../types";
+import type { Product, ProductMedia } from "../types";
 import { authenticatedFetch } from "../services/apiService";
 
 // --- Componente de formulário de produto (Modal) ---
@@ -155,8 +156,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
     minStock: 0,
     quantidadeVenda: 1,
   });
-  const [imageUrls, setImageUrls] = useState<string[]>([""]);
-  const [videoUrls, setVideoUrls] = useState<string[]>([""]);
+  // Fotos e vídeos na ordem em que aparecem no carrossel do produto
+  const [mediaItems, setMediaItems] = useState<ProductMedia[]>([
+    { type: "image", url: "" },
+  ]);
 
   // 🆕 Estado para categorias dinâmicas
   const [categories, setCategories] = useState<Array<{ name: string }>>([]);
@@ -205,23 +208,15 @@ const ProductForm: React.FC<ProductFormProps> = ({
   // Quando o prop `product` muda (por ex. abrir para editar), preenche o formulário.
   useEffect(() => {
     if (product) {
-      const existingImages =
-        Array.isArray(product.images) && product.images.length > 0
-          ? product.images
-          : product.imageUrl
-            ? [product.imageUrl]
-            : [""];
+      const existingMedia = getProductMedia(product);
       setFormData({
         ...product,
         quantidadeVenda: product.quantidadeVenda ?? 1,
       }); // preenche com dados existentes
-      setImageUrls(existingImages);
-      setVideoUrls(
-        Array.isArray(product.videos) && product.videos.length > 0
-          ? product.videos
-          : product.videoUrl
-            ? [product.videoUrl]
-            : [""],
+      setMediaItems(
+        existingMedia.length > 0
+          ? existingMedia
+          : [{ type: "image", url: "" }],
       );
     } else {
       // limpa para novo produto
@@ -235,8 +230,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
         minStock: 0,
         quantidadeVenda: 1,
       });
-      setImageUrls([""]);
-      setVideoUrls([""]);
+      setMediaItems([{ type: "image", url: "" }]);
     }
   }, [product, categories]);
 
@@ -264,21 +258,28 @@ const ProductForm: React.FC<ProductFormProps> = ({
   // Ao submeter, cria um objeto Product final e chama onSave.
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const normalizedImages = imageUrls
-      .map((url) => url.trim())
-      .filter((url) => url.length > 0);
+    const normalizedMedia = mediaItems
+      .map((item) => ({ ...item, url: item.url.trim() }))
+      .filter((item) => item.url.length > 0);
+    if (
+      normalizedMedia.some(
+        (item) => item.type === "video" && !getYouTubeId(item.url),
+      )
+    ) {
+      alert("Há um link de vídeo que não é do YouTube. Corrija ou remova.");
+      return;
+    }
+
+    const normalizedImages = normalizedMedia
+      .filter((item) => item.type === "image")
+      .map((item) => item.url);
+    const normalizedVideos = normalizedMedia
+      .filter((item) => item.type === "video")
+      .map((item) => item.url);
     const primaryImage =
       normalizedImages[0] ||
       formData.imageUrl ||
       "https://picsum.photos/400/300";
-
-    const normalizedVideos = videoUrls
-      .map((url) => url.trim())
-      .filter((url) => url.length > 0);
-    if (normalizedVideos.some((url) => !getYouTubeId(url))) {
-      alert("Há um link de vídeo que não é do YouTube. Corrija ou remova.");
-      return;
-    }
 
     const finalProduct: Product = {
       ...formData,
@@ -286,22 +287,36 @@ const ProductForm: React.FC<ProductFormProps> = ({
       imageUrl: primaryImage,
       images: normalizedImages.length > 0 ? normalizedImages : [primaryImage],
       videos: normalizedVideos,
+      media: normalizedMedia,
     };
     onSave(finalProduct); // informa o componente pai sobre o produto salvo
   };
 
-  const updateImageAt = (index: number, value: string) => {
-    setImageUrls((prev) => prev.map((url, i) => (i === index ? value : url)));
+  const updateMediaAt = (index: number, url: string) => {
+    setMediaItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, url } : item)),
+    );
   };
 
-  const addImageField = () => {
-    setImageUrls((prev) => [...prev, ""]);
+  const addMediaField = (type: ProductMedia["type"]) => {
+    setMediaItems((prev) => [...prev, { type, url: "" }]);
   };
 
-  const removeImageField = (index: number) => {
-    setImageUrls((prev) => {
+  const removeMediaField = (index: number) => {
+    setMediaItems((prev) => {
       const next = prev.filter((_, i) => i !== index);
-      return next.length > 0 ? next : [""];
+      return next.length > 0 ? next : [{ type: "image", url: "" }];
+    });
+  };
+
+  // Troca o item de posição com o vizinho (direction -1 sobe, +1 desce)
+  const moveMediaField = (index: number, direction: -1 | 1) => {
+    setMediaItems((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
     });
   };
 
@@ -425,92 +440,91 @@ const ProductForm: React.FC<ProductFormProps> = ({
           </div>
           <div>
             <label
-              htmlFor="imageUrl-0"
+              htmlFor="mediaUrl-0"
               className="block text-sm font-medium text-stone-700"
             >
-              URLs das Imagens
+              Fotos e vídeos do carrossel
             </label>
-            <div className="mt-1 space-y-2">
-              {imageUrls.map((url, index) => (
-                <div key={`image-${index}`} className="flex items-center gap-2">
-                  <input
-                    type="url"
-                    id={`imageUrl-${index}`}
-                    value={url}
-                    onChange={(e) => updateImageAt(index, e.target.value)}
-                    placeholder="https://exemplo.com/imagem.jpg"
-                    className="block w-full rounded-md border-stone-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-                  />
-                  {imageUrls.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeImageField(index)}
-                      className="px-3 py-2 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-semibold"
-                    >
-                      Remover
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={addImageField}
-              className="mt-2 text-sm font-semibold text-blue-700 hover:text-blue-800"
-            >
-              + Adicionar outra imagem
-            </button>
             <p className="mt-1 text-xs text-stone-500">
-              A primeira URL será a imagem principal do produto.
+              Use ▲ ▼ para mudar a ordem em que aparecem no carrossel. A
+              primeira foto da lista é a capa do produto.
             </p>
-          </div>
-          <div>
-            <label
-              htmlFor="videoUrl-0"
-              className="block text-sm font-medium text-stone-700"
-            >
-              Vídeos do YouTube
-            </label>
-            <div className="mt-1 space-y-2">
-              {videoUrls.map((url, index) => {
-                const videoId = getYouTubeId(url);
-                const isInvalid = url.trim() !== "" && !videoId;
+            <div className="mt-2 space-y-2">
+              {mediaItems.map((item, index) => {
+                const isVideo = item.type === "video";
+                const videoId = isVideo ? getYouTubeId(item.url) : null;
+                const isInvalid = isVideo && item.url.trim() !== "" && !videoId;
+                const preview = isVideo
+                  ? videoId
+                    ? getYouTubeThumbnail(videoId)
+                    : null
+                  : item.url.trim() || null;
                 return (
-                  <div key={`video-${index}`}>
+                  <div
+                    key={`media-${index}`}
+                    className="rounded-lg border border-stone-200 p-2"
+                  >
                     <div className="flex items-center gap-2">
-                      {videoId && (
-                        <img
-                          src={getYouTubeThumbnail(videoId)}
-                          alt=""
-                          className="h-10 w-16 shrink-0 rounded object-cover"
-                        />
-                      )}
+                      <span className="w-5 shrink-0 text-center text-sm font-bold text-stone-500">
+                        {index + 1}
+                      </span>
+                      <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded bg-stone-100">
+                        {preview && (
+                          <img
+                            src={preview}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        )}
+                        <span
+                          className={`absolute bottom-0 left-0 px-1 text-[10px] font-bold text-white ${
+                            isVideo ? "bg-red-600" : "bg-blue-600"
+                          }`}
+                        >
+                          {isVideo ? "▶ Vídeo" : "Foto"}
+                        </span>
+                      </div>
                       <input
                         type="url"
-                        id={`videoUrl-${index}`}
-                        value={url}
-                        onChange={(e) =>
-                          setVideoUrls((prev) =>
-                            prev.map((v, i) =>
-                              i === index ? e.target.value : v,
-                            ),
-                          )
+                        id={`mediaUrl-${index}`}
+                        value={item.url}
+                        onChange={(e) => updateMediaAt(index, e.target.value)}
+                        placeholder={
+                          isVideo
+                            ? "https://www.youtube.com/watch?v=..."
+                            : "https://exemplo.com/imagem.jpg"
                         }
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        className={`block w-full rounded-md shadow-sm focus:border-amber-500 focus:ring-amber-500 ${
+                        className={`block w-full min-w-0 rounded-md shadow-sm focus:border-amber-500 focus:ring-amber-500 ${
                           isInvalid ? "border-red-400" : "border-stone-300"
                         }`}
                       />
-                      {(videoUrls.length > 1 || url !== "") && (
+                    </div>
+                    <div className="mt-2 flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => moveMediaField(index, -1)}
+                        disabled={index === 0}
+                        aria-label="Subir no carrossel"
+                        title="Subir"
+                        className="h-8 w-8 rounded-md bg-stone-100 text-stone-700 font-bold hover:bg-stone-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveMediaField(index, 1)}
+                        disabled={index === mediaItems.length - 1}
+                        aria-label="Descer no carrossel"
+                        title="Descer"
+                        className="h-8 w-8 rounded-md bg-stone-100 text-stone-700 font-bold hover:bg-stone-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        ▼
+                      </button>
+                      {(mediaItems.length > 1 || item.url !== "") && (
                         <button
                           type="button"
-                          onClick={() =>
-                            setVideoUrls((prev) => {
-                              const next = prev.filter((_, i) => i !== index);
-                              return next.length > 0 ? next : [""];
-                            })
-                          }
-                          className="px-3 py-2 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-semibold"
+                          onClick={() => removeMediaField(index)}
+                          className="h-8 px-3 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-semibold"
                         >
                           Remover
                         </button>
@@ -525,16 +539,25 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 );
               })}
             </div>
-            <button
-              type="button"
-              onClick={() => setVideoUrls((prev) => [...prev, ""])}
-              className="mt-2 text-sm font-semibold text-blue-700 hover:text-blue-800"
-            >
-              + Adicionar outro vídeo
-            </button>
+            <div className="mt-2 flex flex-wrap gap-4">
+              <button
+                type="button"
+                onClick={() => addMediaField("image")}
+                className="text-sm font-semibold text-blue-700 hover:text-blue-800"
+              >
+                + Adicionar foto
+              </button>
+              <button
+                type="button"
+                onClick={() => addMediaField("video")}
+                className="text-sm font-semibold text-red-700 hover:text-red-800"
+              >
+                + Adicionar vídeo do YouTube
+              </button>
+            </div>
             <p className="mt-1 text-xs text-stone-500">
-              Cole o link do vídeo no YouTube (inclusive Shorts). No catálogo o
-              vídeo toca dentro do site, junto com as fotos.
+              Vídeo: cole o link do YouTube (inclusive Shorts). No catálogo ele
+              toca dentro do site.
             </p>
           </div>
           <div>

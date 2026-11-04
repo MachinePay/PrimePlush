@@ -12,7 +12,7 @@ import { getProducts } from "../services/apiService";
 import { getBanners, type Banner } from "../services/bannerService";
 import ProductCard from "../components/ProductCard";
 import YouTubePlayer from "../components/YouTubePlayer";
-import { getProductVideoIds } from "../utils/youtube";
+import { getViewerMedia, type ViewerMedia } from "../utils/productMedia";
 import type { Product, CartItem } from "../types";
 
 // URL da API
@@ -440,18 +440,16 @@ const MenuPage: React.FC = () => {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [promoBanners, setPromoBanners] = useState<Banner[]>([]);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
-  // Visualizador de mídia do produto: fotos primeiro, depois os vídeos
-  // (ids do YouTube), num único carrossel.
+  // Visualizador de mídia do produto: fotos e vídeos (ids do YouTube) num
+  // único carrossel, na ordem definida no admin.
   const [imageViewer, setImageViewer] = useState<{
     isOpen: boolean;
-    images: string[];
-    videos: string[];
+    media: ViewerMedia[];
     currentIndex: number;
     productName: string;
   }>({
     isOpen: false,
-    images: [],
-    videos: [],
+    media: [],
     currentIndex: 0,
     productName: "",
   });
@@ -488,33 +486,24 @@ const MenuPage: React.FC = () => {
     [location.search],
   );
 
-  const getProductImages = (product: Product): string[] => {
-    if (Array.isArray(product.images) && product.images.length > 0) {
-      return product.images.filter((url) => typeof url === "string" && url);
-    }
-    if (product.imageUrl) {
-      return [product.imageUrl];
-    }
-    return [];
-  };
-
   const getCategoryIcon = (categoryName: string): string => {
     const dynamicCat = dynamicCategories.find((dc) => dc.name === categoryName);
     if (dynamicCat) return dynamicCat.icon;
     return "🧸";
   };
 
-  // startAtVideo: abre direto no primeiro vídeo
+  // Abre na foto da capa (primeira foto) ou, com startAtVideo, no primeiro
+  // vídeo da ordem do carrossel.
   const openImageViewer = (product: Product, startAtVideo = false) => {
-    const images = getProductImages(product);
-    const videos = getProductVideoIds(product);
-    if (images.length + videos.length === 0) return;
+    const media = getViewerMedia(product);
+    if (media.length === 0) return;
+    const startType = startAtVideo ? "video" : "image";
+    const startIndex = media.findIndex((item) => item.type === startType);
     setIsImageZoomed(false);
     setImageViewer({
       isOpen: true,
-      images,
-      videos,
-      currentIndex: startAtVideo && videos.length > 0 ? images.length : 0,
+      media,
+      currentIndex: Math.max(0, startIndex),
       productName: product.name,
     });
   };
@@ -529,7 +518,7 @@ const MenuPage: React.FC = () => {
   const showNextImage = () => {
     setIsImageZoomed(false);
     setImageViewer((prev) => {
-      const total = prev.images.length + prev.videos.length;
+      const total = prev.media.length;
       if (total <= 1) return prev;
       return {
         ...prev,
@@ -541,7 +530,7 @@ const MenuPage: React.FC = () => {
   const showPreviousImage = () => {
     setIsImageZoomed(false);
     setImageViewer((prev) => {
-      const total = prev.images.length + prev.videos.length;
+      const total = prev.media.length;
       if (total <= 1) return prev;
       return {
         ...prev,
@@ -813,13 +802,13 @@ const MenuPage: React.FC = () => {
     });
   }, [menu, searchTerm]);
 
-  const totalViewerImages =
-    imageViewer.images.length + imageViewer.videos.length;
+  const totalViewerImages = imageViewer.media.length;
   const normalizedViewerIndex =
     totalViewerImages > 0
       ? ((imageViewer.currentIndex % totalViewerImages) + totalViewerImages) %
         totalViewerImages
       : 0;
+  const currentViewerMedia = imageViewer.media[normalizedViewerIndex];
   const currentBanner =
     promoBanners.length > 0
       ? promoBanners[currentBannerIndex % promoBanners.length]
@@ -1119,19 +1108,15 @@ const MenuPage: React.FC = () => {
               </>
             )}
 
-            {normalizedViewerIndex >= imageViewer.images.length ? (
+            {currentViewerMedia?.type === "video" ? (
               <YouTubePlayer
-                key={imageViewer.videos[normalizedViewerIndex - imageViewer.images.length]}
-                videoId={
-                  imageViewer.videos[
-                    normalizedViewerIndex - imageViewer.images.length
-                  ]
-                }
+                key={`${normalizedViewerIndex}-${currentViewerMedia.id}`}
+                videoId={currentViewerMedia.id}
                 title={`${imageViewer.productName} - vídeo`}
               />
             ) : (
             <img
-              src={imageViewer.images[normalizedViewerIndex]}
+              src={currentViewerMedia?.src}
               alt={`${imageViewer.productName} - imagem ${normalizedViewerIndex + 1}`}
               className={`max-h-[78vh] w-auto max-w-full object-contain rounded-xl shadow-2xl cursor-pointer transition-transform duration-200 ${
                 isImageZoomed ? "scale-150" : "scale-100"
@@ -1142,7 +1127,7 @@ const MenuPage: React.FC = () => {
             />
             )}
             <p className="mt-3 text-white text-sm md:text-base font-medium">
-              {normalizedViewerIndex >= imageViewer.images.length
+              {currentViewerMedia?.type === "video"
                 ? "Vídeo"
                 : "Toque para dar zoom"}{" "}
               ({normalizedViewerIndex + 1}/{totalViewerImages})
