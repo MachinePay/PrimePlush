@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Button, Field, Modal, formatCurrency } from "./ui";
-import { IconLock, IconUnlock } from "./icons";
+import { IconEye, IconEyeOff, IconUnlock } from "./icons";
 
 // Bloqueio dos valores financeiros do painel (pedidos, dashboard, gestão).
 // Usa a mesma senha especial do Relatório de Gestão e Financeiro.
@@ -57,7 +57,7 @@ export function useFinanceLock() {
   return { unlocked, unlock, lock, money };
 }
 
-/** Botão que bloqueia/desbloqueia os valores (abre o pedido de senha). */
+/** Olhinho que mostra (pedindo a senha) ou oculta os valores. */
 export const FinanceLockButton: React.FC<{
   unlocked: boolean;
   unlock: (password: string) => boolean;
@@ -81,17 +81,29 @@ export const FinanceLockButton: React.FC<{
 
   if (unlocked) {
     return (
-      <Button variant="secondary" icon={<IconUnlock />} onClick={lock}>
-        Ocultar valores
-      </Button>
+      <Button
+        variant="secondary"
+        iconOnly
+        icon={<IconEye />}
+        onClick={lock}
+        title="Ocultar valores"
+        aria-label="Ocultar valores"
+        aria-pressed={true}
+      />
     );
   }
 
   return (
     <>
-      <Button variant="secondary" icon={<IconLock />} onClick={() => setOpen(true)}>
-        Mostrar valores
-      </Button>
+      <Button
+        variant="secondary"
+        iconOnly
+        icon={<IconEyeOff />}
+        onClick={() => setOpen(true)}
+        title="Mostrar valores (pede senha)"
+        aria-label="Mostrar valores"
+        aria-pressed={false}
+      />
       <Modal
         open={open}
         onClose={close}
