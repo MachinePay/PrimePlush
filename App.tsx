@@ -38,6 +38,8 @@ import CustomerOrdersPage from "./pages/CustomerOrdersPage";
 import FavoritesPage from "./pages/FavoritesPage";
 import InfoPage from "./pages/InfoPage";
 import AdminLayout from "./components/admin/AdminLayout";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
+import AdminCustomersPage from "./pages/AdminCustomersPage";
 
 // 1. Configuração do Cliente React Query
 const queryClient = new QueryClient({
@@ -90,6 +92,29 @@ const RoleProtectedRoute: React.FC<{
   return <>{children}</>;
 };
 
+// Telas do painel admin: usam o layout próprio (sidebar + topbar), sem o
+// cabeçalho e o rodapé da loja. /admin/login continua com o visual da loja.
+const isAdminShellPath = (pathname: string, role?: string) =>
+  (pathname.startsWith("/admin") && pathname !== "/admin/login") ||
+  (pathname.startsWith("/historico") && role === "admin");
+
+// Pedidos são usados pelo admin e pela cozinha; só o admin ganha o layout
+// do painel (que exige o token de admin).
+const OrdersShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { currentUser } = useAuth();
+  if (currentUser?.role === "admin") {
+    return <AdminLayout>{children}</AdminLayout>;
+  }
+  return <>{children}</>;
+};
+
+const SiteFooter: React.FC = () => {
+  const { pathname } = useLocation();
+  const { currentUser } = useAuth();
+  if (isAdminShellPath(pathname, currentUser?.role)) return null;
+  return <Footer />;
+};
+
 // Leva a visão para o topo sempre que o usuário navega para uma página
 // diferente (filtros por query string, como busca/categoria no catálogo,
 // não disparam o reset). Sem isso, o SPA mantém o scroll de onde o link
@@ -119,7 +144,7 @@ const App: React.FC = () => {
               <HashRouter>
                 <ScrollToTop />
                 <RouterBody />
-                <Footer />
+                <SiteFooter />
               </HashRouter>
             </FavoritesProvider>
           </CartProvider>
@@ -132,16 +157,21 @@ const App: React.FC = () => {
 const RouterBody: React.FC = () => {
   const location = useLocation();
   const { store, loading, error } = useStore(); // 🏪 MULTI-TENANT
+  const { currentUser } = useAuth();
+  const isAdminShell = isAdminShellPath(location.pathname, currentUser?.role);
   const isLoginRoute =
     location.pathname === "/" ||
     location.pathname === "/login" ||
     location.pathname === "/register";
   const isFullBleedRoute = isLoginRoute || location.pathname === "/menu";
-  const isAdminThemeRoute =
-    location.pathname.startsWith("/admin") ||
-    location.pathname.startsWith("/superadmin");
+  // Tema antigo (overrides globais) só no SuperAdmin; o painel admin e o
+  // login do admin usam o design system próprio (.pp-admin).
+  const isAdminThemeRoute = location.pathname.startsWith("/superadmin");
+  const isAdminLoginRoute = location.pathname === "/admin/login";
   const isCheckoutThemeRoute = location.pathname === "/payment";
-  const mainClassName = isLoginRoute
+  const mainClassName = isAdminShell || isAdminLoginRoute
+    ? ""
+    : isLoginRoute
     ? "bg-white"
     : location.pathname === "/menu"
       ? "bg-white"
@@ -171,11 +201,15 @@ const RouterBody: React.FC = () => {
   return (
     <div className="min-h-screen bg-stone-100 text-stone-800">
       <InactivityGuard />
-      <Header />
+      {!isAdminShell && <Header />}
       <main
         className={mainClassName}
         style={
-          isFullBleedRoute || isAdminThemeRoute || isCheckoutThemeRoute
+          isAdminShell ||
+          isAdminLoginRoute ||
+          isFullBleedRoute ||
+          isAdminThemeRoute ||
+          isCheckoutThemeRoute
             ? undefined
             : { background: "#FFF6E5" }
         }
@@ -228,7 +262,9 @@ const RouterBody: React.FC = () => {
                 allowedRoles={["admin", "kitchen"]}
                 redirectTo="/admin/login"
               >
-                <OrderHistoryPage />
+                <OrdersShell>
+                  <OrderHistoryPage />
+                </OrdersShell>
               </RoleProtectedRoute>
             }
           />
@@ -241,7 +277,9 @@ const RouterBody: React.FC = () => {
                 allowedRoles={["admin", "kitchen"]}
                 redirectTo="/admin/login"
               >
-                <OrderDetailPage />
+                <OrdersShell>
+                  <OrderDetailPage />
+                </OrdersShell>
               </RoleProtectedRoute>
             }
           />
@@ -275,7 +313,37 @@ const RouterBody: React.FC = () => {
                 redirectTo="/admin/login"
               >
                 <AdminLayout>
+                  <AdminDashboardPage />
+                </AdminLayout>
+              </RoleProtectedRoute>
+            }
+          />
+
+          {/* Produtos e estoque (antes ficava em /admin) */}
+          <Route
+            path="/admin/produtos"
+            element={
+              <RoleProtectedRoute
+                allowedRoles={["admin"]}
+                redirectTo="/admin/login"
+              >
+                <AdminLayout>
                   <AdminPage />
+                </AdminLayout>
+              </RoleProtectedRoute>
+            }
+          />
+
+          {/* Clientes cadastrados (somente leitura) */}
+          <Route
+            path="/admin/clientes"
+            element={
+              <RoleProtectedRoute
+                allowedRoles={["admin"]}
+                redirectTo="/admin/login"
+              >
+                <AdminLayout>
+                  <AdminCustomersPage />
                 </AdminLayout>
               </RoleProtectedRoute>
             }

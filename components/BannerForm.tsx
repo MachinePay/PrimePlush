@@ -1,12 +1,14 @@
-// Componente de formulário para criar/editar banners da home
+// Componente de formulário para criar/editar banners da home (abre em modal)
 import React, { useState, useEffect } from "react";
 import type { Banner, BannerPayload } from "../services/bannerService";
 import type { Category } from "../services/categoryService";
+import { Button, Field, Modal, Segmented } from "./admin/ui";
+import { IconAlert, IconImage } from "./admin/icons";
 
 interface BannerFormProps {
   banner: Banner | null; // null = criar novo banner
   categories: Category[];
-  onSave: (bannerData: BannerPayload) => void;
+  onSave: (bannerData: BannerPayload) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -14,6 +16,8 @@ interface BannerFormProps {
 // cadastrada (seleciona a aba certa em /menu); "query" é o fallback por
 // busca de texto para coleções que ainda não têm categoria própria.
 type LinkType = "none" | "category" | "query";
+
+const FORM_ID = "pp-banner-form";
 
 const BannerForm: React.FC<BannerFormProps> = ({
   banner,
@@ -30,6 +34,9 @@ const BannerForm: React.FC<BannerFormProps> = ({
   const [linkType, setLinkType] = useState<LinkType>("none");
   const [linkValue, setLinkValue] = useState("");
   const [previewFailed, setPreviewFailed] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const [linkError, setLinkError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // Preenche o formulário quando editar banner existente
   useEffect(() => {
@@ -61,205 +68,254 @@ const BannerForm: React.FC<BannerFormProps> = ({
       setLinkValue("");
     }
     setPreviewFailed(false);
+    setImageError("");
+    setLinkError("");
   }, [banner]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
-    if (name === "image") setPreviewFailed(false);
+    if (name === "image") {
+      setPreviewFailed(false);
+      setImageError("");
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleLinkTypeChange = (
-    e: React.ChangeEvent<HTMLSelectElement>,
-  ) => {
-    setLinkType(e.target.value as LinkType);
+  const handleLinkTypeChange = (value: LinkType) => {
+    setLinkType(value);
     setLinkValue("");
+    setLinkError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleLinkValueChange = (value: string) => {
+    setLinkValue(value);
+    setLinkError("");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.image.trim()) {
-      alert("A imagem do banner é obrigatória");
+      setImageError("A imagem do banner é obrigatória");
       return;
     }
     if (linkType !== "none" && !linkValue.trim()) {
-      alert("Informe o destino do botão ou escolha 'Catálogo completo'");
+      setLinkError("Informe o destino do botão ou escolha 'Catálogo completo'");
       return;
     }
 
-    onSave({
-      image: formData.image.trim(),
-      alt: formData.alt.trim(),
-      buttonLabel: formData.buttonLabel.trim() || "Ver coleção",
-      // Enviamos ambos os campos sempre: assim, trocar o tipo de destino
-      // limpa o vínculo anterior no backend.
-      category: linkType === "category" ? linkValue.trim() : "",
-      query: linkType === "query" ? linkValue.trim() : "",
-      active: formData.active,
-    });
+    setIsSaving(true);
+    try {
+      await onSave({
+        image: formData.image.trim(),
+        alt: formData.alt.trim(),
+        buttonLabel: formData.buttonLabel.trim() || "Ver coleção",
+        // Enviamos ambos os campos sempre: assim, trocar o tipo de destino
+        // limpa o vínculo anterior no backend.
+        category: linkType === "category" ? linkValue.trim() : "",
+        query: linkType === "query" ? linkValue.trim() : "",
+        active: formData.active,
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
+  const imageUrl = formData.image.trim();
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl w-full max-w-lg my-8">
-        <h2 className="text-2xl font-bold mb-6 text-purple-800">
-          {banner ? "Editar Banner" : "Novo Banner"}
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* URL da imagem */}
-          <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-2">
-              Imagem do Banner (URL) *
-            </label>
-            <input
-              type="text"
-              name="image"
-              value={formData.image}
-              onChange={handleChange}
-              placeholder="/1.jpg ou https://exemplo.com/banner.jpg"
-              className="w-full px-4 py-2 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-purple-500"
-              required
+    <Modal
+      open
+      onClose={onCancel}
+      locked={isSaving}
+      size="lg"
+      title={banner ? "Editar banner" : "Novo banner"}
+      description="Banners aparecem no carrossel da página principal."
+      footer={
+        <>
+          <Button variant="secondary" onClick={onCancel} disabled={isSaving}>
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            form={FORM_ID}
+            loading={isSaving}
+          >
+            {banner ? "Atualizar" : "Criar"}
+          </Button>
+        </>
+      }
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-5">
+        {/* Pré-visualização */}
+        <div className="relative overflow-hidden rounded-xl border border-[color:var(--pp-border)] bg-[color:var(--pp-surface-2)]">
+          {imageUrl && !previewFailed ? (
+            <img
+              src={imageUrl}
+              alt="Pré-visualização do banner"
+              className="aspect-[16/6] w-full object-cover"
+              onError={() => setPreviewFailed(true)}
             />
-            <p className="text-xs text-stone-500 mt-1">
-              Use um caminho do site (ex: <code>/1.jpg</code>) ou o link
-              completo de uma imagem hospedada.
-            </p>
-          </div>
-
-          {/* Pré-visualização */}
-          {formData.image.trim() && (
-            <div className="rounded-lg overflow-hidden border-2 border-stone-200 bg-stone-100">
+          ) : (
+            <div className="flex aspect-[16/6] w-full flex-col items-center justify-center gap-2 p-4 text-center">
               {previewFailed ? (
-                <p className="text-sm text-red-600 p-4 text-center">
-                  Não foi possível carregar esta imagem. Confira a URL.
-                </p>
+                <>
+                  <IconAlert className="h-6 w-6 text-[color:var(--pp-danger)]" />
+                  <p className="text-sm text-[color:var(--pp-danger)]">
+                    Não foi possível carregar esta imagem. Confira a URL.
+                  </p>
+                </>
               ) : (
-                <img
-                  src={formData.image.trim()}
-                  alt="Pré-visualização do banner"
-                  className="w-full h-40 object-cover"
-                  onError={() => setPreviewFailed(true)}
-                />
+                <>
+                  <IconImage className="h-6 w-6 text-[color:var(--pp-text-3)]" />
+                  <p className="text-sm text-[color:var(--pp-text-3)]">
+                    A pré-visualização aparece ao informar a imagem
+                  </p>
+                </>
               )}
             </div>
           )}
+          {imageUrl && !previewFailed && (
+            <span className="absolute bottom-3 left-3 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-slate-900 shadow">
+              {formData.buttonLabel.trim() || "Ver coleção"}
+            </span>
+          )}
+        </div>
 
+        {/* URL da imagem */}
+        <Field
+          label="Imagem do banner (URL) *"
+          htmlFor="banner-image"
+          error={imageError}
+          help={
+            <>
+              Use um caminho do site (ex: <code>/1.jpg</code>) ou o link
+              completo de uma imagem hospedada.
+            </>
+          }
+        >
+          <input
+            id="banner-image"
+            type="text"
+            name="image"
+            value={formData.image}
+            onChange={handleChange}
+            placeholder="/1.jpg ou https://exemplo.com/banner.jpg"
+            className="pp-input"
+            required
+            autoFocus
+          />
+        </Field>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* Texto alternativo */}
-          <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-2">
-              Descrição da Imagem
-            </label>
+          <Field
+            label="Descrição da imagem"
+            htmlFor="banner-alt"
+            help="Aparece para leitores de tela e quando a imagem não carrega."
+          >
             <input
+              id="banner-alt"
               type="text"
               name="alt"
               value={formData.alt}
               onChange={handleChange}
               placeholder="Ex: Coleção Pokémon GG"
-              className="w-full px-4 py-2 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-purple-500"
+              className="pp-input"
             />
-            <p className="text-xs text-stone-500 mt-1">
-              Aparece para leitores de tela e quando a imagem não carrega.
-            </p>
-          </div>
+          </Field>
 
           {/* Rótulo do botão */}
-          <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-2">
-              Texto do Botão
-            </label>
+          <Field label="Texto do botão" htmlFor="banner-button-label">
             <input
+              id="banner-button-label"
               type="text"
               name="buttonLabel"
               value={formData.buttonLabel}
               onChange={handleChange}
               placeholder="Ver coleção"
-              className="w-full px-4 py-2 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-purple-500"
+              className="pp-input"
+            />
+          </Field>
+        </div>
+
+        {/* Destino do botão */}
+        <Field label="Destino do botão" error={linkError}>
+          <div className="max-w-full overflow-x-auto">
+            <Segmented<LinkType>
+              ariaLabel="Destino do botão"
+              options={[
+                { value: "none", label: "Catálogo completo" },
+                { value: "category", label: "Categoria cadastrada" },
+                { value: "query", label: "Busca por texto" },
+              ]}
+              value={linkType}
+              onChange={handleLinkTypeChange}
             />
           </div>
 
-          {/* Destino do botão */}
-          <div>
-            <label className="block text-sm font-semibold text-stone-700 mb-2">
-              Destino do Botão
-            </label>
+          {linkType === "category" && (
             <select
-              value={linkType}
-              onChange={handleLinkTypeChange}
-              className="w-full px-4 py-2 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-purple-500"
+              aria-label="Categoria de destino"
+              value={linkValue}
+              onChange={(e) => handleLinkValueChange(e.target.value)}
+              className="pp-select mt-2 w-full"
             >
-              <option value="none">Catálogo completo</option>
-              <option value="category">Categoria cadastrada</option>
-              <option value="query">Busca por texto</option>
+              <option value="">Selecione a categoria...</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.name}>
+                  {category.icon} {category.name}
+                </option>
+              ))}
             </select>
+          )}
 
-            {linkType === "category" && (
-              <select
+          {linkType === "query" && (
+            <>
+              <input
+                aria-label="Texto da busca"
+                type="text"
                 value={linkValue}
-                onChange={(e) => setLinkValue(e.target.value)}
-                className="w-full mt-2 px-4 py-2 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-purple-500"
-              >
-                <option value="">Selecione a categoria...</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.name}>
-                    {category.icon} {category.name}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {linkType === "query" && (
-              <>
-                <input
-                  type="text"
-                  value={linkValue}
-                  onChange={(e) => setLinkValue(e.target.value)}
-                  placeholder="Ex: Capitão América"
-                  className="w-full mt-2 px-4 py-2 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-purple-500"
-                />
-                <p className="text-xs text-stone-500 mt-1">
+                onChange={(e) => handleLinkValueChange(e.target.value)}
+                placeholder="Ex: Capitão América"
+                className="pp-input mt-2"
+              />
+              {!linkError && (
+                <p className="pp-help">
                   O botão abre o catálogo já filtrado por esse texto.
                 </p>
-              </>
-            )}
-          </div>
+              )}
+            </>
+          )}
+        </Field>
 
-          {/* Visibilidade */}
-          <label className="flex items-center gap-3 cursor-pointer">
+        {/* Visibilidade */}
+        <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-[color:var(--pp-border)] p-3.5 transition-colors hover:bg-[color:var(--pp-surface-2)]">
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-[color:var(--pp-text)]">
+              Exibir este banner na página principal
+            </span>
+            <span className="block text-xs text-[color:var(--pp-text-3)]">
+              Desligado, o banner fica salvo mas oculto do carrossel.
+            </span>
+          </span>
+          <span className="relative inline-flex shrink-0 items-center">
             <input
               type="checkbox"
               checked={formData.active}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, active: e.target.checked }))
               }
-              className="h-5 w-5 accent-purple-600"
+              className="peer sr-only"
             />
-            <span className="text-sm font-semibold text-stone-700">
-              Exibir este banner na página principal
-            </span>
-          </label>
-
-          {/* Botões */}
-          <div className="flex gap-3 mt-6">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex-1 py-3 bg-stone-200 text-stone-700 rounded-lg font-semibold hover:bg-stone-300 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="flex-1 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-            >
-              {banner ? "Atualizar" : "Criar"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            <span className="h-6 w-11 rounded-full bg-slate-300 transition-colors peer-checked:bg-[color:var(--pp-brand)] peer-focus-visible:ring-2 peer-focus-visible:ring-[color:var(--pp-brand)] peer-focus-visible:ring-offset-2" />
+            <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+          </span>
+        </label>
+      </form>
+    </Modal>
   );
 };
 
