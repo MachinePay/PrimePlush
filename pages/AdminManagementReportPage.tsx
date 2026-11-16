@@ -18,6 +18,11 @@ import {
 } from "recharts";
 import { authenticatedFetch } from "../services/apiService";
 import {
+  FINANCE_PASSWORD,
+  isFinanceUnlocked,
+  setFinanceUnlocked,
+} from "../components/admin/FinanceLock";
+import {
   Badge,
   Button,
   CHART_COLORS,
@@ -459,11 +464,11 @@ const AdminManagementReportPage: React.FC = () => {
 
   // Proteção por senha extra
   const [senhaExtra, setSenhaExtra] = useState("");
-  const [senhaCorreta, setSenhaCorreta] = useState(false);
+  // Se já desbloqueou os valores em outra tela nesta sessão, entra direto
+  const [senhaCorreta, setSenhaCorreta] = useState(isFinanceUnlocked);
   const [senhaErro, setSenhaErro] = useState("");
 
-  // Troque pela senha real depois
-  const SENHA_ESPECIAL = "135";
+  const SENHA_ESPECIAL = FINANCE_PASSWORD;
 
   const fetchReport = useCallback(async (filter: AppliedFilter) => {
     setLoading(true);
@@ -747,6 +752,7 @@ const AdminManagementReportPage: React.FC = () => {
     if (senhaExtra === SENHA_ESPECIAL) {
       setSenhaCorreta(true);
       setSenhaErro("");
+      setFinanceUnlocked(true);
     } else {
       setSenhaErro("Senha incorreta");
     }

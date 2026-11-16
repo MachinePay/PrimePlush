@@ -46,6 +46,7 @@ import {
   notify,
   sortRows,
 } from "../components/admin/ui";
+import { FinanceLockButton, useFinanceLock } from "../components/admin/FinanceLock";
 import {
   IconCalendar,
   IconCash,
@@ -254,6 +255,9 @@ const OrderHistoryPage: React.FC = () => {
 
   const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
   const isAdmin = currentUser?.role === "admin";
+  const financeLock = useFinanceLock();
+  // Admin só vê valores com a senha de Gestão e Financeiro; cliente vê os seus
+  const money = isAdmin ? financeLock.money : formatCurrency;
 
   const showUnpaidOnly =
     quickFilter === "a-pagar" || (quickFilter === "a-entregar" && combineFilters);
@@ -737,6 +741,13 @@ const OrderHistoryPage: React.FC = () => {
         description="Acompanhe pagamentos, entregas e o histórico de cada pedido."
         actions={
           <>
+            {isAdmin && (
+              <FinanceLockButton
+                unlocked={financeLock.unlocked}
+                unlock={financeLock.unlock}
+                lock={financeLock.lock}
+              />
+            )}
             <Button
               variant="secondary"
               icon={<IconRefresh />}
@@ -770,7 +781,7 @@ const OrderHistoryPage: React.FC = () => {
         <StatCard
           label="A receber"
           value={summary.toReceive}
-          format={formatCurrency}
+          format={money}
           icon={<IconWallet />}
           tone="warning"
           loading={initialLoading}
@@ -795,7 +806,7 @@ const OrderHistoryPage: React.FC = () => {
         <StatCard
           label="Faturamento do filtro"
           value={summary.revenue}
-          format={formatCurrency}
+          format={money}
           icon={<IconCheckCircle />}
           tone="success"
           loading={initialLoading}
@@ -991,7 +1002,7 @@ const OrderHistoryPage: React.FC = () => {
                           )}
                         </td>
                         <td className="pp-num whitespace-nowrap text-right align-top font-semibold">
-                          {formatCurrency(Number(order.total) || 0)}
+                          {money(Number(order.total) || 0)}
                         </td>
                         <td className="align-top" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1.5">
@@ -1036,7 +1047,7 @@ const OrderHistoryPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="pp-num shrink-0 text-right font-semibold">
-                        {formatCurrency(Number(order.total) || 0)}
+                        {money(Number(order.total) || 0)}
                       </div>
                     </div>
 

@@ -47,6 +47,7 @@ import {
   formatInteger,
   formatRelative,
 } from "../components/admin/ui";
+import { FinanceLockButton, useFinanceLock } from "../components/admin/FinanceLock";
 import {
   IconAlert,
   IconArrowRight,
@@ -193,6 +194,9 @@ const STATUS_SLICES = [
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const financeLock = useFinanceLock();
+  // Valores em R$ só aparecem com a senha de Gestão e Financeiro
+  const formatCurrency = financeLock.money;
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -207,7 +211,8 @@ const AdminDashboardPage: React.FC = () => {
     toInputDate(new Date(Date.now() - 6 * DAY)),
   );
   const [customEnd, setCustomEnd] = useState(() => toInputDate(new Date()));
-  const [chartMetric, setChartMetric] = useState<"revenue" | "orders">("revenue");
+  const [chartMetricChoice, setChartMetric] = useState<"revenue" | "orders">("revenue");
+  const chartMetric = financeLock.unlocked ? chartMetricChoice : "orders";
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -482,6 +487,11 @@ const AdminDashboardPage: React.FC = () => {
                 Atualizado {formatRelative(lastUpdated)}
               </span>
             )}
+            <FinanceLockButton
+              unlocked={financeLock.unlocked}
+              unlock={financeLock.unlock}
+              lock={financeLock.lock}
+            />
             <Button
               variant="secondary"
               icon={<IconRefresh />}
@@ -647,15 +657,17 @@ const AdminDashboardPage: React.FC = () => {
               : `${formatInteger(current.orders)} pedidos no período`
           }
           actions={
-            <Segmented
-              options={[
-                { value: "revenue", label: "Faturamento" },
-                { value: "orders", label: "Pedidos" },
-              ]}
-              value={chartMetric}
-              onChange={setChartMetric}
-              ariaLabel="Métrica do gráfico"
-            />
+            financeLock.unlocked ? (
+              <Segmented
+                options={[
+                  { value: "revenue", label: "Faturamento" },
+                  { value: "orders", label: "Pedidos" },
+                ]}
+                value={chartMetric}
+                onChange={setChartMetric}
+                ariaLabel="Métrica do gráfico"
+              />
+            ) : undefined
           }
         >
           {loading ? (

@@ -25,6 +25,7 @@ import {
   formatInteger,
   formatRelative,
 } from "../components/admin/ui";
+import { FinanceLockButton, useFinanceLock } from "../components/admin/FinanceLock";
 import {
   IconChevronLeft,
   IconDownload,
@@ -33,7 +34,7 @@ import {
 } from "../components/admin/icons";
 import "../components/admin/admin.css";
 
-const money = (value: unknown) => formatCurrency(Number(value) || 0);
+const formatMoney = (value: unknown) => formatCurrency(Number(value) || 0);
 
 // Rótulo da forma de pagamento (mesma regra de antes)
 const getPaymentDescription = (order: Order) => {
@@ -74,6 +75,10 @@ const OrderDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === "admin";
+  const financeLock = useFinanceLock();
+  // Admin só vê valores com a senha de Gestão e Financeiro
+  const money = (value: unknown) =>
+    isAdmin ? financeLock.money(Number(value) || 0) : formatMoney(value);
   // Recebe o pedido via state da navegação
   const order: Order | undefined = location.state?.order;
 
@@ -222,6 +227,13 @@ const OrderDetailPage: React.FC = () => {
         }
         actions={
           <>
+            {isAdmin && (
+              <FinanceLockButton
+                unlocked={financeLock.unlocked}
+                unlock={financeLock.unlock}
+                lock={financeLock.lock}
+              />
+            )}
             <Button
               variant="secondary"
               icon={<IconChevronLeft />}
