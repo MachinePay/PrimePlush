@@ -38,6 +38,11 @@
   --pp-shadow-lg: 0 12px 40px -12px rgba(15, 23, 42, 0.25);
   --pp-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
+  --pp-chrome: #eef4ff;
+  --pp-chrome-border: #dbe4f5;
+  --pp-chrome-hover: rgba(37, 99, 235, 0.07);
+  --pp-chrome-active: #dce8ff;
+
   --pp-sidebar-w: 248px;
   --pp-sidebar-w-collapsed: 72px;
 
@@ -83,8 +88,8 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: var(--pp-surface);
-  border-right: 1px solid var(--pp-border);
+  background: var(--pp-chrome);
+  border-right: 1px solid var(--pp-chrome-border);
   transition: width 220ms var(--pp-ease);
   z-index: 40;
 }
@@ -99,7 +104,7 @@
   gap: 10px;
   height: 64px;
   padding: 0 18px;
-  border-bottom: 1px solid var(--pp-border);
+  border-bottom: 1px solid var(--pp-chrome-border);
   overflow: hidden;
   white-space: nowrap;
 }
@@ -160,12 +165,12 @@
 }
 
 .pp-nav-link:hover {
-  background: var(--pp-surface-2);
+  background: var(--pp-chrome-hover);
   color: var(--pp-text);
 }
 
 .pp-nav-link[data-active="true"] {
-  background: var(--pp-brand-soft);
+  background: var(--pp-chrome-active);
   color: var(--pp-brand);
   font-weight: 600;
 }
@@ -218,7 +223,7 @@
 
 .pp-sidebar-footer {
   padding: 10px;
-  border-top: 1px solid var(--pp-border);
+  border-top: 1px solid var(--pp-chrome-border);
 }
 
 .pp-main {
@@ -237,10 +242,10 @@
   gap: 12px;
   height: 64px;
   padding: 0 24px;
-  background: rgba(246, 247, 251, 0.82);
+  background: rgba(238, 244, 255, 0.9);
   backdrop-filter: saturate(160%) blur(10px);
   -webkit-backdrop-filter: saturate(160%) blur(10px);
-  border-bottom: 1px solid var(--pp-border);
+  border-bottom: 1px solid var(--pp-chrome-border);
 }
 
 .pp-content {
