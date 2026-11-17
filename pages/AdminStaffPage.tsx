@@ -32,6 +32,7 @@ interface StaffMember {
   id: string;
   name: string;
   username: string;
+  email?: string | null;
   permissions: AdminPermission[];
   active: boolean;
   createdAt?: string | null;
@@ -41,6 +42,7 @@ interface StaffMember {
 interface StaffForm {
   name: string;
   username: string;
+  email: string;
   password: string;
   active: boolean;
   permissions: AdminPermission[];
@@ -50,6 +52,7 @@ interface StaffForm {
 const EMPTY_FORM: StaffForm = {
   name: "",
   username: "",
+  email: "",
   password: "",
   active: true,
   permissions: ["pedidos", "produtos"],
@@ -121,6 +124,7 @@ const AdminStaffPage: React.FC = () => {
     setForm({
       name: member.name,
       username: member.username,
+      email: member.email || "",
       password: "",
       active: member.active,
       permissions: [...member.permissions],
@@ -146,6 +150,10 @@ const AdminStaffPage: React.FC = () => {
         "Usuário deve ter 3 a 40 caracteres: letras, números, ponto, - ou _ (sem espaços).",
       );
     }
+    const email = form.email.trim().toLowerCase();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return setFormError("E-mail inválido.");
+    }
     if (!editing && form.password.length < 4) {
       return setFormError("A senha deve ter pelo menos 4 caracteres.");
     }
@@ -159,6 +167,7 @@ const AdminStaffPage: React.FC = () => {
       const body: Record<string, unknown> = {
         name,
         username,
+        email,
         active: form.active,
         permissions: form.permissions,
       };
@@ -254,7 +263,7 @@ const AdminStaffPage: React.FC = () => {
           <EmptyState
             icon={<IconUserPlus />}
             title="Nenhum funcionário cadastrado"
-            description="Funcionários entram em /admin/login na opção “Funcionário”, com usuário e senha próprios, e só veem as abas que você liberar."
+            description="Funcionários entram com usuário ou e-mail e senha próprios (em /admin/login ou na tela de login da loja) e só veem as abas que você liberar."
             action={
               <Button variant="primary" icon={<IconPlus />} onClick={openCreate}>
                 Criar primeiro login
@@ -277,6 +286,7 @@ const AdminStaffPage: React.FC = () => {
                       </span>
                       <span className="text-sm text-[color:var(--pp-text-3)]">
                         @{member.username}
+                        {member.email ? ` · ${member.email}` : ""}
                       </span>
                       {member.active ? (
                         <Badge tone="success" dot>
@@ -344,7 +354,7 @@ const AdminStaffPage: React.FC = () => {
         locked={saving}
         size="lg"
         title={editing ? `Editar ${editing.name}` : "Novo funcionário"}
-        description="O funcionário entra em /admin/login, na opção “Funcionário”."
+        description="O funcionário entra com usuário ou e-mail e senha, em /admin/login (opção “Funcionário”) ou na tela de login da loja."
         footer={
           <>
             <Button variant="secondary" onClick={() => setFormOpen(false)} disabled={saving}>
@@ -388,10 +398,25 @@ const AdminStaffPage: React.FC = () => {
               />
             </Field>
             <Field
+              label="E-mail (opcional)"
+              htmlFor="staff-email"
+              help="Permite entrar também pela tela de login da loja, no campo de CPF/e-mail."
+            >
+              <input
+                id="staff-email"
+                type="email"
+                className="pp-input"
+                value={form.email}
+                onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                placeholder="maria@email.com"
+                autoCapitalize="none"
+                autoComplete="off"
+              />
+            </Field>
+            <Field
               label={editing ? "Nova senha" : "Senha"}
               htmlFor="staff-password"
               help={editing ? "Deixe em branco para manter a senha atual." : "Mínimo de 4 caracteres."}
-              className="sm:col-span-2"
             >
               <input
                 id="staff-password"

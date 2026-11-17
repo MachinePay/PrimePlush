@@ -202,7 +202,7 @@ const AdminLoginPage: React.FC = () => {
                 {mode === "staff" && (
                   <div>
                     <label htmlFor="username" className="pp-label">
-                      Usuário
+                      Usuário ou e-mail
                     </label>
                     <input
                       id="username"
@@ -212,7 +212,7 @@ const AdminLoginPage: React.FC = () => {
                         setUsername(e.target.value);
                         setError("");
                       }}
-                      placeholder="Seu usuário"
+                      placeholder="Seu usuário ou e-mail"
                       className="pp-input"
                       style={{ height: 44 }}
                       autoFocus

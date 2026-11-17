@@ -5,6 +5,13 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 
 import type { User } from "../types";
+import { staffLogin } from "../services/apiService";
+import { firstAllowedAdminPath } from "../utils/adminPermissions";
+
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+// Texto com letra ou @ é e-mail (ou usuário de funcionário), não documento.
+const isTextLogin = (value: string) => /[a-zA-Z@]/.test(value);
 
 const LOGIN_PLUSH_RING = ["🧸", "🐻", "🐰", "🐼", "🦊", "🐨", "🐹", "🦁"];
 const LOGIN_PLUSH_RING_DURATION = 26;
@@ -65,10 +72,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNameSubmit, isLoading =
 interface CPFLoginProps {
   onBack: () => void;
   onLoginSuccess: (user: User) => void;
+  onStaffLogin: (user: User) => void;
   onSkip: () => void;
 }
 
-const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess, onSkip }) => {
+const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess, onStaffLogin, onSkip }) => {
   const navigate = useNavigate();
   
   // Estados do Formulário
@@ -87,6 +95,9 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess, onSkip }) =
   const [cep, setCep] = useState("");
   const [phone, setPhone] = useState("");
   const [userFound, setUserFound] = useState<User | null>(null);
+  // Login por e-mail/usuário: quem tem essa conta (cliente e/ou funcionário)
+  const [textLogin, setTextLogin] = useState("");
+  const [loginKinds, setLoginKinds] = useState<Array<"staff" | "customer">>([]);
 
   const formatDocument = (value: string) => {
     const cleaned = value.replace(/\D/g, "");
@@ -106,13 +117,53 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess, onSkip }) =
   };
 
   const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDocumentInput(formatDocument(e.target.value));
+    const value = e.target.value;
+    // E-mail/usuário fica como digitado; número vira CPF/CNPJ formatado
+    setDocumentInput(isTextLogin(value) ? value : formatDocument(value));
     setError("");
     setRequiresRegistration(false);
   };
 
   const checkDocument = async (e: React.FormEvent) => {
     e.preventDefault();
+    const typed = documentInput.trim();
+    if (isTextLogin(typed)) {
+      setIsLoading(true);
+      setError("");
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/identify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier: typed }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setError(data.error || "Erro ao verificar login. Tente novamente.");
+          return;
+        }
+        if (!data.exists) {
+          setError(
+            data.staffDisabled
+              ? "Este login de funcionário está desativado."
+              : "Não encontramos uma conta com esse e-mail. Para se cadastrar, use seu CPF ou CNPJ.",
+          );
+          return;
+        }
+        setTextLogin(typed);
+        setLoginKinds(data.kinds || []);
+        setUserFound({ id: "", name: data.name || "", historico: [] });
+        setPassword("");
+        setShowPassword(true);
+      } catch (err) {
+        setError("Erro ao verificar login. Tente novamente.");
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    setTextLogin("");
+    setLoginKinds([]);
     const clean = documentInput.replace(/\D/g, "");
     if (clean.length !== 11 && clean.length !== 14) {
       setError("Documento inválido. Digite 11 dígitos (CPF) ou 14 (CNPJ).");
@@ -176,8 +227,58 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess, onSkip }) =
     }
   };
 
+  // Cliente pelo e-mail do cadastro
+  const loginCustomerByEmail = async () => {
+    const response = await fetch(`${API_BASE}/api/users/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: textLogin, password }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok && data.user) {
+      onLoginSuccess(data.user);
+      return true;
+    }
+    setError(data.error || "Senha incorreta.");
+    return false;
+  };
+
   const handleLoginWithPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    if (textLogin) {
+      setIsLoading(true);
+      try {
+        // Funcionário primeiro (vai para o painel); se a senha não for a do
+        // funcionário e o e-mail também for de cliente, tenta como cliente.
+        if (loginKinds.includes("staff")) {
+          const result = await staffLogin(textLogin, password);
+          if (result.ok && result.staff) {
+            onStaffLogin({
+              id: result.staff.id,
+              name: result.staff.name,
+              historico: [],
+              role: "admin",
+              staffId: result.staff.id,
+              username: result.staff.username,
+              permissions: result.staff.permissions,
+            });
+            return;
+          }
+          if (!loginKinds.includes("customer")) {
+            setError(result.message || "Senha incorreta.");
+            return;
+          }
+        }
+        await loginCustomerByEmail();
+      } catch (err) {
+        setError("Erro ao autenticar.");
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/users/login`, {
@@ -219,7 +320,7 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess, onSkip }) =
             {requiresRegistration ? "Cadastrar Conta" : showPassword ? "Digite sua senha" : "Fazer Login"}
           </h1>
           <p className="text-blue-100">
-            {requiresRegistration ? "Complete seu cadastro" : showPassword ? `Olá, ${userFound?.name}!` : "CPF ou CNPJ para começar"}
+            {requiresRegistration ? "Complete seu cadastro" : showPassword ? `Olá, ${userFound?.name}!` : "CPF, CNPJ ou e-mail para começar"}
           </p>
         </div>
 
@@ -227,12 +328,16 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess, onSkip }) =
         {!requiresRegistration && !showPassword && (
           <form onSubmit={checkDocument} className="space-y-6">
             <div>
-              <label className="block text-sm font-semibold text-blue-100 mb-2">CPF ou CNPJ</label>
+              <label className="block text-sm font-semibold text-blue-100 mb-2">CPF, CNPJ ou e-mail</label>
               <input
                 type="text"
                 value={documentInput}
                 onChange={handleDocChange}
-                placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                placeholder="CPF, CNPJ ou seu e-mail"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                autoComplete="username"
                 className="login-input w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-colors text-lg"
               />
               {error && <p className="text-blue-200 text-sm mt-2">{error}</p>}
@@ -261,8 +366,8 @@ const CPFLogin: React.FC<CPFLoginProps> = ({ onBack, onLoginSuccess, onSkip }) =
               />
               {error && <p className="text-blue-200 text-sm mt-2">{error}</p>}
             </div>
-            <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-950/40">Entrar</button>
-            <button type="button" onClick={() => setShowPassword(false)} className="w-full text-sm text-blue-100 hover:text-white">Voltar</button>
+            <button type="submit" disabled={isLoading} className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-950/40 disabled:bg-blue-300">{isLoading ? "Entrando..." : "Entrar"}</button>
+            <button type="button" onClick={() => { setShowPassword(false); setError(""); setPassword(""); }} className="w-full text-sm text-blue-100 hover:text-white">Voltar</button>
           </form>
         )}
 
@@ -302,11 +407,24 @@ const LoginPage: React.FC = () => {
     navigate("/menu");
   };
 
+  // Funcionário que entrou pelo e-mail/usuário vai direto para o painel
+  const handleStaffLogin = (user: User) => {
+    login(user);
+    navigate(firstAllowedAdminPath(user) || "/admin/sem-acesso", { replace: true });
+  };
+
   const handleSkip = () => {
     navigate("/menu");
   };
 
-  return <CPFLogin onBack={() => {}} onLoginSuccess={handleLoginSuccess} onSkip={handleSkip} />;
+  return (
+    <CPFLogin
+      onBack={() => {}}
+      onLoginSuccess={handleLoginSuccess}
+      onStaffLogin={handleStaffLogin}
+      onSkip={handleSkip}
+    />
+  );
 };
 
 export default LoginPage;
