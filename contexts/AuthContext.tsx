@@ -13,6 +13,13 @@ interface AuthContextType {
   clearPurchaseCompleted: () => void; // limpa o sinal de compra recém-concluída
 }
 
+// Versões antigas do servidor mandavam a senha junto do usuário; nunca
+// guardar isso no navegador.
+const withoutPassword = (user: User): User => {
+  const { password: _password, ...rest } = user as User & { password?: unknown };
+  return rest as User;
+};
+
 // Cria o contexto com um valor inicial indefinido; será provido pelo AuthProvider
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -25,7 +32,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
       const raw = localStorage.getItem("currentUser");
-      return raw ? (JSON.parse(raw) as User) : null;
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as User & { password?: unknown };
+      const clean = withoutPassword(parsed);
+      if ("password" in parsed) localStorage.setItem("currentUser", JSON.stringify(clean));
+      return clean;
     } catch (e) {
       return null;
     }
@@ -38,7 +49,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const clearPurchaseCompleted = () => setPurchaseJustCompleted(false);
 
   // Função para realizar o login: recebe um usuário e atualiza o estado
-  const login = (user: User) => {
+  const login = (rawUser: User) => {
+    const user = withoutPassword(rawUser);
     setCurrentUser(user);
     setPurchaseJustCompleted(false);
     try {
