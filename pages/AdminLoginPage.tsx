@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { login as apiLogin } from "../services/apiService";
+import { login as apiLogin, staffLogin } from "../services/apiService";
 import { isAdminSessionValid } from "../utils/adminSession";
 import "../components/admin/admin.css";
-import { Button } from "../components/admin/ui";
+import { Button, Segmented } from "../components/admin/ui";
 import {
   IconAlert,
   IconChevronLeft,
@@ -47,13 +47,23 @@ const IconEyeOff: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+type LoginMode = "master" | "staff";
+
 const AdminLoginPage: React.FC = () => {
+  // Admin master (senha geral) ou funcionário (usuário + senha próprios)
+  const { login, currentUser } = useAuth();
+  // Sessão vencida de funcionário: já abre no login de funcionário
+  const [mode, setMode] = useState<LoginMode>(() =>
+    currentUser?.role === "admin" && currentUser.staffId ? "staff" : "master",
+  );
+  const [username, setUsername] = useState(() =>
+    currentUser?.role === "admin" && currentUser.username ? currentUser.username : "",
+  );
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   // Apenas visual: alterna a exibição da senha digitada
   const [showPassword, setShowPassword] = useState(false);
-  const { login, currentUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -79,6 +89,26 @@ const AdminLoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
+      if (mode === "staff") {
+        const result = await staffLogin(username.trim(), password);
+        if (result.ok && result.staff) {
+          login({
+            id: result.staff.id,
+            name: result.staff.name,
+            historico: [],
+            role: "admin",
+            staffId: result.staff.id,
+            username: result.staff.username,
+            permissions: result.staff.permissions,
+          });
+          navigate(returnTo, { replace: true });
+        } else {
+          setError(result.message || "Usuário ou senha inválidos");
+          setPassword("");
+        }
+        return;
+      }
+
       // Usa o novo serviço de autenticação JWT
       const success = await apiLogin("admin", password);
 
@@ -134,7 +164,9 @@ const AdminLoginPage: React.FC = () => {
                   Acesso administrador
                 </h1>
                 <p className="mt-1 text-sm text-[color:var(--pp-text-2)]">
-                  Digite a senha para acessar
+                  {mode === "staff"
+                    ? "Entre com seu usuário e senha de funcionário"
+                    : "Digite a senha para acessar"}
                 </p>
                 {/* Loja: single-tenant, não exibe mais storeId */}
               </div>
@@ -150,7 +182,48 @@ const AdminLoginPage: React.FC = () => {
                 </div>
               )}
 
+              <div className="mb-5 flex justify-center">
+                <Segmented
+                  options={[
+                    { value: "master", label: "Administrador" },
+                    { value: "staff", label: "Funcionário" },
+                  ]}
+                  value={mode}
+                  onChange={(value) => {
+                    setMode(value);
+                    setError("");
+                    setPassword("");
+                  }}
+                  ariaLabel="Tipo de acesso"
+                />
+              </div>
+
               <form onSubmit={handleSubmit} className="space-y-5">
+                {mode === "staff" && (
+                  <div>
+                    <label htmlFor="username" className="pp-label">
+                      Usuário
+                    </label>
+                    <input
+                      id="username"
+                      type="text"
+                      value={username}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        setError("");
+                      }}
+                      placeholder="Seu usuário"
+                      className="pp-input"
+                      style={{ height: 44 }}
+                      autoFocus
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      autoComplete="username"
+                      disabled={isLoading}
+                    />
+                  </div>
+                )}
                 <div>
                   <label htmlFor="password" className="pp-label">
                     Senha
@@ -167,7 +240,7 @@ const AdminLoginPage: React.FC = () => {
                       placeholder="Digite a senha"
                       className="pp-input pr-11"
                       style={{ height: 44 }}
-                      autoFocus
+                      autoFocus={mode === "master"}
                       autoComplete="current-password"
                       disabled={isLoading}
                       aria-invalid={error ? true : undefined}

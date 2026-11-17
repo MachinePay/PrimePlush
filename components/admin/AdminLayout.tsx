@@ -6,6 +6,14 @@ import {
   ADMIN_SESSION_EXPIRED_EVENT,
   isAdminSessionValid,
 } from "../../utils/adminSession";
+import { getAdminMe } from "../../services/apiService";
+import type { User } from "../../types";
+import {
+  STAFF_ADMIN_PATH,
+  hasAdminPermission,
+  isMasterAdmin,
+  permissionForPath,
+} from "../../utils/adminPermissions";
 import "./admin.css";
 import {
   IconBox,
@@ -22,6 +30,7 @@ import {
   IconSidebar,
   IconStore,
   IconTag,
+  IconUserPlus,
   IconUsers,
   IconWallet,
 } from "./icons";
@@ -39,6 +48,8 @@ interface AdminNavItem {
   icon: IconComponent;
   /** Palavras extras para a busca rápida */
   keywords?: string;
+  /** Só o admin master vê */
+  masterOnly?: boolean;
 }
 
 interface AdminNavGroup {
@@ -75,7 +86,26 @@ const NAV_GROUPS: AdminNavGroup[] = [
       { to: "/admin/reports", label: "Relatórios", icon: IconChart, keywords: "vendas ia recomendacoes" },
     ],
   },
+  {
+    label: "Configurações",
+    items: [
+      { to: STAFF_ADMIN_PATH, label: "Funcionários", icon: IconUserPlus, keywords: "logins usuarios permissoes acesso abas", masterOnly: true },
+    ],
+  },
 ];
+
+// Abas que o usuário logado pode ver (funcionário só vê as liberadas)
+const canSeeItem = (user: User | null, item: AdminNavItem) => {
+  if (item.masterOnly) return isMasterAdmin(user);
+  const permission = permissionForPath(item.to);
+  return permission ? hasAdminPermission(user, permission) : true;
+};
+
+const visibleGroups = (user: User | null) =>
+  NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => canSeeItem(user, item)),
+  })).filter((group) => group.items.length > 0);
 
 const ALL_ITEMS = NAV_GROUPS.flatMap((group) =>
   group.items.map((item) => ({ ...item, group: group.label })),
@@ -122,6 +152,7 @@ const CommandPalette: React.FC<{ open: boolean; onClose: () => void }> = ({
   onClose,
 }) => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
@@ -141,8 +172,9 @@ const CommandPalette: React.FC<{ open: boolean; onClose: () => void }> = ({
     };
     const pages: CommandItem[] = ALL_ITEMS.filter(
       (item) =>
-        !term ||
-        normalize(`${item.label} ${item.group} ${item.keywords || ""}`).includes(term),
+        canSeeItem(currentUser, item) &&
+        (!term ||
+          normalize(`${item.label} ${item.group} ${item.keywords || ""}`).includes(term)),
     ).map((item) => ({
       id: item.to,
       label: item.label,
@@ -154,31 +186,37 @@ const CommandPalette: React.FC<{ open: boolean; onClose: () => void }> = ({
     if (!query.trim()) return pages;
 
     const q = encodeURIComponent(query.trim());
-    return [
-      ...pages,
-      {
+    const text = query.trim();
+    const searches: CommandItem[] = [];
+    if (hasAdminPermission(currentUser, "pedidos")) {
+      searches.push({
         id: "search-orders",
-        label: `Buscar pedidos por “${query.trim()}”`,
+        label: `Buscar pedidos por “${text}”`,
         hint: "Pedidos",
         icon: IconReceipt,
         run: go(`/historico?q=${q}`),
-      },
-      {
+      });
+    }
+    if (hasAdminPermission(currentUser, "clientes")) {
+      searches.push({
         id: "search-customers",
-        label: `Buscar clientes por “${query.trim()}”`,
+        label: `Buscar clientes por “${text}”`,
         hint: "Clientes",
         icon: IconUsers,
         run: go(`/admin/clientes?q=${q}`),
-      },
-      {
+      });
+    }
+    if (hasAdminPermission(currentUser, "produtos")) {
+      searches.push({
         id: "search-products",
-        label: `Buscar produtos por “${query.trim()}”`,
+        label: `Buscar produtos por “${text}”`,
         hint: "Catálogo",
         icon: IconBox,
         run: go(`/admin/produtos?q=${q}`),
-      },
-    ];
-  }, [query, navigate, onClose]);
+      });
+    }
+    return [...pages, ...searches];
+  }, [query, navigate, onClose, currentUser]);
 
   useEffect(() => {
     setActive(0);
@@ -263,8 +301,42 @@ const CommandPalette: React.FC<{ open: boolean; onClose: () => void }> = ({
 const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, currentUser } = useAuth();
+  const { logout, currentUser, login } = useAuth();
   const [collapsed, setCollapsed] = useState(readCollapsed);
+  const isMaster = isMasterAdmin(currentUser);
+  const groups = useMemo(() => visibleGroups(currentUser), [currentUser]);
+
+  // Abas do funcionário podem mudar a qualquer momento pelo admin master:
+  // confere no servidor ao abrir o painel e ao voltar para a janela.
+  const staffId = currentUser?.staffId;
+  const permissionsKey = (currentUser?.permissions || []).join(",");
+  useEffect(() => {
+    if (!staffId || !currentUser) return;
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const me = await getAdminMe();
+        if (cancelled || !me || me.master) return;
+        const current = currentUser.permissions || [];
+        const changed =
+          me.name !== currentUser.name ||
+          me.permissions.length !== current.length ||
+          me.permissions.some((perm) => !current.includes(perm));
+        if (changed) {
+          login({ ...currentUser, name: me.name, permissions: me.permissions });
+        }
+      } catch {
+        // sem rede: mantém as abas atuais; o servidor ainda confere cada ação
+      }
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refresh);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staffId, permissionsKey, currentUser?.name]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -353,7 +425,7 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
 
           <nav className="pp-sidebar-nav">
-            {NAV_GROUPS.map((group) => (
+            {groups.map((group) => (
               <div key={group.label} className="pp-nav-group">
                 <div className="pp-nav-group-label">{group.label}</div>
                 {group.items.map((item) => {
@@ -383,10 +455,12 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <IconStore />
                 <span className="pp-nav-label">Ver loja</span>
               </NavLink>
-              <NavLink to="/superadmin/login" className="pp-nav-link" data-tip="SuperAdmin">
-                <IconShield />
-                <span className="pp-nav-label">SuperAdmin</span>
-              </NavLink>
+              {isMaster && (
+                <NavLink to="/superadmin/login" className="pp-nav-link" data-tip="SuperAdmin">
+                  <IconShield />
+                  <span className="pp-nav-label">SuperAdmin</span>
+                </NavLink>
+              )}
             </div>
           </nav>
 
@@ -464,22 +538,26 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               >
                 <IconSearch />
               </button>
-              <button
-                type="button"
-                className="pp-btn pp-btn-ghost pp-btn-icon"
-                aria-label="Pedidos recentes"
-                title="Pedidos recentes"
-                onClick={() => navigate("/historico")}
-              >
-                <IconClock />
-              </button>
+              {hasAdminPermission(currentUser, "pedidos") && (
+                <button
+                  type="button"
+                  className="pp-btn pp-btn-ghost pp-btn-icon"
+                  aria-label="Pedidos recentes"
+                  title="Pedidos recentes"
+                  onClick={() => navigate("/historico")}
+                >
+                  <IconClock />
+                </button>
+              )}
               <div className="ml-1 flex items-center gap-2.5 border-l border-[color:var(--pp-border)] pl-3">
                 <Avatar name={currentUser?.name || "Administrador"} size={32} />
                 <div className="hidden leading-tight sm:block">
                   <div className="max-w-[160px] truncate text-sm font-semibold text-[color:var(--pp-text)]">
                     {currentUser?.name || "Administrador"}
                   </div>
-                  <div className="text-xs text-[color:var(--pp-text-3)]">Administrador</div>
+                  <div className="text-xs text-[color:var(--pp-text-3)]">
+                    {isMaster ? "Administrador" : "Funcionário"}
+                  </div>
                 </div>
               </div>
             </div>

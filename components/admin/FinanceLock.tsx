@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Button, Field, Modal, formatCurrency } from "./ui";
 import { IconEye, IconEyeOff, IconUnlock } from "./icons";
+import { useAuth } from "../../contexts/AuthContext";
+import { hasAdminPermission } from "../../utils/adminPermissions";
 
 // Bloqueio dos valores financeiros do painel (pedidos, dashboard, gestão).
 // Usa a mesma senha especial do Relatório de Gestão e Financeiro.
@@ -29,8 +31,16 @@ export const setFinanceUnlocked = (value: boolean) => {
   window.dispatchEvent(new CustomEvent(EVENT, { detail: value }));
 };
 
+// Funcionário sem a permissão "valores" nunca vê os valores (nem com a senha).
+const useCanViewValues = () => {
+  const { currentUser } = useAuth();
+  return currentUser?.role !== "admin" || hasAdminPermission(currentUser, "valores");
+};
+
 export function useFinanceLock() {
-  const [unlocked, setUnlocked] = useState(isFinanceUnlocked);
+  const canView = useCanViewValues();
+  const [storedUnlocked, setUnlocked] = useState(isFinanceUnlocked);
+  const unlocked = canView && storedUnlocked;
 
   useEffect(() => {
     const onChange = (event: Event) => {
@@ -42,10 +52,10 @@ export function useFinanceLock() {
   }, []);
 
   const unlock = useCallback((password: string) => {
-    if (password !== FINANCE_PASSWORD) return false;
+    if (!canView || password !== FINANCE_PASSWORD) return false;
     setFinanceUnlocked(true);
     return true;
-  }, []);
+  }, [canView]);
 
   const lock = useCallback(() => setFinanceUnlocked(false), []);
 
@@ -54,7 +64,7 @@ export function useFinanceLock() {
     [unlocked],
   );
 
-  return { unlocked, unlock, lock, money };
+  return { unlocked, unlock, lock, money, canView };
 }
 
 /** Olhinho que mostra (pedindo a senha) ou oculta os valores. */
@@ -63,6 +73,7 @@ export const FinanceLockButton: React.FC<{
   unlock: (password: string) => boolean;
   lock: () => void;
 }> = ({ unlocked, unlock, lock }) => {
+  const canView = useCanViewValues();
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -78,6 +89,8 @@ export const FinanceLockButton: React.FC<{
     if (unlock(password)) close();
     else setError("Senha incorreta");
   };
+
+  if (!canView) return null;
 
   if (unlocked) {
     return (

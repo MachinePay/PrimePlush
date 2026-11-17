@@ -113,6 +113,11 @@ export interface User {
   historico: Order[];
   pontos?: number;
   role?: UserRole; // Tipo de usuário: customer (padrão), kitchen ou admin
+  // Painel admin: funcionário com login próprio e abas liberadas pelo master.
+  // Sem staffId = admin master (acesso total).
+  staffId?: string;
+  username?: string;
+  permissions?: string[];
 }
 
 export interface CartItem extends Product {

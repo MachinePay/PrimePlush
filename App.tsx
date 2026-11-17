@@ -40,6 +40,15 @@ import InfoPage from "./pages/InfoPage";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminCustomersPage from "./pages/AdminCustomersPage";
+import AdminStaffPage from "./pages/AdminStaffPage";
+import AdminNoAccessPage from "./pages/AdminNoAccessPage";
+import {
+  type AdminPermission,
+  STAFF_ADMIN_PATH,
+  firstAllowedAdminPath,
+  hasAdminPermission,
+  isMasterAdmin,
+} from "./utils/adminPermissions";
 
 // 1. Configuração do Cliente React Query
 const queryClient = new QueryClient({
@@ -70,7 +79,9 @@ const RoleProtectedRoute: React.FC<{
   children: React.ReactNode;
   allowedRoles: UserRole[];
   redirectTo?: string;
-}> = ({ children, allowedRoles, redirectTo = "/login" }) => {
+  /** Aba do painel exigida (funcionário precisa ter liberada); "master" = só o admin master */
+  permission?: AdminPermission | "master";
+}> = ({ children, allowedRoles, redirectTo = "/login", permission }) => {
   const { currentUser } = useAuth();
 
   if (!currentUser) {
@@ -87,6 +98,18 @@ const RoleProtectedRoute: React.FC<{
   // novo na aba admin.
   if (userRole === "admin" && !isAdminSessionValid()) {
     return <Navigate to={ADMIN_LOGIN_EXPIRED_PATH} replace />;
+  }
+
+  // Funcionário sem a aba liberada vai para a primeira aba que pode ver.
+  if (userRole === "admin" && permission) {
+    const allowed =
+      permission === "master"
+        ? isMasterAdmin(currentUser)
+        : hasAdminPermission(currentUser, permission);
+    if (!allowed) {
+      const fallback = firstAllowedAdminPath(currentUser) || "/admin/sem-acesso";
+      return <Navigate to={fallback} replace />;
+    }
   }
 
   return <>{children}</>;
@@ -261,6 +284,7 @@ const RouterBody: React.FC = () => {
               <RoleProtectedRoute
                 allowedRoles={["admin", "kitchen"]}
                 redirectTo="/admin/login"
+                permission="pedidos"
               >
                 <OrdersShell>
                   <OrderHistoryPage />
@@ -276,6 +300,7 @@ const RouterBody: React.FC = () => {
               <RoleProtectedRoute
                 allowedRoles={["admin", "kitchen"]}
                 redirectTo="/admin/login"
+                permission="pedidos"
               >
                 <OrdersShell>
                   <OrderDetailPage />
@@ -311,6 +336,7 @@ const RouterBody: React.FC = () => {
               <RoleProtectedRoute
                 allowedRoles={["admin"]}
                 redirectTo="/admin/login"
+                permission="dashboard"
               >
                 <AdminLayout>
                   <AdminDashboardPage />
@@ -326,6 +352,7 @@ const RouterBody: React.FC = () => {
               <RoleProtectedRoute
                 allowedRoles={["admin"]}
                 redirectTo="/admin/login"
+                permission="produtos"
               >
                 <AdminLayout>
                   <AdminPage />
@@ -341,6 +368,7 @@ const RouterBody: React.FC = () => {
               <RoleProtectedRoute
                 allowedRoles={["admin"]}
                 redirectTo="/admin/login"
+                permission="clientes"
               >
                 <AdminLayout>
                   <AdminCustomersPage />
@@ -356,6 +384,7 @@ const RouterBody: React.FC = () => {
               <RoleProtectedRoute
                 allowedRoles={["admin"]}
                 redirectTo="/admin/login"
+                permission="categorias"
               >
                 <AdminLayout>
                   <AdminCategoriesPage />
@@ -371,6 +400,7 @@ const RouterBody: React.FC = () => {
               <RoleProtectedRoute
                 allowedRoles={["admin"]}
                 redirectTo="/admin/login"
+                permission="banners"
               >
                 <AdminLayout>
                   <AdminBannersPage />
@@ -386,6 +416,7 @@ const RouterBody: React.FC = () => {
               <RoleProtectedRoute
                 allowedRoles={["admin"]}
                 redirectTo="/admin/login"
+                permission="relatorios"
               >
                 <AdminLayout>
                   <AdminReportsPage />
@@ -401,9 +432,37 @@ const RouterBody: React.FC = () => {
               <RoleProtectedRoute
                 allowedRoles={["admin"]}
                 redirectTo="/admin/login"
+                permission="gestao"
               >
                 <AdminLayout>
                   <AdminManagementReportPage />
+                </AdminLayout>
+              </RoleProtectedRoute>
+            }
+          />
+          {/* Logins de funcionários e abas liberadas (só admin master) */}
+          <Route
+            path={STAFF_ADMIN_PATH}
+            element={
+              <RoleProtectedRoute
+                allowedRoles={["admin"]}
+                redirectTo="/admin/login"
+                permission="master"
+              >
+                <AdminLayout>
+                  <AdminStaffPage />
+                </AdminLayout>
+              </RoleProtectedRoute>
+            }
+          />
+
+          {/* Funcionário sem nenhuma aba liberada */}
+          <Route
+            path="/admin/sem-acesso"
+            element={
+              <RoleProtectedRoute allowedRoles={["admin"]} redirectTo="/admin/login">
+                <AdminLayout>
+                  <AdminNoAccessPage />
                 </AdminLayout>
               </RoleProtectedRoute>
             }

@@ -302,3 +302,54 @@ export async function verifyStockOverridePin(
     return { success: false, message: "Erro de conexão" };
   }
 }
+
+export interface StaffLoginResult {
+  ok: boolean;
+  message?: string;
+  staff?: {
+    id: string;
+    name: string;
+    username: string;
+    permissions: string[];
+  };
+}
+
+/**
+ * Login de funcionário do painel admin (usuário + senha próprios).
+ * Salva o token de admin com as abas liberadas pelo admin master.
+ */
+export async function staffLogin(
+  username: string,
+  password: string,
+): Promise<StaffLoginResult> {
+  try {
+    const response = await fetch(`${API_URL}/auth/staff-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success || !data.token) {
+      return { ok: false, message: data.message || "Usuário ou senha inválidos" };
+    }
+    saveToken(data.token);
+    return { ok: true, staff: data.staff };
+  } catch (error) {
+    console.error("Erro de rede no login de funcionário:", error);
+    return { ok: false, message: "Erro de conexão. Tente novamente." };
+  }
+}
+
+export interface AdminMe {
+  master: boolean;
+  staffId?: string;
+  name: string;
+  permissions: string[];
+}
+
+/** Quem está logado no painel admin e quais abas pode ver (sempre atual). */
+export async function getAdminMe(): Promise<AdminMe | null> {
+  const response = await authenticatedFetch(`${API_URL}/auth/me`);
+  if (!response.ok) return null;
+  return response.json();
+}
