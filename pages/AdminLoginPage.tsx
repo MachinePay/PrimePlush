@@ -52,10 +52,13 @@ type LoginMode = "master" | "staff";
 const AdminLoginPage: React.FC = () => {
   // Admin master (senha geral) ou funcionário (usuário + senha próprios)
   const { login, currentUser } = useAuth();
-  // Sessão vencida de funcionário: já abre no login de funcionário
-  const [mode, setMode] = useState<LoginMode>(() =>
-    currentUser?.role === "admin" && currentUser.staffId ? "staff" : "master",
+  // Quem entrou no site com login de funcionário só pode usar o acesso de
+  // funcionário aqui; a opção "Administrador" fica só para o admin master.
+  const isStaffSession = currentUser?.role === "admin" && Boolean(currentUser.staffId);
+  const [modeChoice, setMode] = useState<LoginMode>(() =>
+    isStaffSession ? "staff" : "master",
   );
+  const mode: LoginMode = isStaffSession ? "staff" : modeChoice;
   const [username, setUsername] = useState(() =>
     currentUser?.role === "admin" && currentUser.username ? currentUser.username : "",
   );
@@ -161,7 +164,7 @@ const AdminLoginPage: React.FC = () => {
                   Área restrita
                 </div>
                 <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--pp-text)]">
-                  Acesso administrador
+                  {isStaffSession ? "Acesso funcionário" : "Acesso administrador"}
                 </h1>
                 <p className="mt-1 text-sm text-[color:var(--pp-text-2)]">
                   {mode === "staff"
@@ -175,13 +178,14 @@ const AdminLoginPage: React.FC = () => {
                 <div className="mb-5 flex gap-3 rounded-xl border border-amber-200 bg-[color:var(--pp-warning-soft)] px-4 py-3 text-sm text-amber-800">
                   <IconClock className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--pp-warning)]" />
                   <p>
-                    Sua sessão de administrador expirou. Você continua logado no
-                    sistema, mas precisa digitar a senha para acessar a aba
-                    admin novamente.
+                    {isStaffSession
+                      ? "Sua sessão expirou. Você continua logado no sistema, mas precisa digitar sua senha de funcionário para acessar o painel novamente."
+                      : "Sua sessão de administrador expirou. Você continua logado no sistema, mas precisa digitar a senha para acessar a aba admin novamente."}
                   </p>
                 </div>
               )}
 
+              {!isStaffSession && (
               <div className="mb-5 flex justify-center">
                 <Segmented
                   options={[
@@ -197,6 +201,7 @@ const AdminLoginPage: React.FC = () => {
                   ariaLabel="Tipo de acesso"
                 />
               </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 {mode === "staff" && (
